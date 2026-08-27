@@ -1,0 +1,25 @@
+[project]
+name = "quant-trading-01"
+version = "0.1.0"
+description = "A股量化交易学习项目：数据获取 + 回测引擎 + 策略示例"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "baostock>=0.8.9",
+    "akshare>=1.14",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "matplotlib>=3.8",
+    "pyarrow>=15",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# 无 [build-system]：本项目作为“虚拟项目”管理，uv sync 只安装依赖，
+# 代码通过 run_backtest.py 里的 sys.path 直接导入运行。
