@@ -20,12 +20,41 @@ _ADJUST_FLAG = {"qfq": "2", "hfq": "1", "": "3"}
 
 
 def _bs_symbol(symbol: str) -> str:
-    """600519 -> sh.600519；000001/300750 -> sz.xxxxxx；688xxx -> sh.688xxx."""
+    """统一转换成 baostock 的代码格式。
+
+    沪市：6 股票(含688)、5 场内基金ETF、9 B股 -> sh.xxxxxx
+    深市：0/3 股票、15 场内基金ETF          -> sz.xxxxxx
+    """
     if symbol.startswith(("sh.", "sz.", "bj.")):
         return symbol
-    if symbol.startswith("6") or symbol.startswith(("9", "688")):
+    if symbol[0] in {"5", "6", "9"}:
         return f"sh.{symbol}"
     return f"sz.{symbol}"
+
+
+def _is_fund(symbol: str) -> bool:
+    """判断是否为场内基金：沪市 51/56/58 开头，深市 15/16/18 开头。"""
+    return symbol[:2] in {"51", "56", "58", "15", "16", "18"}
+
+
+def _fetch_fund_sina(symbol: str, start: str, end: str) -> pd.DataFrame:
+    """从新浪拉取场内基金日线（start/end 为 YYYYMMDD）。
+
+    注意：新浪源只有不复权价格。行业 ETF 分红很少且金额小，
+    用于日线级别策略研究影响可忽略；若标的分红频繁请自行核实。
+    """
+    import akshare as ak
+
+    prefix = "sh" if symbol[0] == "5" else "sz"
+    raw = ak.fund_etf_hist_sina(symbol=f"{prefix}{symbol}")
+    if raw is None or raw.empty:
+        raise RuntimeError(f"{symbol} 新浪未取到数据")
+    raw["date"] = pd.to_datetime(raw["date"])
+    raw = raw.set_index("date").sort_index()
+    mask = (raw.index >= pd.Timestamp(f"{start[:4]}-{start[4:6]}-{start[6:]}")) & \
+           (raw.index <= pd.Timestamp(f"{end[:4]}-{end[4:6]}-{end[6:]}"))
+    return raw.loc[mask, _COLS].apply(pd.to_numeric, errors="coerce") \
+              .dropna(subset=["close"])
 
 
 def _fetch_baostock(bs_code: str, start: str, end: str,
@@ -96,19 +125,24 @@ def load_stock_daily(
         df = pd.read_csv(cache, parse_dates=["date"], index_col="date")
         return df[_COLS]
 
-    try:                                   # 首选 baostock
+    if _is_fund(symbol):                   # 场内基金：baostock 覆盖不全，直接用新浪
+        df = _fetch_fund_sina(symbol, start, e)
+        df.to_csv(cache)
+        return df
+
+    try:                                   # 个股：首选 baostock
         df = _fetch_baostock(_bs_symbol(symbol), _s, _e,
                              _ADJUST_FLAG.get(adjust, "2"), is_index=False)
     except Exception as exc:               # 兜底 akshare 东方财富源
         print(f"baostock 失败({exc})，改用 akshare...")
         import akshare as ak
+        cmap = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high",
+                "最低": "low", "成交量": "volume", "成交额": "amount"}
         raw = ak.stock_zh_a_hist(symbol=symbol, period="daily",
                                  start_date=start, end_date=e,
                                  adjust=adjust)
         if raw is None or raw.empty:
-            raise RuntimeError(f"{symbol} 两个数据源均未取到数据")
-        cmap = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high",
-                "最低": "low", "成交量": "volume", "成交额": "amount"}
+            raise RuntimeError(f"股票 {symbol} 两个数据源均未取到数据")
         df = raw.rename(columns=cmap)
         df["date"] = pd.to_datetime(df["date"])
         df = df.set_index("date").sort_index()[_COLS]
