@@ -40,6 +40,8 @@ strategies/
   dual_ma.py           双均线择时策略示例
 tests/
   test_backtest.py     引擎正确性单元测试 (uv run pytest)
+research/              市场规律与策略研究脚本（可执行）
+docs/                  设计文档与研究方案（入口见 docs/README.md）
 data/                  行情缓存（自动生成）
 output/                回测图表与成交明细（自动生成）
 ```
