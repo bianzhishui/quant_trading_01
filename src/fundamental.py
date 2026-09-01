@@ -43,17 +43,46 @@ def _save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=1))
 
 
+def _ensure_session(max_attempts: int = 6) -> None:
+    """登录并**验证会话可用**。
+
+    baostock 服务端偶发"login 返回 success 但会话未建立"(报 用户未登录),
+    高频使用后更明显。策略: 登录 → 1行验证查询 → 指数退避重试。
+    """
+    delays = [1, 3, 8, 15, 30, 60]
+    for i in range(max_attempts):
+        lg = bs.login()
+        if lg.error_code == "0":
+            time.sleep(1.0)
+            rs = bs.query_stock_basic(code="sh.600000")   # 1 行验证查询
+            if rs.error_code == "0":
+                return
+            print(f"    会话验证失败({rs.error_msg})")
+        else:
+            print(f"    登录失败({lg.error_msg})")
+        try:
+            bs.logout()
+        except Exception:
+            pass
+        if i < max_attempts - 1:
+            d = delays[min(i, len(delays) - 1)]
+            print(f"    退避 {d}s 后重试 ({i+1}/{max_attempts})")
+            time.sleep(d)
+    raise RuntimeError("baostock 会话多次建立失败, 疑似限流, 请半小时后再试")
+
+
 def _logged():
-    """装饰器: 确保函数运行期间处于 baostock 登录态。"""
+    """装饰器: 确保函数运行期间处于 baostock 已验证登录态。"""
     def deco(fn):
         def wrapper(*a, **kw):
-            lg = bs.login()
-            if lg.error_code != "0":
-                raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
+            _ensure_session()
             try:
                 return fn(*a, **kw)
             finally:
-                bs.logout()
+                try:
+                    bs.logout()
+                except Exception:
+                    pass
         return wrapper
     return deco
 
@@ -67,7 +96,7 @@ def _rows(rs) -> list[list]:
     return out
 
 
-def _retry(fn, tries: int = 3, pause: float = 2.0):
+def _retry(fn, tries: int = 4, pause: float = 3.0):
     for i in range(tries):
         try:
             return fn()
@@ -76,6 +105,10 @@ def _retry(fn, tries: int = 3, pause: float = 2.0):
                 raise
             print(f"    重试{i+1}/{tries-1}: {e}")
             time.sleep(pause)
+            try:                 # 会话可能已失效(报"用户未登录"时), 重建会话
+                _ensure_session()
+            except Exception:
+                pass
 
 
 # ---------------- 数据获取 ----------------
@@ -207,9 +240,8 @@ def download(limit: int | None = None) -> None:
     print("[4/4] 完成。运行 merge 生成最终表。")
 
 
-@_logged()
 def merge() -> None:
-    """合并分片 → daily.parquet / dividends.parquet。"""
+    """合并分片 → daily.parquet / dividends.parquet。（只读本地文件，无需登录）"""
     daily, divid = [], []
     for f in sorted(DATA_DIR.glob("daily_shard_*.parquet")):
         daily.append(pd.read_parquet(f))
