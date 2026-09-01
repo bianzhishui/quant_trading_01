@@ -1,0 +1,16 @@
+{
+ "daily_done": [
+  "sh.600000",
+  "sh.600004",
+  "sh.600008"
+ ],
+ "div_done": {
+  "sh.600000": 2026,
+  "sh.600004": 2026,
+  "sh.600008": 2026
+ },
+ "shards": [
+  "dividends_shard_000.parquet",
+  "daily_shard_001.parquet"
+ ]
+}
