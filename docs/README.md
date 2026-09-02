@@ -8,6 +8,7 @@
 | [fundamental_pipeline_plan.md](fundamental_pipeline_plan.md) | 基建方案 | 已实施（管线+高股息实验数据就绪） |
 | [dividend_factor_plan.md](dividend_factor_plan.md) | 策略研究方案（预注册） | 已实施，判定=未通过（§0 归档，含归因读数） |
 | [ew_base_plan.md](ew_base_plan.md) | 可行性评估（预注册） | 已实施，机械判定=成立，实用建议=中证500/1000 指数产品（§0 归档） |
+| [ew_base_execution.md](ew_base_execution.md) | **核心层构造方案（执行版）** | **现行有效**——唯一通过验证的持仓方案 |
 
 ## 约定
 
