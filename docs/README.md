@@ -4,7 +4,9 @@
 
 | 文档 | 类型 | 状态 |
 |---|---|---|
-| [etf_momentum_plan.md](etf_momentum_plan.md) | 策略研究方案（预注册） | v1.0 待实施 |
+| [etf_momentum_plan.md](etf_momentum_plan.md) | 策略研究方案（预注册） | 已实施，判定=未通过（§0 归档） |
+| [fundamental_pipeline_plan.md](fundamental_pipeline_plan.md) | 基建方案 | 已实施（管线+高股息实验数据就绪） |
+| [dividend_factor_plan.md](dividend_factor_plan.md) | 策略研究方案（预注册） | 已实施，判定=未通过（§0 归档，含归因读数） |
 
 ## 约定
 

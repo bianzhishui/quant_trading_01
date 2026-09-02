@@ -167,6 +167,49 @@ def download_dividend_year(code: str, year: int) -> pd.DataFrame:
 
 
 # ---------------- 主流程 ----------------
+def download_adjust_factor(code: str) -> pd.DataFrame:
+    # 从2005年起查: 价格数据从2010年起, 需要此前最后一次事件的因子水平,
+    # 否则2010年初~首个事件日的因子缺失
+    rs = bs.query_adjust_factor(code=code, start_date="2005-01-01",
+                                end_date="2026-12-31")
+    rows = _rows(rs)
+    df = pd.DataFrame(rows, columns=list(rs.fields))
+    for col in ("foreAdjustFactor", "backAdjustFactor", "adjustFactor"):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+@_logged()
+def download_adjust_factors(limit: int | None = None) -> None:
+    """全池复权因子(每股1次调用) → adjust_factor.parquet。"""
+    out = DATA_DIR / "adjust_factor.parquet"
+    if out.exists():
+        print("adjust_factor.parquet 已存在, 跳过 (删除后可重下)")
+        return
+    uni = pd.read_parquet(DATA_DIR / "universe.parquet")
+    codes = uni["code"].tolist()
+    if limit:
+        codes = codes[:limit]
+    print(f"[复权因子] 共 {len(codes)} 只")
+    buf, ok, t0 = [], [], time.time()
+    for n, code in enumerate(codes, 1):
+        try:
+            df = _retry(lambda: download_adjust_factor(code))
+            if len(df):
+                buf.append(df)
+            ok.append(code)
+        except Exception as e:
+            print(f"    {code} 复权因子失败(跳过): {e}")
+        if n % 100 == 0 or n == len(codes):
+            speed = n / max(time.time() - t0, 1)
+            eta = (len(codes) - n) / max(speed, 0.1) / 60
+            print(f"    复权因子 {n}/{len(codes)} ({speed:.1f}只/秒, 剩余约{eta:.0f}分钟)")
+    if buf:
+        pd.concat(buf, ignore_index=True).to_parquet(out)
+        print(f"已保存 {out.name}: {sum(len(b) for b in buf)} 行")
+
+
 @_logged()
 def download(limit: int | None = None) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -266,7 +309,7 @@ def status() -> None:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="基本面数据管线")
-    ap.add_argument("cmd", choices=["download", "merge", "status"])
+    ap.add_argument("cmd", choices=["download", "merge", "status", "adjust"])
     ap.add_argument("--limit", type=int, default=None, help="限制下载股票数(试运行)")
     args = ap.parse_args()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -274,5 +317,7 @@ if __name__ == "__main__":
         download(limit=args.limit)
     elif args.cmd == "merge":
         merge()
+    elif args.cmd == "adjust":
+        download_adjust_factors(limit=args.limit)
     else:
         status()
