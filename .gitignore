@@ -6,3 +6,4 @@ data/*.csv
 output/*.png
 output/*.csv
 .DS_Store
+data/fundamental/
