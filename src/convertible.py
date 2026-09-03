@@ -129,6 +129,13 @@ def merge() -> None:
         return
     df = pd.concat([pd.read_parquet(p) for p in shards], ignore_index=True)
     df = df.drop_duplicates(subset=["code", "date"]).sort_values(["code", "date"])
+    n0, b0 = len(df), df["code"].nunique()
+    # QC1: 老式分离交易债(404/115/126开头)在东财为垃圾数据(价格0.001~155乱跳), 全部剔除
+    df = df[~df["code"].str.startswith(("404", "115", "126"))]
+    # QC2: 面值100的品种, <10元必为数据错误(真实 distressed 底部≈18元, 保留)
+    df = df[df["close"] >= 10]
+    n1, b1 = len(df), df["code"].nunique()
+    print(f"QC: 剔除老式分离债/垃圾行 {b0-b1} 只, {n0-n1:,} 行")
     out = DATA_DIR / "value_analysis.parquet"
     df.to_parquet(out)
     uni = pd.read_parquet(DATA_DIR / "universe.parquet")
