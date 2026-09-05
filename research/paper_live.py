@@ -230,9 +230,59 @@ def report(aum: float):
         print(f"    {x['date']}: NAV {x['nav']/1e4:.1f}万 | 基准 {x['bench']:.3f}")
 
 
+def mark(aum: float):
+    """每日涨幅: 当天收盘 NAV / 前一天收盘 NAV - 1 (逐日盯市, 含分红入账)。
+
+    从账本 last_exec 起逐日: 现金 + Σ股数×收盘价(停牌按最后价); 因子事件补除权缺口。
+    输出 daily_nav_aum{XX}w.csv (date, nav, 涨幅%) 并打印最新/昨日/累计涨幅。
+    """
+    path = ledger_path(aum)
+    if not path.exists():
+        print(f"[{int(aum/1e4)}万] 无账本"); return
+    led = json.loads(path.read_text())
+    close, amount, tst, isst, ind = _load()
+    raw, _ = _load_corp(close)
+    rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
+    pending = [r for r in rebs if r["T"] > pd.Timestamp(led["last_signal"])
+               and r["exec"] <= close.index[-1]]
+    if pending:
+        print(f"  [警告] {int(aum/1e4)}万 账本落后 {len(pending)} 个月调仓, 涨幅按旧持仓计; 请先跑 step")
+    F = _factor_panel(close)
+    pf = PaperPortfolio(led["aum"])
+    pf.shares = {k: int(v) for k, v in led["shares"].items()}
+    pf.cash = float(led["cash"])
+    idx = close.index
+    start = pd.Timestamp(led["last_exec"])
+    if start not in idx:
+        print(f"  [跳过] 执行日 {led['last_exec']} 不在行情内"); return
+    i0 = idx.get_loc(start)
+    F_prev = F.shift(1).fillna(F.iloc[0])
+    navs = []
+    for i in range(i0, len(idx)):
+        if i > i0:
+            fn, fp = F.iloc[i], F_prev.iloc[i]
+            prices_i = raw.iloc[i]
+            for c in list(pf.shares.keys()):
+                if fn[c] != fp[c]:
+                    pf.corp_action_f(c, prices_i.get(c, np.nan), fp[c], fn[c])
+        navs.append(pf.value(raw.iloc[i]))
+    nav = pd.Series(navs, index=idx[i0:])
+    ret = nav.pct_change() * 100
+    df = pd.DataFrame({"date": nav.index.strftime("%Y-%m-%d"), "nav": nav.round(2),
+                       "涨幅%": ret.round(4)})
+    out = OUT / f"daily_nav_aum{int(aum/1e4)}w.csv"
+    df.to_csv(out, index=False)
+    cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
+    print(f"\n== 每日涨幅 {int(aum/1e4)}万 == (起 {nav.index[0].date()} → 今 {nav.index[-1].date()})")
+    print(f"  最新收盘 NAV {nav.iloc[-1]/1e4:.2f}万 | 当日涨幅 {ret.iloc[-1]:+.2f}%"
+          f" | 昨日涨幅 {ret.iloc[-2]:+.2f}% | 累计 {cum:+.2f}%")
+    print(f"  文件: {out.name}")
+    print(df.tail(3).to_string(index=False))
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["init", "step", "report"])
+    ap.add_argument("mode", choices=["init", "step", "report", "mark"])
     ap.add_argument("--aum", type=float, default=0.0)
     args = ap.parse_args()
     aums = [args.aum] if args.aum > 0 else [600_000, 1_000_000, 3_000_000, 6_000_000]
@@ -241,6 +291,8 @@ def main():
             init_ledger(a)
         elif args.mode == "step":
             step(a)
+        elif args.mode == "mark":
+            mark(a)
         else:
             report(a)
 
