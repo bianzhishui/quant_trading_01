@@ -235,7 +235,7 @@ def main():
     ap.add_argument("mode", choices=["init", "step", "report"])
     ap.add_argument("--aum", type=float, default=0.0)
     args = ap.parse_args()
-    aums = [args.aum] if args.aum > 0 else [3_000_000, 6_000_000]
+    aums = [args.aum] if args.aum > 0 else [1_000_000, 3_000_000, 6_000_000]
     for a in aums:
         if args.mode == "init":
             init_ledger(a)
