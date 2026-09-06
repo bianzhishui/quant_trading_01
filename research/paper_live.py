@@ -37,6 +37,52 @@ def ledger_path(aum: float) -> Path:
     return OUT / f"ledger_aum{int(aum / 1e4)}w.json"
 
 
+def monthly_funds_path(aum: float) -> Path:
+    return OUT / f"monthly_funds_aum{int(aum / 1e4)}w.csv"
+
+
+FUNDS_COLS = ["date", "pre_nav", "post_nav", "月涨幅%", "买入额", "卖出额", "换手率%",
+              "费用", "分红入账", "期末现金", "期末持仓"]
+
+
+def _append_monthly_funds(aum: float, row: dict):
+    """追加一行月度调仓资金变动到 monthly_funds_aum{XX}w.csv (金额单位: 元, 万列已换算)。
+    row 键: date, pre_nav, post_nav, mret, buy, sell, turnover, fee, div, cash, pos"""
+    r = [row["date"], round(row["pre_nav"], 2), round(row["post_nav"], 2),
+         round(row["mret"], 4) if row["mret"] is not None else "",
+         round(row["buy"], 2), round(row["sell"], 2),
+         round(row["turnover"], 3) if row["turnover"] is not None else "",
+         round(row["fee"], 2), round(row["div"], 2), round(row["cash"], 2),
+         round(row["pos"], 2)]
+    p = monthly_funds_path(aum)
+    if not p.exists():
+        p.write_text(",".join(FUNDS_COLS) + "\n")
+    with p.open("a") as f:
+        f.write(",".join(str(x) for x in r) + "\n")
+
+
+def _seed_build_row(aum: float):
+    """账本已有而月度资金 CSV 缺失时, 从账本建仓记录补首行(建仓日)。"""
+    p = monthly_funds_path(aum)
+    if p.exists():
+        return
+    path = ledger_path(aum)
+    if not path.exists():
+        return
+    led = json.loads(path.read_text())
+    h0 = led["nav_history"][0]
+    if len(led["nav_history"]) == 1:          # 未 step 过: trades 全是建仓单
+        buy = sum(t["amount"] for t in led["trades"] if t["side"] == "buy")
+        sell = sum(t["amount"] for t in led["trades"] if t["side"] == "sell")
+    else:                                     # 已 step: 无法拆分, 用净值差额近似
+        buy, sell = h0["nav"], 0.0
+    _append_monthly_funds(aum, {"date": h0["date"], "pre_nav": led["aum"],
+                                "post_nav": h0["nav"], "mret": None, "buy": buy,
+                                "sell": sell, "turnover": buy / led["aum"] * 100,
+                                "fee": led["total_fees"], "div": 0.0,
+                                "cash": led["cash"], "pos": h0["nav"] - led["cash"]})
+
+
 def _live_factors(held: set, since: str):
     """增量查询持仓股的复权因子事件(自 since 起), 并入 live 缓存。baostock 限流弹性。"""
     import baostock as bs
@@ -139,6 +185,7 @@ def init_ledger(aum: float):
     }
     path = ledger_path(aum)
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
+    _seed_build_row(aum)
     print(f"\n== 建账完成 {int(aum/1e4)}万 == 信号 {led['last_signal']} → 执行 {led['last_exec']}"
           f" | 持仓 {len(pf.shares)} 只 | 现金 {pf.cash/1e4:.1f}万"
           f" ({pf.cash/aum:.1%}) | NAV {nav/1e4:.1f}万")
@@ -182,18 +229,35 @@ def step(aum: float):
     print(f"\n== 推进 {int(aum/1e4)}万 账本 (待处理 {len(todo)} 个月) ==")
     prev_exec = pd.Timestamp(led["last_exec"])
     step_fees = 0.0
+    _seed_build_row(aum)
+    prev_post = led["nav_history"][-1]["nav"]
     for rb in todo:
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
+        pre_nav = pf.value(raw.loc[rb["exec"]])
+        div_before = pf.div_cash
         pf.rebalance(rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]])
-        step_fees += sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
-        nav = pf.value(raw.loc[rb["exec"]])
+        post_nav = pf.value(raw.loc[rb["exec"]])
+        buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
+        sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
+        fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
+        step_fees += fee
+        _append_monthly_funds(aum, {"date": str(rb["exec"].date()), "pre_nav": pre_nav,
+                                    "post_nav": post_nav,
+                                    "mret": (post_nav / prev_post - 1) * 100,
+                                    "buy": buy, "sell": sell,
+                                    "turnover": (buy + sell) / 2 / pre_nav * 100,
+                                    "fee": fee, "div": pf.div_cash - div_before,
+                                    "cash": pf.cash, "pos": post_nav - pf.cash})
+        prev_post = post_nav
+        nav = post_nav
         bench_base = led.get("bench_base", 1.0)
         led["nav_history"].append({"date": str(rb["exec"].date()), "nav": nav,
                                    "bench": bench_lv[rb["exec"]] / bench_base})
         led["trades"] += pf.trades
         pf.trades = []
         print(f"  {rb['T'].date()} → {rb['exec'].date()}: 目标 {len(rb['target'])} 只, "
-              f"持仓 {len(pf.shares)} 只, 现金 {pf.cash/1e4:.1f}万, NAV {nav/1e4:.1f}万")
+              f"买 {buy/1e4:.1f}万 / 卖 {sell/1e4:.1f}万, 费 {fee:.0f}元, "
+              f"月涨 {((post_nav/prev_post)-1)*100:+.2f}%, NAV {nav/1e4:.1f}万")
         prev_exec = rb["exec"]
     led["last_signal"] = str(todo[-1]["T"].date())
     led["last_exec"] = str(todo[-1]["exec"].date())
@@ -228,6 +292,17 @@ def report(aum: float):
     for i in range(max(0, len(h) - 6), len(h)):
         x = h[i]
         print(f"    {x['date']}: NAV {x['nav']/1e4:.1f}万 | 基准 {x['bench']:.3f}")
+    mp = monthly_funds_path(aum)
+    if mp.exists():
+        mf = pd.read_csv(mp)
+        print("  月度资金变动(近6次调仓, 单位: 万元):")
+        tail = mf.tail(6)
+        for _, r in tail.iterrows():
+            m = r["月涨幅%"]
+            m_s = f"{m:+.2f}%" if pd.notna(m) else "建仓"
+            print(f"    {r['date']}: 买 {r['买入额']/1e4:.1f} / 卖 {r['卖出额']/1e4:.1f} "
+                  f"| 换手 {r['换手率%']:.1f}% | 费 {r['费用']:.0f}元 | 月涨 {m_s} "
+                  f"| NAV {r['post_nav']/1e4:.1f}万")
 
 
 def mark(aum: float):
