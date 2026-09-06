@@ -84,7 +84,8 @@ def main():
         nav = pd.Series(navs, index=idx[i0:i1 + 1])
         ret = nav.pct_change() * 100
         df = pd.DataFrame({"date": nav.index.strftime("%Y-%m-%d"), "nav": nav.round(2),
-                           "涨幅%": ret.round(4)})
+                           "涨幅%": ret.round(4),
+                           "较本金盈亏": (nav - aum).round(2)})
         out = OUT / f"daily_nav_{prefix}_aum{int(aum/1e4)}w.csv"
         df.to_csv(out, index=False)
         # 月度资金变动 CSV (与 paper_live 同列)
@@ -92,9 +93,10 @@ def main():
             "date": r["date"], "pre_nav": r["pre_nav"], "post_nav": r["post_nav"],
             "月涨幅%": r["mret"], "买入额": r["buy"], "卖出额": r["sell"],
             "换手率%": r["turnover"], "费用": r["fee"], "分红入账": r["div"],
-            "期末现金": r["cash"], "期末持仓": r["pos"]} for r in funds_rows])
+            "期末现金": r["cash"], "期末持仓": r["pos"],
+            "较本金盈亏": r["post_nav"] - aum} for r in funds_rows])
         fdf = fdf[["date", "pre_nav", "post_nav", "月涨幅%", "买入额", "卖出额",
-                   "换手率%", "费用", "分红入账", "期末现金", "期末持仓"]]
+                   "换手率%", "费用", "分红入账", "期末现金", "期末持仓", "较本金盈亏"]]
         fout = OUT / f"monthly_funds_{prefix}_aum{int(aum/1e4)}w.csv"
         fdf.to_csv(fout, index=False)
         cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100

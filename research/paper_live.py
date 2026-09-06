@@ -42,18 +42,18 @@ def monthly_funds_path(aum: float) -> Path:
 
 
 FUNDS_COLS = ["date", "pre_nav", "post_nav", "月涨幅%", "买入额", "卖出额", "换手率%",
-              "费用", "分红入账", "期末现金", "期末持仓"]
+              "费用", "分红入账", "期末现金", "期末持仓", "较本金盈亏"]
 
 
 def _append_monthly_funds(aum: float, row: dict):
-    """追加一行月度调仓资金变动到 monthly_funds_aum{XX}w.csv (金额单位: 元, 万列已换算)。
+    """追加一行月度调仓资金变动到 monthly_funds_aum{XX}w.csv (金额单位: 元)。
     row 键: date, pre_nav, post_nav, mret, buy, sell, turnover, fee, div, cash, pos"""
     r = [row["date"], round(row["pre_nav"], 2), round(row["post_nav"], 2),
          round(row["mret"], 4) if row["mret"] is not None else "",
          round(row["buy"], 2), round(row["sell"], 2),
          round(row["turnover"], 3) if row["turnover"] is not None else "",
          round(row["fee"], 2), round(row["div"], 2), round(row["cash"], 2),
-         round(row["pos"], 2)]
+         round(row["pos"], 2), round(row["post_nav"] - aum, 2)]
     p = monthly_funds_path(aum)
     if not p.exists():
         p.write_text(",".join(FUNDS_COLS) + "\n")
@@ -302,7 +302,7 @@ def report(aum: float):
             m_s = f"{m:+.2f}%" if pd.notna(m) else "建仓"
             print(f"    {r['date']}: 买 {r['买入额']/1e4:.1f} / 卖 {r['卖出额']/1e4:.1f} "
                   f"| 换手 {r['换手率%']:.1f}% | 费 {r['费用']:.0f}元 | 月涨 {m_s} "
-                  f"| NAV {r['post_nav']/1e4:.1f}万")
+                  f"| 较本金 {r['较本金盈亏']/1e4:+.1f}万 | NAV {r['post_nav']/1e4:.1f}万")
 
 
 def mark(aum: float):
