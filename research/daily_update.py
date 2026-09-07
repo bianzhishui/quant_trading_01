@@ -37,12 +37,10 @@ def target_date(want: str | None) -> str:
     if want:
         return want
     today = dt.date.today()
-    # 候选 = 今天, 周末回退到周五
-    cand = today - dt.timedelta(days=(today.weekday() >= 5) * (today.weekday() - 4))
     have = data_max_date()
-    if str(cand) > have:
-        return str(cand)          # 数据可能已出, 尝试抓
-    return have                   # 数据源滞后 → 以数据为准
+    # 不猜交易日: 一律先试"今天"。数据源探测自动处理周末/节假日/调休/补班——
+    # 今天无当日K线(非交易日或未发布)则 fetch 探测秒退, 回退到数据源最新交易日。
+    return str(today) if str(today) > have else have
 
 
 def print_table():
