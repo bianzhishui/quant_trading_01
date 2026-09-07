@@ -29,6 +29,13 @@ def data_max_date() -> str:
     return str(d["date"].max().date())
 
 
+def data_completeness(date_s: str) -> tuple[int, int]:
+    """返回 (该日行数, 全部code数)。tradestatus 是字符串, 行数即有效交易日。"""
+    d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet", columns=["date", "code"])
+    n = int((d["date"] == pd.Timestamp(date_s)).sum())
+    return n, int(d["code"].nunique())
+
+
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
@@ -75,6 +82,12 @@ def main() -> None:
             print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
     else:
         print(f"[1/2] {tgt} 数据已有, 跳过抓取")
+    # 数据完整度守卫: 中断的抓取会留下半成品(如 500/3194), 此时拒绝 mark
+    n_day, total = data_completeness(have)
+    if n_day < total * 0.90:
+        print(f"⚠️ 最新交易日 {have} 数据不完整 ({n_day}/{total}), 请重跑 fetch_daily_incremental "
+              f"{have} 补全后再 mark —— 本次不做标记")
+        return
     print("[2/2] 四账户 mark...")
     for aum, tag in AUM_LIST:
         r = run([sys.executable, str(ROOT / "research" / "paper_live.py"), "mark", "--aum", str(aum)])
