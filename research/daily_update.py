@@ -29,11 +29,28 @@ def data_max_date() -> str:
     return str(d["date"].max().date())
 
 
-def data_completeness(date_s: str) -> tuple[int, int]:
-    """返回 (该日行数, 全部code数)。tradestatus 是字符串, 行数即有效交易日。"""
+def completeness_guard(date_s: str) -> tuple[bool, str]:
+    """严谨数据守卫: 今日行数 ≥ 前5个交易日最大行数×90% 且 ≥ 总code×50%。
+
+    不跟绝对100%比(停牌股合法缺行, 100%不可达); 不跟单一昨日比(昨日本身可能坏);
+    基线取前5日最大值(抗单日异常+抗停牌抖动), 再加总code下限双保险。
+    返回 (是否通过, 诊断信息)。
+    """
     d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet", columns=["date", "code"])
-    n = int((d["date"] == pd.Timestamp(date_s)).sum())
-    return n, int(d["code"].nunique())
+    cnt = d.groupby("date")["code"].count()
+    dates = sorted(cnt.index)
+    last_s = str(dates[-1].date())
+    if last_s != date_s:
+        return False, f"最新交易日 {last_s} != 目标 {date_s}, 数据未更新"
+    total = int(d["code"].nunique())
+    today_n = int(cnt.iloc[-1])
+    base = int(cnt.iloc[-6:-1].max()) if len(cnt) >= 6 else total
+    detail = f"今日 {today_n} 行 | 前5日最大 {base} | 总code {total} ({today_n / base:.1%} vs 基线)"
+    if today_n < base * 0.9:
+        return False, f"{detail} → 低于基线90%, 疑似抓取中断残留"
+    if today_n < total * 0.5:
+        return False, f"{detail} → 低于总code 50%, 数据严重缺失"
+    return True, f"{detail} → 通过"
 
 
 def run(cmd: list[str]) -> subprocess.CompletedProcess:
@@ -82,13 +99,13 @@ def main() -> None:
             print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
     else:
         print(f"[1/2] {tgt} 数据已有, 跳过抓取")
-    # 数据完整度守卫: 中断的抓取会留下半成品(如 500/3194), 此时拒绝 mark
-    n_day, total = data_completeness(have)
-    if n_day < total * 0.90:
-        print(f"⚠️ 最新交易日 {have} 数据不完整 ({n_day}/{total}), 请重跑 fetch_daily_incremental "
-              f"{have} 补全后再 mark —— 本次不做标记")
+    # 严谨数据完整度守卫: 中断的抓取会留下半成品(如 500/3187), 此时拒绝 mark
+    ok, why = completeness_guard(have)
+    if not ok:
+        print(f"⚠️ 数据守卫未通过: {why} —— 请重跑 fetch_daily_incremental {have} 补全后再 mark; 本次不做标记")
         return
-    print("[2/2] 四账户 mark...")
+    print(f"[2/2] 数据守卫 {why}")
+    print("四账户 mark...")
     for aum, tag in AUM_LIST:
         r = run([sys.executable, str(ROOT / "research" / "paper_live.py"), "mark", "--aum", str(aum)])
         lines = [l for l in (r.stdout + r.stderr).splitlines() if l.strip()]
