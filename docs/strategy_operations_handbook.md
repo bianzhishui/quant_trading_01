@@ -255,7 +255,19 @@ Python  : .venv/bin/python
 输出    : output/（账本、CSV、图，全部 gitignore）
 ```
 
-### 8.2 月度例行流程（每月新数据到手后，5 分钟）
+### 8.2 每日例行（一键，收盘后跑）
+
+```bash
+python research/daily_update.py             # 一键: 判断最新交易日 → 补当日行情(如需)
+                                           #       → 四账户 mark → 输出盈亏总表
+python research/daily_update.py --table     # 只读现有CSV, 随时查看当天总表(秒级)
+```
+
+自动输出"账户 / 本金 / 最新NAV / 当日涨幅 / 盈亏(元) / 盈亏率 / 建仓日NAV"总表；
+数据源未发布当天会自动探测跳过并以最新已有数据为准。手动分解等价于：
+`fetch_daily_incremental.py <日期>` + 四账户 `paper_live.py mark --aum NNNN`。
+
+### 8.3 月度例行流程（每月新数据到手后，5 分钟）
 
 ```bash
 # ① 更新行情数据（含月度新交易日）
@@ -271,7 +283,7 @@ python research/paper_live.py mark
 python research/paper_live.py report
 ```
 
-### 8.3 账户管理
+### 8.4 账户管理
 
 ```bash
 # 新建账户（默认 60/100/300/600万 四账户）
@@ -283,7 +295,7 @@ python research/paper_live.py step --aum 3000000
 python research/paper_live.py report --aum 3000000
 ```
 
-### 8.4 年度复盘 / 场景分析
+### 8.5 年度复盘 / 场景分析
 
 ```bash
 # 年度每日涨幅 + 月度资金变动（如 2025 全年）
@@ -293,7 +305,7 @@ python research/scenario_ytd.py --start 2025-01-01 --end 2025-12-31
 python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 ```
 
-### 8.5 数据更新注意事项
+### 8.6 数据更新注意事项
 
 - 公司行为（分红/送转）用复权因子事件驱动，**静态因子抓取截止日 2026-09-03**；超过该日后 `step` 会自动通过 baostock 增量查询持仓股因子（限流有 60s 退避），失败会提示"用静态因子继续"——**应尽快重抓静态因子**；
 - 停牌股按最后价计值（价格延续），与回测口径一致。

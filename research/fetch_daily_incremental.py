@@ -34,6 +34,13 @@ def main() -> None:
         print("无需补充", flush=True)
         bs.logout()
         return
+    # 单只探测: 该日数据源是否已发布(避免整市查空)
+    probe = bs.query_history_k_data_plus(codes[0], "date", start_date=DATE, end_date=DATE,
+                                         frequency="d", adjustflag="2")
+    if not (probe.error_code == "0" and probe.next()):
+        print(f"⚠️ 数据源尚未发布 {DATE} 的行情 (单只探测为空), 跳过本轮", flush=True)
+        bs.logout()
+        return
 
     buf: list[pd.DataFrame] = []
     fail = 0
