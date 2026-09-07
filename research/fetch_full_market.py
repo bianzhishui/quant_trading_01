@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "fundamental" / "full_daily.parquet"
 START = "2012-06-01"
-END = "2026-09-03"
+END = "2026-09-05"
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
 KEEP = ["date", "code", "close", "pbMRQ", "turn", "amount", "peTTM", "tradestatus", "isST"]
 FLUSH_EVERY = 100
