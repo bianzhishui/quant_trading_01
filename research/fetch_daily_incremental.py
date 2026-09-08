@@ -39,6 +39,16 @@ KEEP = [
     "isST",
 ]
 PRINT_EVERY = 500
+NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
+
+
+def compact(df: pd.DataFrame) -> pd.DataFrame:
+    """写盘前压缩: 数值列→float32(与 full fetch 一致, 保持文件紧凑)。"""
+    out = df.copy()
+    for c in NUMERIC:
+        if c in out.columns:
+            out[c] = out[c].astype("float32")
+    return out
 
 
 def main() -> None:
@@ -110,8 +120,8 @@ def main() -> None:
         .sort_values("date")
         .reset_index(drop=True)
     )
-    # 原子写: 先写临时文件再替换, 中断不损坏主文件
-    big.to_parquet(TMP)
+    # 原子写: 先写临时文件再替换, 中断不损坏主文件 (紧凑格式 float32+zstd, 与 full fetch 一致)
+    compact(big).to_parquet(TMP, index=False, compression="zstd")
     os.replace(TMP, OUT)
     n_final = int(big[big["date"] == pd.Timestamp(DATE)]["code"].nunique())
     print(

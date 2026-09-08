@@ -12,7 +12,9 @@ v2 优化：内存缓冲 + 每 100 只批量写盘（避免 v1 每只重写分�
 
 from __future__ import annotations
 
+import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -41,6 +43,39 @@ KEEP = [
     "isST",
 ]
 FLUSH_EVERY = 100
+STALL_LIMIT_S = 480  # 看门狗: 连续无进展(rs.next挂起)超过8分钟 → 强制退出由续传接管
+NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
+
+_wd_last = time.time()
+
+
+def _watchdog_start():
+    """后台线程: 若主循环超过 STALL_LIMIT_S 无进展(baostock rs.next 挂起), os._exit 让续传接管。"""
+
+    def _mon():
+        while True:
+            time.sleep(30)
+            if time.time() - _wd_last > STALL_LIMIT_S:
+                print(
+                    "⚠️ 看门狗: 8分钟无进展(疑似挂起), 强制退出, 请重跑续传", flush=True
+                )
+                os._exit(5)
+
+    threading.Thread(target=_mon, daemon=True).start()
+
+
+def _watchdog_tick():
+    global _wd_last
+    _wd_last = time.time()
+
+
+def compact(df: pd.DataFrame) -> pd.DataFrame:
+    """写盘前压缩: 数值列→float32(相对精度不变), 供 zstd 更高压缩率。"""
+    out = df.copy()
+    for c in NUMERIC:
+        if c in out.columns:
+            out[c] = out[c].astype("float32")
+    return out
 
 
 def all_codes() -> list[str]:
@@ -109,6 +144,7 @@ def main() -> None:
 
     buf: list[pd.DataFrame] = []
     done = 0
+    _watchdog_start()  # 防 rs.next() 挂死进程
     for i, c in enumerate(todo, 1):
         for attempt in range(3):
             try:
@@ -119,9 +155,19 @@ def main() -> None:
             except Exception as e:
                 if attempt == 2:
                     print(f"  {c} 最终失败: {e}", flush=True)
+                elif "用户未登录" in str(e):
+                    # 本环境 logout+login 会制造坏会话(查询挂起)。正确做法: 失败退出,
+                    # 新进程按 code 断点续传(已落盘的不重抓)。
+                    print(
+                        f"⚠️ baostock 会话失效(首个 {c}), 已落盘 {len(have)} 只; "
+                        "请稍后重跑 fetch_full_market.py 续传",
+                        flush=True,
+                    )
+                    sys.exit(3)
                 else:
                     time.sleep(2.0)
         done += 1
+        _watchdog_tick()
         if done % FLUSH_EVERY == 0 or done == len(todo):
             new = pd.concat(buf, ignore_index=True) if buf else None
             buf = []
@@ -133,7 +179,14 @@ def main() -> None:
                     else new
                 )
                 big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
-                big.to_parquet(OUT)
+                big = compact(big)
+                # 原子写: 先写临时文件再替换, 中断不损坏主文件
+                big.to_parquet(
+                    TMP := OUT.with_suffix(".parquet.tmp"),
+                    index=False,
+                    compression="zstd",
+                )
+                os.replace(TMP, OUT)
                 print(
                     f"  [{done}/{len(todo)}] 累计 {big['code'].nunique()} 只 "
                     f"{big.shape[0]:,} 行",
