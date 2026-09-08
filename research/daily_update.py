@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +21,9 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from research.data_io import load_full_daily
+from research.data_io import load_full_daily  # noqa: E402
+from research.fetch_daily_incremental import update_date  # noqa: E402
+from research.paper_live import mark as live_mark  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 AUM_LIST = [
@@ -61,10 +62,6 @@ def completeness_guard(date_s: str) -> tuple[bool, str]:
     if today_n < total * 0.5:
         return False, f"{detail} → 低于总code 50%, 数据严重缺失"
     return True, f"{detail} → 通过"
-
-
-def run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
 
 
 def target_date(want: str | None) -> str:
@@ -107,11 +104,9 @@ def main() -> None:
     )
     if tgt > have:
         print(f"[1/2] 补 {tgt} 行情(全市场约20-30分钟)...")
-        r = run(
-            [sys.executable, str(ROOT / "research" / "fetch_daily_incremental.py"), tgt]
-        )
-        out = (r.stdout + r.stderr).strip().splitlines()
-        print("\n".join(out[-4:]) if out else f"(无输出, 退出码 {r.returncode})")
+        rc = update_date(tgt)  # 导入直调(替代 subprocess), 0=完成 3=会话失效
+        if rc != 0:
+            print(f"⚠️ update_date 返回 {rc}(baostock 会话失效), 请稍后重跑")
         have = data_max_date()
         if tgt > have:
             print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
@@ -127,18 +122,7 @@ def main() -> None:
     print(f"[2/2] 数据守卫 {why}")
     print("四账户 mark...")
     for aum, tag in AUM_LIST:
-        r = run(
-            [
-                sys.executable,
-                str(ROOT / "research" / "paper_live.py"),
-                "mark",
-                "--aum",
-                str(aum),
-            ]
-        )
-        lines = [ln for ln in (r.stdout + r.stderr).splitlines() if ln.strip()]
-        if lines:
-            print(lines[-1])  # "最新收盘 NAV ... | 当日涨幅 ... | 累计 ..."
+        live_mark(aum)  # 导入直调(替代 subprocess × 4)
     print_table()
 
 
