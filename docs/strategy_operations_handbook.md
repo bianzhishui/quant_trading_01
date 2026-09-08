@@ -253,7 +253,8 @@ Amihud = |当日收益率| ÷ 当日成交额 × 1e6
 ```
 工作目录: ~/Desktop/quant_trading_01
 Python  : .venv/bin/python
-数据    : data/fundamental/full_daily.parquet（行情）
+数据    : data/fundamental/full_daily/（行情·按年分区，3409只含退市股；统一经 research/data_io.py 读取）
+        data/fundamental/stock_basic.parquet（证券元数据，含退市日期）
         data/round2/adjust_factor.parquet（复权因子/公司行为）
         data/round2/industry_full.parquet（行业）
 输出    : output/（账本、CSV、图，全部 gitignore）

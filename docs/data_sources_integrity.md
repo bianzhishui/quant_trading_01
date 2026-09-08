@@ -10,7 +10,7 @@
 
 | # | 数据源 | 文件 | 用途（策略环节） | 来源 | 获取脚本 | 当前状态 |
 |---|---|---|---|---|---|---|
-| 1 | **全市场日线** | `data/fundamental/full_daily.parquet` | 选股池/因子/调仓执行的**主数据** | baostock 前复权日线 | `fetch_full_market.py`（全量）`fetch_daily_incremental.py`（每日增量） | ❌ **已丢失，待重下** |
+| 1 | **全市场日线** | `data/fundamental/full_daily/` 年分区 | 选股池/因子/调仓执行的**主数据** | baostock 前复权日线 | `fetch_full_market.py`（全量）`fetch_daily_incremental.py`（每日增量） | ✅ **已恢复并升级**（含退市股，见 §3.1） |
 | 2 | **复权因子** | `data/round2/adjust_factor.parquet` | 真实价格账 + 分红/送转事件补回 | baostock 复权因子 | `fetch_corporate_actions.py` | ✅ 完好（git 跟踪） |
 | 3 | **行业分类** | `data/round2/industry_full.parquet` | 行业内百分位打分（MIN_IND=5） | 东财行业 | `fetch_full_industry.py` | ✅ 完好（git 跟踪） |
 | 4 | 旧800只池日线(含额) | `data/round2/daily_ext.parquet` | Round1-6 早期研究（现策略不用） | baostock | `fetch_round2_data.py` | ✅ 完好（缺 tradestatus/isST，不可直接替代 #1） |
@@ -107,25 +107,27 @@
 
 | 数据 | 状态 | 影响 |
 |---|---|---|
-| #1 全市场日线 | 🔴 **丢失** | **策略不可运行**（回测/step/mark 全部依赖） |
-| #2 复权因子 | 🟢 完好 | 无 |
+| #1 全市场日线 | 🟢 **已恢复**（3409 只 / 9,269,410 行，含退市股，年分区） | 可运行 |
+| #2 复权因子 | 🟢 完好（在市股 3123 只；退市股缺因子用 qfq 回退，见 §3.1 边界） | 精度受限（share 回放） |
 | #3 行业 | 🟢 完好 | 无 |
 | #4-#7 历史数据 | 🟢 完好 | 无 |
 | #8 账本 | 🟢 完好 | 无 |
-| daily_nav CSV | 🟡 派生数据损坏 | #1 恢复后重跑即修复 |
+| daily_nav CSV | 🟡 派生数据损坏（坏 mark 残留） | 重跑 `paper_live.py mark` 即修复（不依赖 baostock） |
 
-**唯一阻塞 = #1 重下**，恢复期间一切依赖 #1 的操作（回测、月度 step、每日 mark）暂停。
+**当前无阻塞**；唯一待办 = daily_nav 重跑 mark 修复 + baostock 恢复后日常增量。
 
 ---
 
-## 5. 恢复与更新流程
+## 5. 更新流程
 
-### 5.1 恢复 #1（baostock 稳定后执行，几小时）
+### 5.1 全量重下（已完成，历史记录）
 
+2026-09-08 事故后已全量重下并升级为年分区 + 含退市股宇宙（3194 在市 + 215 退市）。
+如需重跑（数据再丢失/重建环境）：
 ```bash
-python research/fetch_full_market.py     # 全量重下 3194 只 → full_daily.parquet（本地代码清单+单会话）
+python research/fetch_full_market.py     # 全量重下(宇宙=stock_basic 含退市) → full_daily/ 年分区
 python research/daily_update.py          # 守卫放行 → 四账户重 mark → 修复 daily_nav CSV → 出表
-# 验证：close 非空率≈100%、最新日行数≈3190、与 .broken 代码清单一致
+# 验证：close 非空率≈100%、最新日行数≈3187、在市缺失=0
 ```
 
 ### 5.2 日常更新（每日收盘后）

@@ -61,7 +61,7 @@ date,nav,涨幅%
 ```
 - `nav` = 当日收盘账户总值（现金+持仓盯市，含分红入账）；`涨幅%` = 今/昨收盘 NAV − 1；
 - 由 `mark` 每次**全量重写**；`daily_update.py` 一键更新四账户；
-- ⚠️ **当前状态**：被 09-07 事故的坏 mark 覆盖（5 行错误值），待数据恢复后重跑修复。
+- ⚠️ **当前状态**：被 09-07 事故的坏 mark 覆盖（5 行错误值），数据已恢复，待重跑 `paper_live.py mark`（单账户逐个）修复。
 
 ### 2.3 月度资金变动 `output/monthly_funds_aum{XX}w.csv`（12 列）
 
@@ -156,14 +156,16 @@ python research/plot_daily_gains.py --prefix 20260101 --title "2026年至今(至
 
 ## 7. 当前状态（2026-09-08）
 
+> 数据已恢复并升级（`full_daily/` 年分区、3409 只含退市股、9,269,410 行）。
+
 | 产物 | 状态 |
 |---|---|
 | 四账本 ledger | ✅ 完好（git 入库） |
-| `daily_nav_aum*.csv`（生产） | ⚠️ 被坏 mark 覆盖，**待数据恢复后重跑修复** |
+| `daily_nav_aum*.csv`（生产） | ⚠️ 坏 mark 残留（5 行错误值），**待重跑 `paper_live.py mark`（单账户逐个）修复** |
 | `monthly_funds_aum*.csv`（生产） | ✅ 完好（仅建仓种子行） |
-| 年度场景 CSV/PNG | ✅ 完好（到 09-04 版本；恢复后可刷新到 09-07） |
-| 回测/研究产物 | ✅ 完好（历史实验，与数据恢复无关） |
-| `adjust_factor_live.parquet` | ⚠️ 依赖 full_daily 恢复后下次 step 才会再补 |
+| 年度场景 CSV/PNG | ✅ 完好（到 09-04 版本；数据已齐，可随时刷新到 09-07） |
+| 回测/研究产物 | ✅ 完好（历史实验；Round 17 归档见 factor_round17_delisted_plan.md §0） |
+| `adjust_factor_live.parquet` | ⚠️ 下次 step 增量补（依赖 baostock） |
 
 ---
 
