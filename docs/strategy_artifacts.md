@@ -61,7 +61,7 @@ date,nav,涨幅%
 ```
 - `nav` = 当日收盘账户总值（现金+持仓盯市，含分红入账）；`涨幅%` = 今/昨收盘 NAV − 1；
 - 由 `mark` 每次**全量重写**；`daily_update.py` 一键更新四账户；
-- ⚠️ **当前状态**：被 09-07 事故的坏 mark 覆盖（5 行错误值），数据已恢复，待重跑 `paper_live.py mark`（单账户逐个）修复。
+- ⚠️ ~~被坏 mark 覆盖~~ → **2026-09-08 已重建修复**（init×4 重新选股 + mark×4，09-01→09-07 连续）。
 
 ### 2.3 月度资金变动 `output/monthly_funds_aum{XX}w.csv`（12 列）
 
@@ -161,7 +161,7 @@ python research/plot_daily_gains.py --prefix 20260101 --title "2026年至今(至
 | 产物 | 状态 |
 |---|---|
 | 四账本 ledger | ✅ 完好（git 入库） |
-| `daily_nav_aum*.csv`（生产） | ⚠️ 坏 mark 残留（5 行错误值），**待重跑 `paper_live.py mark`（单账户逐个）修复** |
+| `daily_nav_aum*.csv`（生产） | ✅ 已重建修复（2026-09-08 init×4+mark×4，09-01→09-07） |
 | `monthly_funds_aum*.csv`（生产） | ✅ 完好（仅建仓种子行） |
 | 年度场景 CSV/PNG | ✅ 完好（到 09-04 版本；数据已齐，可随时刷新到 09-07） |
 | 回测/研究产物 | ✅ 完好（历史实验；Round 17 归档见 factor_round17_delisted_plan.md §0） |

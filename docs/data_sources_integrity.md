@@ -112,9 +112,9 @@
 | #3 行业 | 🟢 完好 | 无 |
 | #4-#7 历史数据 | 🟢 完好 | 无 |
 | #8 账本 | 🟢 完好 | 无 |
-| daily_nav CSV | 🟡 派生数据损坏（坏 mark 残留） | 重跑 `paper_live.py mark` 即修复（不依赖 baostock） |
+| daily_nav CSV | 🟢 已修复（2026-09-08 重建 init×4+mark×4，09-01→09-07 连续） |
 
-**当前无阻塞**；唯一待办 = daily_nav 重跑 mark 修复 + baostock 恢复后日常增量。
+**当前无阻塞**；唯一待办 = baostock 恢复后日常增量（每日收盘后 `fetch_daily_incremental.py <日期>` + `daily_update.py`）。
 
 ---
 
