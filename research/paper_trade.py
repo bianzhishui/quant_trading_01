@@ -299,20 +299,26 @@ def force_liquidate_delisted(
 def replay(aum: float, slip: float = 0.0):
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
-    # 守卫: share级回放需要完整复权因子(覆盖历史持仓股的价格调整)
-    fac = pd.read_parquet(R2 / "adjust_factor.parquet")
-    have = set(fac["code"].unique())
-    miss = set(close.columns) - have
-    if len(miss) > len(close.columns) * 0.05:
-        raise SystemExit(
-            f"share级回放: 复权因子未齐, {len(miss)} 只缺因子 "
-            f"({len(miss) / len(close.columns):.0%}) → 请先跑 fetch_corporate_actions.py "
-            f"或改用 replay_w(权重口径+精确费率)"
-        )
     rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
     nav_bench, _ = ew_nav(ret, bench, 15e-4)
     ann_bench = metrics(nav_bench)["年化"]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
+    # 守卫: share级回放需要完整复权因子(覆盖历史持仓股的价格调整)。
+    # Round17: 退市股缺因子属常见(老退市股常无数据), 允许 qfq 回退(F=1.0);
+    # 在市股缺因子 >5% 仍硬拦(真问题)。
+    fac = pd.read_parquet(R2 / "adjust_factor.parquet")
+    have = set(fac["code"].unique())
+    miss = set(close.columns) - have
+    dl_keys = set(delist_map().keys())
+    miss_in_mkt = miss - dl_keys
+    miss_delisted = miss & dl_keys
+    if len(miss_in_mkt) > len(close.columns) * 0.05:
+        raise SystemExit(
+            f"share级回放: 在市股复权因子未齐, {len(miss_in_mkt)} 只缺因子 "
+            f"({len(miss_in_mkt) / len(close.columns):.0%}) → 请先跑 fetch_corporate_actions.py"
+        )
+    if miss_delisted:
+        print(f"  [Round17] {len(miss_delisted)} 只退市股缺因子, 用 qfq 回退(F=1.0)")
 
     pf = PaperPortfolio(aum, slip)
     delist = delist_map()  # Round 17: 退市股清单(仅 type=1, 主板)
