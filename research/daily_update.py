@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sys
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def target_date(want: str | None) -> str:
 def print_table():
     print(
         f"\n{'账户':<7}{'本金':<11}{'最新NAV':<12}{'当日涨幅':<9}{'盈亏(元)':<13}"
-        f"{'盈亏率':<9}{'建仓日NAV'}"
+        f"{'盈亏率':<9}{'闲置现金':<12}{'持仓市值':<12}{'闲置率':<9}{'建仓日NAV'}"
     )
     for aum, tag in AUM_LIST:
         df = pd.read_csv(ROOT / "output" / f"daily_nav_aum{tag}.csv")
@@ -88,9 +89,14 @@ def print_table():
         first = df.iloc[0]
         nav, ret, first_nav = last["nav"], last.get("涨幅%", float("nan")), first["nav"]
         ret_s = f"{ret:+.2f}%" if pd.notna(ret) else "-"
+        cash = json.loads((ROOT / "output" / f"ledger_aum{tag}.json").read_text())[
+            "cash"
+        ]
+        pos = nav - cash
         print(
             f"{tag:<7}{aum:>11,}{nav:>12,.0f}{ret_s:>9}{nav - aum:>+13,.0f}"
-            f"{(nav - aum) / aum:>+9.2%}{first_nav:>12,.0f}"
+            f"{(nav - aum) / aum:>+9.2%}{cash:>12,.0f}{pos:>12,.0f}"
+            f"{cash / nav:>9.1%}{first_nav:>12,.0f}"
         )
 
 
