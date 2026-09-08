@@ -72,7 +72,15 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
    再提交 commit；
 3. **报告要带判定**：对照预注册标准明确"通过/未达标/否决"，诚实写代价与局限；
 4. **用数据说话**：不编造数字；关键结论引用回测输出或账本数据；
-5. **预注册判定边界**：同一条件未达标持续 ≥3 轮才算 blocked（见工具纪律）。
+5. **预注册判定边界**：同一条件未达标持续 ≥3 轮才算 blocked（见工具纪律）；
+6. **同仓库 Python 脚本间调用用"导入模块"，不用 subprocess**：
+   - 已重构范例：`daily_update.py` 直接
+     `from research.fetch_daily_incremental import update_date`、
+     `from research.paper_live import mark`（省 4 次进程冷启动 + 4 次字体缓存，治发热）；
+   - 被导入的脚本须满足：逻辑放函数、`main()` 只做 argparse 壳、**模块级不读 sys.argv**
+     （否则 import 时读错调用方参数）；
+   - subprocess 只留给：跨环境/跨语言、独立一次性工具、需超时强杀的场景；
+   - 退出码语义用函数返回值（如 update_date 返回 0/3）+ try/except 保留，不靠进程码。
 
 ---
 
