@@ -52,19 +52,20 @@
 
 ## 3. 各数据源详细档案
 
-### 3.1 全市场日线 `full_daily.parquet`（核心，唯一受损）
+### 3.1 全市场日线 `full_daily/` 年分区（核心）
 
 | 项 | 内容 |
 |---|---|
-| 结构 | `date, code, close(前复权), pbMRQ, turn, amount, peTTM, tradestatus, isST` |
-| 范围 | 2012-06-01 → 最新交易日；**3194 只**（sh.60*/sz.00* 主板，非 300/688/北交） |
-| 规模 | ~880 万行 |
+| 结构 | `date, code, close(前复权), pbMRQ, turn, amount, peTTM, tradestatus, isST`；数值列 float64、snappy、index=False、原子写 |
+| 存储 | **`data/fundamental/full_daily/` 按年分区**（`2012.parquet`…`2026.parquet`）；统一读取层 `research/data_io.py`（全库唯一入口，旧单文件已废弃为 `.singlefile.bak` 回滚点） |
+| 范围 | 2012-06-01 → 最新交易日；**3409 只**（主板 sh.60*/sz.00*，**含 215 只有数据的主板退市股**，Round 17 去幸存者偏差） |
+| 规模 | 9,269,410 行 |
 | 用途 | 选股池过滤（tradestatus/isST/涨停）、Amihud（close+amount）、动量（close）、调仓执行价（close） |
 | 来源 | baostock `query_history_k_data_plus`（adjustflag=2 前复权） |
-| 更新 | 每日收盘后 `fetch_daily_incremental.py <日期>`（按已有 code 补当日，单只探测+原子写）；全量用 `fetch_full_market.py` |
-| 校验 | 最新日行数 ≥ 前5交易日最大×90% 且 ≥ 总code×50%（daily_update 守卫自动拦截半成品）；close 非空率≈100% |
-| **状态** | ❌ **值已丢失**（2026-09-07 事故：测试误用只含 date/code 的副本覆盖）。`.broken` 备份保留代码清单(3194)+行骨架，**close/amount 等值仅 09-07 部分(2687只)幸存** |
-| 恢复 | baostock 稳定后 `python research/fetch_full_market.py` 全量重下（已就绪：本地代码清单+单会话+END=09-07） |
+| 更新 | 每日收盘后 `fetch_daily_incremental.py <日期>`（分区写，单只探测+原子写）；全量用 `fetch_full_market.py`（宇宙=stock_basic 含退市，退市股按 ipo→outDate 区间抓取） |
+| 校验 | 最新日行数 ≥ 前5交易日最大×90% 且 ≥ 总code×50%（daily_update 守卫）；close 非空率≈100% |
+| **状态** | ✅ **2026-09-08 已恢复并升级**（事故后全量重下：3194 在市 + 215 退市 + 75 窗口外跳过 + 2 全程停牌无行） |
+| 边界 | 停牌日无行（tradestatus=="1" 才入库）；2012 前退市/全程停牌股无行属设计；退市股缺复权因子时 qfq 回退（F=1.0，仅影响 share 级回放精度） |
 
 ### 3.2 复权因子 `round2/adjust_factor.parquet` ✅
 
