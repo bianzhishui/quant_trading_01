@@ -51,7 +51,9 @@ def update_date(date_s: str) -> int:
 
     codes = sorted(full_daily_codes())
     have = set(
-        load_full_daily(columns=["code", "date"]).query("date == @date_s")["code"]
+        load_full_daily(
+            columns=["code"], filters=[("date", "==", pd.Timestamp(date_s))]
+        )["code"]
     )
     todo = [c for c in codes if c not in have]
     print(
@@ -116,9 +118,9 @@ def update_date(date_s: str) -> int:
         print(f"无新数据写入 ({date_s} 仍 {len(have)} 只)", flush=True)
         return 0
     new = pd.concat(buf, ignore_index=True)
-    big = pd.concat([load_full_daily(), new], ignore_index=True)
-    big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
-    total = write_full_daily(big)  # 按年分区原子写, 返回真实全量行数
+    total = write_full_daily(
+        new
+    )  # 内部与既有年分区合并去重(同 fetch_full_market), 返回全量行数
     print(
         f"完成: {date_s} 现共 {total:,} 行, 失败 {fail} (按年分区原子写)",
         flush=True,

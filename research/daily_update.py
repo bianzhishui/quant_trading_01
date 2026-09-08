@@ -21,7 +21,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from research.data_io import load_full_daily  # noqa: E402
+from research.data_io import data_max_date_fast, load_full_daily  # noqa: E402
 from research.fetch_daily_incremental import update_date  # noqa: E402
 from research.paper_live import mark as live_mark  # noqa: E402
 
@@ -36,8 +36,11 @@ WD = "一二三四五六日"
 
 
 def data_max_date() -> str:
-    d = load_full_daily(columns=["date"])
-    return str(d["date"].max().date())
+    mx = data_max_date_fast()  # parquet 列块统计, 毫秒级不读行
+    if mx is None:  # 年分区缺失/无统计 → 全读兜底
+        d = load_full_daily(columns=["date"])
+        mx = d["date"].max()
+    return str(mx.date())
 
 
 def completeness_guard(date_s: str) -> tuple[bool, str]:

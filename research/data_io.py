@@ -26,12 +26,27 @@ FULL_FILE = ROOT / "data" / "fundamental" / "full_daily.parquet"
 STOCK_BASIC = ROOT / "data" / "fundamental" / "stock_basic.parquet"
 NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
 
+# 数据版本计数器: 每次写盘 +1。进程内缓存(paper_live._load_all 等)以它为键,
+# 保证"同进程内先 fetch 后 mark"不会读到 fetch 前的旧数据。
+_DATA_VERSION = 0
 
-def load_full_daily(columns: list[str] | None = None) -> pd.DataFrame:
-    """读全市场日线(全部行)。分区目录优先, 不存在则回退旧单文件。"""
+
+def data_version() -> int:
+    return _DATA_VERSION
+
+
+def _bump_data_version() -> None:
+    global _DATA_VERSION
+    _DATA_VERSION += 1
+
+
+def load_full_daily(
+    columns: list[str] | None = None, filters: list | None = None
+) -> pd.DataFrame:
+    """读全市场日线(全部行, 或按 filters 行组过滤)。分区目录优先, 不存在则回退旧单文件。"""
     if FULL_DIR.exists():
-        return pd.read_parquet(FULL_DIR, columns=columns)
-    return pd.read_parquet(FULL_FILE, columns=columns)
+        return pd.read_parquet(FULL_DIR, columns=columns, filters=filters)
+    return pd.read_parquet(FULL_FILE, columns=columns, filters=filters)
 
 
 def full_daily_codes() -> set[str]:
@@ -43,6 +58,31 @@ def full_daily_codes() -> set[str]:
 def data_max_date() -> pd.Timestamp:
     d = load_full_daily(columns=["date"])
     return pd.Timestamp(d["date"].max())
+
+
+def data_max_date_fast() -> pd.Timestamp | None:
+    """用 parquet 列块 min/max 统计取最大日期(不读行, 毫秒级)。
+
+    年分区缺失或统计不可用时回退 None, 由调用方全读兜底。
+    """
+    if not FULL_DIR.exists():
+        return None
+    import pyarrow.parquet as pq
+
+    mx = None
+    for p in sorted(FULL_DIR.glob("*.parquet")):
+        pf = pq.ParquetFile(p)
+        names = pf.schema_arrow.names
+        if "date" not in names:
+            continue
+        ci = names.index("date")
+        for rg in range(pf.metadata.num_row_groups):
+            st = pf.metadata.row_group(rg).column(ci).statistics
+            if st is not None and st.has_min_max and st.max is not None:
+                v = pd.Timestamp(st.max)
+                if mx is None or v > mx:
+                    mx = v
+    return mx
 
 
 def universe_codes() -> list[str]:
@@ -84,6 +124,7 @@ def write_full_daily(df: pd.DataFrame) -> int:
         tmp = path.with_suffix(".parquet.tmp")
         merged.to_parquet(tmp, index=False)  # snappy 默认, float64 保持
         os.replace(tmp, path)
+    _bump_data_version()
     # 真实全量行数(元数据, 秒级)
     import pyarrow.parquet as pq
 
@@ -110,4 +151,5 @@ def write_full_daily_replace(df: pd.DataFrame) -> dict[str, int]:
         merged.to_parquet(tmp, index=False)
         os.replace(tmp, path)
         written[str(int(year))] = len(merged)
+    _bump_data_version()
     return written

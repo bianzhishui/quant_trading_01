@@ -27,6 +27,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from research.data_io import data_version
 from research.paper_trade import (
     OUT,
     R2,
@@ -38,6 +39,46 @@ from research.paper_trade import (
 from research.reversal_factor import ew_nav
 
 LIVE_FAC = R2 / "adjust_factor_live.parquet"
+
+# ---- 进程级缓存: daily_update 流程 mark×4+report 只加载/计算一次全量 ----
+# 键 = (data_version, 相关文件 mtime)。data_version 由 data_io 写盘自增,
+# 保证"同进程内先 fetch 后 mark"读到 fetch 后的新数据(版本键控, 防陈旧缓存)。
+_CORE = None
+_CORE_KEY = None
+_F_PANEL = None
+_F_PANEL_KEY = None
+
+
+def _mtime(p: Path) -> int | None:
+    try:
+        return p.stat().st_mtime_ns
+    except OSError:
+        return None
+
+
+def _load_all():
+    """全量面板一次加载并缓存: (close, amount, tst, isst, ind, raw, rebs, bench, ret)。"""
+    global _CORE, _CORE_KEY
+    key = (data_version(), _mtime(R2 / "adjust_factor.parquet"))
+    if _CORE_KEY == key and _CORE is not None:
+        return _CORE
+    close, amount, tst, isst, ind = _load()
+    raw, _ = _load_corp(close)
+    rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
+    _CORE = (close, amount, tst, isst, ind, raw, rebs, bench, ret)
+    _CORE_KEY = key
+    return _CORE
+
+
+def _factor_panel_cached(close: pd.DataFrame) -> pd.DataFrame:
+    """静态+live 因子面板缓存: 键含 live 文件 mtime, step 更新 live 后自动重算。"""
+    global _F_PANEL, _F_PANEL_KEY
+    key = (data_version(), _mtime(LIVE_FAC))
+    if _F_PANEL_KEY == key and _F_PANEL is not None:
+        return _F_PANEL
+    _F_PANEL = _factor_panel(close)
+    _F_PANEL_KEY = key
+    return _F_PANEL
 
 
 def ledger_path(aum: float) -> Path:
@@ -206,9 +247,7 @@ def _apply_corp_period(
 
 
 def init_ledger(aum: float):
-    close, amount, tst, isst, ind = _load()
-    raw, _ = _load_corp(close)
-    rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
+    close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     pf = PaperPortfolio(aum)
@@ -248,9 +287,7 @@ def step(aum: float):
     if not path.exists():
         raise SystemExit(f"账本不存在: {path.name} → 先跑 init")
     led = json.loads(path.read_text())
-    close, amount, tst, isst, ind = _load()
-    raw, _ = _load_corp(close)
-    rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
+    close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     bench_lv = _bench_levels(rebs, bench, ret)
 
@@ -280,7 +317,7 @@ def step(aum: float):
                 f"窗口内新除权事件将缺失, 建议尽快重跑",
                 flush=True,
             )
-    F = _factor_panel(close)
+    F = _factor_panel_cached(close)
     pf = PaperPortfolio(led["aum"])
     pf.shares = {k: int(v) for k, v in led["shares"].items()}
     pf.cash = float(led["cash"])
@@ -352,8 +389,7 @@ def report(aum: float):
         print(f"[{int(aum / 1e4)}万] 无账本")
         return
     led = json.loads(path.read_text())
-    close, amount, tst, isst, ind = _load()
-    raw, _ = _load_corp(close)
+    close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     prices = raw.loc[led["last_exec"]]
     nav_now = led["cash"] + sum(
         s * prices.get(c, np.nan)
@@ -407,9 +443,7 @@ def mark(aum: float):
         print(f"[{int(aum / 1e4)}万] 无账本")
         return
     led = json.loads(path.read_text())
-    close, amount, tst, isst, ind = _load()
-    raw, _ = _load_corp(close)
-    rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
+    close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     pending = [
         r
         for r in rebs
@@ -419,7 +453,7 @@ def mark(aum: float):
         print(
             f"  [警告] {int(aum / 1e4)}万 账本落后 {len(pending)} 个月调仓, 涨幅按旧持仓计; 请先跑 step"
         )
-    F = _factor_panel(close)
+    F = _factor_panel_cached(close)
     pf = PaperPortfolio(led["aum"])
     pf.shares = {k: int(v) for k, v in led["shares"].items()}
     pf.cash = float(led["cash"])
