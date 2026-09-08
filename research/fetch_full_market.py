@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "fundamental" / "full_daily.parquet"
 START = "2012-06-01"
-END = "2026-09-05"
+END = "2026-09-07"
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
 KEEP = ["date", "code", "close", "pbMRQ", "turn", "amount", "peTTM", "tradestatus", "isST"]
 FLUSH_EVERY = 100
@@ -36,6 +36,18 @@ def all_codes() -> list[str]:
     df = pd.DataFrame(rows, columns=rs.fields)
     ok = df[(df["type"] == "1") & (df["status"] == "1")].copy()
     return [c for c in ok["code"] if c.startswith(("sh.60", "sz.00"))]
+
+
+def local_codes() -> list[str] | None:
+    """从本地既有 parquet(含损坏备份)读代码清单 —— 不依赖 query_stock_basic
+    (该接口在本环境会挂起/截断会话)。返回 None 表示无本地来源。"""
+    for p in [OUT.with_suffix(".parquet.broken"), OUT]:
+        if p.exists():
+            try:
+                return sorted(pd.read_parquet(p, columns=["code"])["code"].unique())
+            except Exception:  # noqa: BLE001
+                continue
+    return None
 
 
 def fetch_one(bs, code: str) -> pd.DataFrame:
@@ -59,8 +71,11 @@ def main() -> None:
     import baostock as bs
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
-    codes = all_codes()
-    bs.logout()
+    # 单会话: 全程保持登录(本环境 baostock logout 后重登的会话查询会"用户未登录")
+    # 优先本地代码清单(query_stock_basic 在本环境会挂起/截断会话)
+    lc = local_codes()
+    codes = lc if lc else all_codes()
+    print(f"代码来源: {'本地parquet' if lc is not None else 'baostock stock_basic'} {len(codes)} 只", flush=True)
 
     have = set()
     if OUT.exists():
@@ -68,8 +83,6 @@ def main() -> None:
     todo = [c for c in codes if c not in have]
     print(f"全市场: 共 {len(codes)} 只, 已完成 {len(have)}, 待抓 {len(todo)}", flush=True)
 
-    lg = bs.login()
-    assert lg.error_code == "0", lg.error_msg
     buf: list[pd.DataFrame] = []
     done = 0
     t0 = time.time()
