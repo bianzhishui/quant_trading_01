@@ -7,6 +7,7 @@
 
 用法: python research/factor_round16_crowding_timing.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -16,7 +17,13 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import (PaperPortfolio, _load, _load_corp, metrics, r5_rebalances)
+from research.paper_trade import (
+    PaperPortfolio,
+    _load,
+    _load_corp,
+    metrics,
+    r5_rebalances,
+)
 from research.reversal_factor import build_pool, ew_nav
 
 
@@ -31,7 +38,8 @@ def crowding_series(close, amount, tst, isst):
 
     def rolling_pct(s: pd.Series, win=756):
         return s.rolling(win, min_periods=200).apply(
-            lambda x: float((x[-1] >= x).mean()), raw=True)
+            lambda x: float((x[-1] >= x).mean()), raw=True
+        )
 
     p_s = rolling_pct(share)
     p_m = rolling_pct(mom60)
@@ -99,10 +107,16 @@ def run(aum, rebs, raw, F, trad, idx, use_timing):
     m = metrics(nav)
     years = len(nav) / 244
     tot_fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
-    return {"nav": nav, "m": m, "费用": tot_fee / aum / years, "净值": nav.iloc[-1],
-            "分红": pf.div_cash, "订单": len(pf.trades),
-            "scale_dates": scale_dates,
-            "avg_scale": float(np.mean([s for _, s in scale_hist])) if scale_hist else 1.0}
+    return {
+        "nav": nav,
+        "m": m,
+        "费用": tot_fee / aum / years,
+        "净值": nav.iloc[-1],
+        "分红": pf.div_cash,
+        "订单": len(pf.trades),
+        "scale_dates": scale_dates,
+        "avg_scale": float(np.mean([s for _, s in scale_hist])) if scale_hist else 1.0,
+    }
 
 
 def main():
@@ -123,21 +137,25 @@ def main():
 
     print(f"回放基线...  基准年化 {ann_bench:.1%}")
     base = run(AUM, rebs0, raw, F, trad, idx, use_timing=False)
-    print(f"回放择时版...")
+    print("回放择时版...")
     tm = run(AUM, rebs0, raw, F, trad, idx, use_timing=True)
 
     def line(name, r):
         exc = r["m"]["年化"] - ann_bench
-        return (f"{name:<10}年化 {r['m']['年化']:6.1%}  超额 {exc:+6.2%}  "
-                f"夏普 {r['m']['夏普']:.2f}  回撤 {r['m']['最大回撤']:7.1%}  "
-                f"费 {r['费用']:5.2%}  净值 {r['净值']:5.2f}x")
+        return (
+            f"{name:<10}年化 {r['m']['年化']:6.1%}  超额 {exc:+6.2%}  "
+            f"夏普 {r['m']['夏普']:.2f}  回撤 {r['m']['最大回撤']:7.1%}  "
+            f"费 {r['费用']:5.2%}  净值 {r['净值']:5.2f}x"
+        )
 
     print("\n" + line("R5 基线", base))
     print(line("拥挤择时", tm))
     t_d, r_d = tm["scale_dates"]["trim"], tm["scale_dates"]["restore"]
     print(f"\n触发: 减仓 {len(t_d)} 次 @ {[str(d.date()) for d in t_d]}")
     print(f"      回补 {len(r_d)} 次 @ {[str(d.date()) for d in r_d]}")
-    print(f"平均仓位 {tm['avg_scale']:.0%} | 择时版订单 {tm['订单']} (基线 {base['订单']})")
+    print(
+        f"平均仓位 {tm['avg_scale']:.0%} | 择时版订单 {tm['订单']} (基线 {base['订单']})"
+    )
 
     # 年度对比
     y = pd.DataFrame({"base": base["nav"], "timing": tm["nav"]}).resample("YE").last()
@@ -151,8 +169,10 @@ def main():
     exc_t = tm["m"]["年化"] - ann_bench
     print("\n判定(超额≥+3.5pp 且 回撤≤42% 且 触发≥3次):")
     ok = exc_t >= 0.035 and tm["m"]["最大回撤"] <= 0.42 and len(t_d) >= 3
-    print(f"  超额 {exc_t:+.2%} (基线 {exc_b:+.2%}) | 回撤 {tm['m']['最大回撤']:.1%} "
-          f"(基线 {base['m']['最大回撤']:.1%}) | 减仓 {len(t_d)} 次 → {'✅通过' if ok else '未达标'}")
+    print(
+        f"  超额 {exc_t:+.2%} (基线 {exc_b:+.2%}) | 回撤 {tm['m']['最大回撤']:.1%} "
+        f"(基线 {base['m']['最大回撤']:.1%}) | 减仓 {len(t_d)} 次 → {'✅通过' if ok else '未达标'}"
+    )
 
 
 if __name__ == "__main__":

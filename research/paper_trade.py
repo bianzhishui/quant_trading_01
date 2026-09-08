@@ -15,6 +15,7 @@
   python research/paper_trade.py init --aum 100000      # 演示: 10万不可行性
 选项: --slip 0.001 (滑点比例, 默认0)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,18 +37,26 @@ MIN_N = 50
 MIN_IND = 5
 
 # ---- 真实费率(2026-09 联网核实, 预注册固定) ----
-COMM_RATE = 0.00015      # 万1.5
-COMM_MIN = 5.0           # 单笔最低 5 元
-STAMP_RATE = 0.0005      # 印花税 万5, 仅卖出
+COMM_RATE = 0.00015  # 万1.5
+COMM_MIN = 5.0  # 单笔最低 5 元
+STAMP_RATE = 0.0005  # 印花税 万5, 仅卖出
 TRANSFER_RATE = 0.00001  # 过户费 万0.1, 双边
-DIV_TAX = 0.10           # 红利税 10% (1个月-1年持仓口径, 保守)
+DIV_TAX = 0.10  # 红利税 10% (1个月-1年持仓口径, 保守)
 
 
 def _load():
     d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet")
     d["date"] = pd.to_datetime(d["date"])
-    piv = lambda c: d.pivot(index="date", columns="code", values=c).sort_index().loc[START:]
-    close, amount, tst, isst = piv("close"), piv("amount"), piv("tradestatus"), piv("isST")
+
+    def piv(c):
+        return d.pivot(index="date", columns="code", values=c).sort_index().loc[START:]
+
+    close, amount, tst, isst = (
+        piv("close"),
+        piv("amount"),
+        piv("tradestatus"),
+        piv("isST"),
+    )
     ind = pd.read_parquet(R2 / "industry_full.parquet").set_index("code")["industry"]
     ind = ind.reindex(close.columns).dropna()
     return close, amount, tst, isst, ind
@@ -66,7 +75,7 @@ def _load_corp(close: pd.DataFrame):
         g = g.reindex(idx).ffill().bfill().fillna(1.0)
         f_series[c] = g
     F = pd.DataFrame(f_series).reindex(columns=close.columns).fillna(1.0)
-    raw = (close / F).ffill()          # 停牌日按最后价计值(价格延续), 与权重模型一致
+    raw = (close / F).ffill()  # 停牌日按最后价计值(价格延续), 与权重模型一致
     return raw, F
 
 
@@ -74,7 +83,9 @@ def r5_rebalances(close, amount, tst, isst, ind):
     """R5 信号: 行业内百分位(Amihud+中期动量), 前20%。返回 rebs+bench(同池等权)。"""
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
-    amihud = ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    amihud = (
+        ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    )
     mom = close.shift(21) / close.shift(250) - 1.0
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
@@ -133,7 +144,9 @@ class PaperPortfolio:
         if side == "buy":
             need = amt * (1 + self.slip) + f["佣金"] + f["过户费"]
             if need > self.cash + 1e-6:
-                qty = int((self.cash - COMM_MIN) / (price * (1 + self.slip)) // 100) * 100
+                qty = (
+                    int((self.cash - COMM_MIN) / (price * (1 + self.slip)) // 100) * 100
+                )
                 if qty <= 0:
                     return
                 amt, px = qty * price, price * (1 + self.slip)
@@ -146,8 +159,16 @@ class PaperPortfolio:
             self.shares[code] = self.shares.get(code, 0) - qty
             if self.shares[code] <= 0:
                 self.shares.pop(code, None)
-        self.trades.append({"code": code, "side": side, "qty": qty, "price": round(px, 3),
-                            "amount": round(amt, 2), **{k: round(v, 2) for k, v in f.items()}})
+        self.trades.append(
+            {
+                "code": code,
+                "side": side,
+                "qty": qty,
+                "price": round(px, 3),
+                "amount": round(amt, 2),
+                **{k: round(v, 2) for k, v in f.items()},
+            }
+        )
 
     def corp_action_f(self, code: str, raw_price: float, f_prev: float, f_now: float):
         """复权因子事件日补回除权缺口(价值精确):
@@ -221,14 +242,14 @@ def replay_w(aum: float, slip: float = 0.0, min_notional: float = 3000.0):
             cost_yuan, n_o = 0.0, 0
             nav_yuan = nav * aum
             for c, dw in row.items():
-                nn = abs(dw) * nav_yuan          # 每笔订单名义金额(元)
+                nn = abs(dw) * nav_yuan  # 每笔订单名义金额(元)
                 if nn < min_notional or nn < 1e-9:
                     continue
                 side = "sell" if dw < 0 else "buy"
                 f = fees(nn, side, slip)
                 cost_yuan += f["佣金"] + f["印花税"] + f["过户费"] + f["滑点"]
                 n_o += 1
-            nav *= 1 - cost_yuan / nav_yuan      # 费用以占净值比例计入(复利口径)
+            nav *= 1 - cost_yuan / nav_yuan  # 费用以占净值比例计入(复利口径)
             orders += n_o
             tot_fee += cost_yuan
         navs.append(nav)
@@ -236,12 +257,16 @@ def replay_w(aum: float, slip: float = 0.0, min_notional: float = 3000.0):
     m = metrics(nav)
     exc = m["年化"] - ann_bench
     years = len(nav) / 244
-    print(f"\n== 历史回放·权重口径+精确费率 (AUM={aum/1e4:.0f}万, 滑点{slip:.1%}) ==")
-    print(f"  全口径超额: {exc:+.2%} | 策略年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%}")
+    print(f"\n== 历史回放·权重口径+精确费率 (AUM={aum / 1e4:.0f}万, 滑点{slip:.1%}) ==")
+    print(
+        f"  全口径超额: {exc:+.2%} | 策略年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%}"
+    )
     print(f"  夏普 {m['夏普']:.2f} | 最大回撤 {m['最大回撤']:.1%}")
-    print(f"  订单 {orders} 笔 | 总费用 {tot_fee/1e4:.1f}万 = {tot_fee/aum/years:.2%}/年")
-    print(f"  (1手取整的现金拖累未含, 见建仓快照的实测资金利用率外推)")
-    print(f"  vs 理想化 15bp口径+4.61pp → 费率税执行代价 {0.0461-exc:+.2%}pp")
+    print(
+        f"  订单 {orders} 笔 | 总费用 {tot_fee / 1e4:.1f}万 = {tot_fee / aum / years:.2%}/年"
+    )
+    print("  (1手取整的现金拖累未含, 见建仓快照的实测资金利用率外推)")
+    print(f"  vs 理想化 15bp口径+4.61pp → 费率税执行代价 {0.0461 - exc:+.2%}pp")
     return exc
 
 
@@ -255,8 +280,9 @@ def replay(aum: float, slip: float = 0.0):
     if len(miss) > len(close.columns) * 0.05:
         raise SystemExit(
             f"share级回放: 复权因子未齐, {len(miss)} 只缺因子 "
-            f"({len(miss)/len(close.columns):.0%}) → 请先跑 fetch_corporate_actions.py "
-            f"或改用 replay_w(权重口径+精确费率)")
+            f"({len(miss) / len(close.columns):.0%}) → 请先跑 fetch_corporate_actions.py "
+            f"或改用 replay_w(权重口径+精确费率)"
+        )
     rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
     nav_bench, _ = ew_nav(ret, bench, 15e-4)
     ann_bench = metrics(nav_bench)["年化"]
@@ -265,7 +291,7 @@ def replay(aum: float, slip: float = 0.0):
     pf = PaperPortfolio(aum, slip)
     idx = close.index
     F_prev = F.shift(1).fillna(F.iloc[0])
-    navs, n_orders, tot_fee = [], 0, 0.0
+    navs, tot_fee = [], 0.0
     for i, dt in enumerate(idx):
         prices = raw.loc[dt]
         f_now = F.loc[dt]
@@ -277,17 +303,25 @@ def replay(aum: float, slip: float = 0.0):
         if rb is not None:
             pf.rebalance(rb["target"], prices, trad.loc[dt])
         navs.append(pf.value(prices))
-    nav = pd.Series(navs, index=idx) / aum   # 归一化到 1.0 起点(元→单位净值)
+    nav = pd.Series(navs, index=idx) / aum  # 归一化到 1.0 起点(元→单位净值)
     tot_fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
     m = metrics(nav)
     exc = m["年化"] - ann_bench
     years = len(nav) / 244
-    print(f"\n== 历史全口径回放 (AUM={aum/1e4:.0f}万, 滑点{slip:.1%}) ==")
-    print(f"  全口径超额: {exc:+.2%} | 策略年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%}")
-    print(f"  夏普 {m['夏普']:.2f} | 最大回撤 {m['最大回撤']:.1%} | 期末净值 {nav.iloc[-1]:.2f}")
-    print(f"  订单 {len(pf.trades)} 笔 | 总费用 {tot_fee/1e4:.1f}万 = {tot_fee/aum/years:.2%}/年")
-    print(f"  累计分红(税后) {pf.div_cash/1e4:.1f}万 | 换手参考 {nav_bench.index.size}日")
-    print(f"  vs 理想化 15bp口径+4.61pp → 真实执行代价 {0.0461-exc:+.2%}pp")
+    print(f"\n== 历史全口径回放 (AUM={aum / 1e4:.0f}万, 滑点{slip:.1%}) ==")
+    print(
+        f"  全口径超额: {exc:+.2%} | 策略年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%}"
+    )
+    print(
+        f"  夏普 {m['夏普']:.2f} | 最大回撤 {m['最大回撤']:.1%} | 期末净值 {nav.iloc[-1]:.2f}"
+    )
+    print(
+        f"  订单 {len(pf.trades)} 笔 | 总费用 {tot_fee / 1e4:.1f}万 = {tot_fee / aum / years:.2%}/年"
+    )
+    print(
+        f"  累计分红(税后) {pf.div_cash / 1e4:.1f}万 | 换手参考 {nav_bench.index.size}日"
+    )
+    print(f"  vs 理想化 15bp口径+4.61pp → 真实执行代价 {0.0461 - exc:+.2%}pp")
     return exc
 
 
@@ -300,17 +334,25 @@ def init_portfolio(aum: float, slip: float = 0.0):
     pf = PaperPortfolio(aum, slip)
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]])
-    total_fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
+    total_fee = sum(
+        t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades
+    )
     n_skip = len(last["target"]) - len(pf.shares)
-    print(f"\n== 当前建仓快照 (信号 {last['T'].date()} → 执行 {last['exec'].date()}) ==")
-    print(f"  AUM {aum/1e4:.0f}万: 目标 {len(last['target'])} 只, 实际买入 {len(pf.shares)} 只"
-          f" (跳过 {n_skip}: 停牌/涨停/1手不足), 现金 {pf.cash/1e4:.1f}万 ({pf.cash/aum:.1%})")
-    print(f"  建仓订单 {len(pf.trades)} 笔, 总费用 {total_fee:.0f} 元"
-          f" ({total_fee/aum:.2%} 的一次性成本)")
+    print(
+        f"\n== 当前建仓快照 (信号 {last['T'].date()} → 执行 {last['exec'].date()}) =="
+    )
+    print(
+        f"  AUM {aum / 1e4:.0f}万: 目标 {len(last['target'])} 只, 实际买入 {len(pf.shares)} 只"
+        f" (跳过 {n_skip}: 停牌/涨停/1手不足), 现金 {pf.cash / 1e4:.1f}万 ({pf.cash / aum:.1%})"
+    )
+    print(
+        f"  建仓订单 {len(pf.trades)} 笔, 总费用 {total_fee:.0f} 元"
+        f" ({total_fee / aum:.2%} 的一次性成本)"
+    )
     if aum < 200_000:
         print("  ⚠️ 10万级资金: 1手约束下多数标的一手都买不起 → 不可行(如预期)")
     df = pd.DataFrame(pf.trades).sort_values("amount", ascending=False)
-    path = OUT / f"paper_init_aum{aum/1e4:.0f}w.csv"
+    path = OUT / f"paper_init_aum{aum / 1e4:.0f}w.csv"
     df.to_csv(path, index=False)
     print(f"  建仓明细: {path.name}  | 头部5笔:\n{df.head(5).to_string()}")
     return pf

@@ -9,12 +9,14 @@
 每因子: 预注册方向 → 月度 RankIC + 五分组(扣15bp) + 分年代 → 四层判定。
 用法: uv run python research/factor_screen_round2.py
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,15 +35,19 @@ COST_SWEEP = [25e-4, 35e-4]
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"
 R2 = ROOT / "data" / "round2"
-MIN_N = 50            # 一般因子最小截面
-MIN_N_SMALL = 30      # 两融/北向（覆盖受限）
+MIN_N = 50  # 一般因子最小截面
+MIN_N_SMALL = 30  # 两融/北向（覆盖受限）
 
 # 方向: +1 = 因子值高→看好(多头=Q5); -1 = 值低→看好(多头=Q1)
 FACTORS: dict[str, tuple[int, int]] = {
-    "反转": (-1, MIN_N), "中期动量": (+1, MIN_N),      # 已测, 纳入统一矩阵
-    "低换手率": (-1, MIN_N), "Amihud": (+1, MIN_N),
-    "EP": (+1, MIN_N), "股息连续性": (+1, MIN_N),
-    "两融变化": (-1, MIN_N_SMALL), "北向净买入": (+1, MIN_N_SMALL),
+    "反转": (-1, MIN_N),
+    "中期动量": (+1, MIN_N),  # 已测, 纳入统一矩阵
+    "低换手率": (-1, MIN_N),
+    "Amihud": (+1, MIN_N),
+    "EP": (+1, MIN_N),
+    "股息连续性": (+1, MIN_N),
+    "两融变化": (-1, MIN_N_SMALL),
+    "北向净买入": (+1, MIN_N_SMALL),
     "ROE": (+1, MIN_N),
 }
 
@@ -63,16 +69,21 @@ def load_ext_panels() -> dict[str, pd.DataFrame]:
     if (R2 / "margin.parquet").exists():
         m = pd.read_parquet(R2 / "margin.parquet")
         m["date"] = pd.to_datetime(m["date"])
-        out["margin"] = m.pivot(index="date", columns="code", values="margin_bal").sort_index()
+        out["margin"] = m.pivot(
+            index="date", columns="code", values="margin_bal"
+        ).sort_index()
     if (R2 / "hsgt.parquet").exists():
         h = pd.read_parquet(R2 / "hsgt.parquet")
         h["date"] = pd.to_datetime(h["date"])
-        out["hsgt"] = h.pivot(index="date", columns="code", values="hold_ratio").sort_index()
+        out["hsgt"] = h.pivot(
+            index="date", columns="code", values="hold_ratio"
+        ).sort_index()
     return out
 
 
-def build_factors(close: pd.DataFrame, pb: pd.DataFrame, div_mat: pd.DataFrame,
-                  ext: dict) -> dict[str, pd.DataFrame]:
+def build_factors(
+    close: pd.DataFrame, pb: pd.DataFrame, div_mat: pd.DataFrame, ext: dict
+) -> dict[str, pd.DataFrame]:
     """返回 {因子名: 宽表}（因子缺失返回空 DataFrame）。"""
     ret1 = close.pct_change()
     f: dict[str, pd.DataFrame] = {}
@@ -97,7 +108,9 @@ def build_factors(close: pd.DataFrame, pb: pd.DataFrame, div_mat: pd.DataFrame,
             cols = [y for y in years if Y - 5 <= y <= Y - 1]
             if not cols:
                 continue
-            cont.loc[T] = (div_mat.reindex(columns=cols).gt(0)).sum(axis=1).reindex(cont.columns)
+            cont.loc[T] = (
+                (div_mat.reindex(columns=cols).gt(0)).sum(axis=1).reindex(cont.columns)
+            )
         f["股息连续性"] = cont
 
     # ROE: 报告期末 + 120 天后才可用 → ffill
@@ -105,8 +118,11 @@ def build_factors(close: pd.DataFrame, pb: pd.DataFrame, div_mat: pd.DataFrame,
         r = ext["roe"]
         r = r.copy()
         r["avail"] = r["report_date"] + pd.Timedelta(days=120)
-        roe_ts = pd.DataFrame(index=pd.DatetimeIndex(sorted(set(close.index) | set(r["avail"]))),
-                              columns=close.columns, dtype=float)
+        roe_ts = pd.DataFrame(
+            index=pd.DatetimeIndex(sorted(set(close.index) | set(r["avail"]))),
+            columns=close.columns,
+            dtype=float,
+        )
         for code in close.columns:
             sub = r[r["code"] == code]
             if len(sub):
@@ -131,8 +147,10 @@ def build_factors(close: pd.DataFrame, pb: pd.DataFrame, div_mat: pd.DataFrame,
 def main() -> None:
     print("== Round 2 因子批量筛选 (预注册 v1.0): 9 因子 ==")
     close, real, pb, tst, isst, names, div_mat = load_all()
-    print(f"数据: {close.shape[0]} 交易日 × {close.shape[1]} 只, "
-          f"{close.index[0].date()} ~ {close.index[-1].date()}")
+    print(
+        f"数据: {close.shape[0]} 交易日 × {close.shape[1]} 只, "
+        f"{close.index[0].date()} ~ {close.index[-1].date()}"
+    )
     ext = load_ext_panels()
     for k in ["turn", "amount", "peTTM", "roe", "margin", "hsgt"]:
         if k in ext:
@@ -152,7 +170,7 @@ def main() -> None:
     q_sets = {name: [dict() for _ in range(N_Q)] for name in FACTORS}
     bench_sets: dict = {}
     ics: dict[str, dict] = {name: {} for name in FACTORS}
-    n_eff: dict[str, int] = {name: 0 for name in FACTORS}   # 有有效截面的期数
+    n_eff: dict[str, int] = {name: 0 for name in FACTORS}  # 有有效截面的期数
     corr_sum = pd.DataFrame(0.0, index=list(FACTORS), columns=list(FACTORS))
     corr_cnt = pd.DataFrame(0.0, index=list(FACTORS), columns=list(FACTORS))
 
@@ -163,8 +181,11 @@ def main() -> None:
         fwd = (close.loc[T2] / close.loc[T] - 1.0) if T2 is not None else None
 
         # 相关矩阵(两两共同有效截面 ≥30 才计入)
-        vals = {name: f.loc[T].reindex(e[e].index).dropna()
-                for name, f in factors.items() if name in factors and not f.empty}
+        vals = {
+            name: f.loc[T].reindex(e[e].index).dropna()
+            for name, f in factors.items()
+            if name in factors and not f.empty
+        }
         names_avail = [n for n, s in vals.items() if len(s) >= MIN_N_SMALL]
         if len(names_avail) >= 2:
             sub = pd.DataFrame({n: vals[n] for n in names_avail})
@@ -206,7 +227,10 @@ def main() -> None:
     for name, (direction, min_n) in FACTORS.items():
         eff_ratio = n_eff[name] / n_periods
         if eff_ratio < 0.6:
-            rows[name] = {"判定": f"数据不足({n_eff[name]}/{n_periods})", "有效截面期数": n_eff[name]}
+            rows[name] = {
+                "判定": f"数据不足({n_eff[name]}/{n_periods})",
+                "有效截面期数": n_eff[name],
+            }
             print(f"\n■ {name}: 数据不足 {n_eff[name]}/{n_periods}")
             continue
         g_navs = [ew_nav(ret_qfq, q_sets[name][g], COST)[0] for g in range(N_Q)]
@@ -218,13 +242,18 @@ def main() -> None:
         long25, _ = ew_nav(ret_qfq, q_sets[name][li], COST_SWEEP[0])
         long35, _ = ew_nav(ret_qfq, q_sets[name][li], COST_SWEEP[1])
         ic = ic_df[name].dropna()
-        ic_mean, ic_t = ic.mean(), ic.mean() / ic.std() * np.sqrt(len(ic)) if len(ic) > 1 else np.nan
+        ic_mean, ic_t = (
+            ic.mean(),
+            ic.mean() / ic.std() * np.sqrt(len(ic)) if len(ic) > 1 else np.nan,
+        )
         sign_ok = (ic_mean > 0) == (direction == +1)
         era_exc = {}
         for era, (s, e_) in ERAS.items():
             a, b = long_nav[s:e_], nav_bench[s:e_]
-            era_exc[era] = metrics(a / a.dropna().iloc[0])["年化"] - \
-                           metrics(b / b.dropna().iloc[0])["年化"]
+            era_exc[era] = (
+                metrics(a / a.dropna().iloc[0])["年化"]
+                - metrics(b / b.dropna().iloc[0])["年化"]
+            )
         c1 = sign_ok and abs(ic_mean) >= 0.03 and abs(ic_t) >= 2
         c2 = (anns[li] == max(anns)) and (anns[si] == min(anns))
         c3 = metrics(long_nav)["年化"] - ann_bench >= 0.01
@@ -232,25 +261,41 @@ def main() -> None:
         n_pass = sum([c1, c2, c3, c4])
         verdict = {4: "通过", 3: "部分通过"}.get(n_pass, "未通过")
         rows[name] = {
-            "方向": direction, "IC均值": round(ic_mean, 4), "IC_t": round(ic_t, 2),
+            "方向": direction,
+            "IC均值": round(ic_mean, 4),
+            "IC_t": round(ic_t, 2),
             "多头年化15bp": round(metrics(long_nav)["年化"], 4),
             "超额15bp": round(metrics(long_nav)["年化"] - ann_bench, 4),
             "超额25bp": round(metrics(long25)["年化"] - ann_bench, 4),
             "超额35bp": round(metrics(long35)["年化"] - ann_bench, 4),
-            "多头年换手": round(turn, 1), "空头年化": round(anns[si], 4),
+            "多头年换手": round(turn, 1),
+            "空头年化": round(anns[si], 4),
             "多空毛": round(metrics(long_nav / g_navs[si])["年化"], 4),
             **{f"超额{era}": round(v, 4) for era, v in era_exc.items()},
-            "①IC": c1, "②单调": c2, "③可交易": c3, "④稳定": c4,
+            "①IC": c1,
+            "②单调": c2,
+            "③可交易": c3,
+            "④稳定": c4,
             "判定": f"{verdict}({n_pass}/4)",
         }
-        print(f"\n■ {name} (方向{'高好' if direction == +1 else '低好'}) 判定: {verdict}")
-        print("  分组年化: " + "  ".join(
-            f"Q{g+1}{ '*' if g == li else ''}:{anns[g]:+.1%}" for g in range(N_Q)))
-        print(f"  IC {ic_mean:+.4f}(t={ic_t:+.2f}) | 超额 15bp:{rows[name]['超额15bp']:+.1%} "
-              f"25bp:{rows[name]['超额25bp']:+.1%} 35bp:{rows[name]['超额35bp']:+.1%} | 换手 {turn:.1f}")
-        print("  分段超额: " + "  ".join(f"{era}:{v:+.1%}" for era, v in era_exc.items()))
+        print(
+            f"\n■ {name} (方向{'高好' if direction == +1 else '低好'}) 判定: {verdict}"
+        )
+        print(
+            "  分组年化: "
+            + "  ".join(
+                f"Q{g + 1}{'*' if g == li else ''}:{anns[g]:+.1%}" for g in range(N_Q)
+            )
+        )
+        print(
+            f"  IC {ic_mean:+.4f}(t={ic_t:+.2f}) | 超额 15bp:{rows[name]['超额15bp']:+.1%} "
+            f"25bp:{rows[name]['超额25bp']:+.1%} 35bp:{rows[name]['超额35bp']:+.1%} | 换手 {turn:.1f}"
+        )
+        print(
+            "  分段超额: " + "  ".join(f"{era}:{v:+.1%}" for era, v in era_exc.items())
+        )
 
-    print(f"\n== 因子值截面相关(月均 Spearman) ==")
+    print("\n== 因子值截面相关(月均 Spearman) ==")
     print(corr_cs.round(2).to_string())
     print("\n== IC 序列相关 ==")
     print(corr_ic.round(2).to_string())
@@ -259,7 +304,7 @@ def main() -> None:
     pd.DataFrame(rows).T.to_csv(OUT / "factor_screen_round2_summary.csv")
     corr_cs.round(4).to_csv(OUT / "factor_corr_crosssec_round2.csv")
     corr_ic.round(4).to_csv(OUT / "factor_corr_ic_round2.csv")
-    print(f"\nCSV 已保存: factor_screen_round2_summary / factor_corr_*_round2")
+    print("\nCSV 已保存: factor_screen_round2_summary / factor_corr_*_round2")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@
 
 用法: python research/factor_round11_fullbuy.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -18,7 +19,13 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import (PaperPortfolio, _load, _load_corp, r5_rebalances, metrics)
+from research.paper_trade import (
+    PaperPortfolio,
+    _load,
+    _load_corp,
+    r5_rebalances,
+    metrics,
+)
 from research.reversal_factor import ew_nav
 
 
@@ -41,7 +48,6 @@ def main():
     pf = PaperPortfolio(aum0)
 
     navs, n_orders, tot_fee = [], 0, 0.0
-    last_B = B0
     for i, dt in enumerate(idx):
         prices = raw.loc[dt]
         fn, fp = F.iloc[i], F_prev.iloc[i]
@@ -51,7 +57,7 @@ def main():
         rb = next((r for r in rebs if r["exec"] == dt), None)
         if rb is not None:
             S = rb["target"]
-            B = 100.0 * prices[list(S)].max()          # 本月预算 = 最高价×100
+            B = 100.0 * prices[list(S)].max()  # 本月预算 = 最高价×100
             tgt = {c: int(B / prices[c] / 100) * 100 for c in S}
             # 卖出: 退出持仓 + 超出目标(≥1手才动)
             for c in list(pf.shares.keys()):
@@ -61,7 +67,11 @@ def main():
                 else:
                     held = pf.shares[c]
                     want = tgt[c]
-                    if held > want and held - want >= 100 and trad.loc[dt].get(c, False):
+                    if (
+                        held > want
+                        and held - want >= 100
+                        and trad.loc[dt].get(c, False)
+                    ):
                         pf._order(c, "sell", held - want, prices.get(c, np.nan))
             # 买入: 未达标 ≥1手, 受现金约束
             for c in sorted(S, key=lambda x: prices.get(x, np.inf)):
@@ -74,9 +84,10 @@ def main():
                     if need <= pf.cash:
                         pf._order(c, "buy", diff, p)
             n_orders += len(pf.trades)
-            tot_fee += sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
+            tot_fee += sum(
+                t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades
+            )
             pf.trades = []
-            last_B = B
         navs.append(pf.value(prices))
 
     nav = pd.Series(navs, index=idx) / aum0
@@ -94,14 +105,26 @@ def main():
     maxc = pn[list(last["target"])].max()
 
     print("== Round 11 全选满仓(最高价预算) 历史全口径回放 ==")
-    print(f"  预算/只 B = 100×最高价(当前 {maxc:.2f}×100 = {Bn:.0f}元) | 目标 {len(last['target'])} 只")
-    print(f"  当前隐含资金量 ≈ {need/1e4:.0f} 万 (575×{Bn:.0f}元)")
-    print(f"  年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%} | 全口径超额 {exc:+.2%}pp")
-    print(f"  夏普 {m['夏普']:.2f} | 最大回撤 {m['最大回撤']:.1%} | 期末净值 {nav.iloc[-1]:.2f}")
-    print(f"  费用率 {tot_fee/aum0/years:.2%}/年 (累计 {tot_fee/1e4:.1f}万) | 分红(税后) {pf.div_cash/1e4:.1f}万")
-    print(f"\n  对比参考 (既有回测):")
-    print(f"    300万: 预算5212元/只 持551只 年化11.9% 超额+4.43pp 回撤-49.2% 费用1.32%/年")
-    print(f"    600万: 预算10430元/只 持575只 年化12.2% 超额+4.72pp 回撤-49.4% 费用0.95%/年")
+    print(
+        f"  预算/只 B = 100×最高价(当前 {maxc:.2f}×100 = {Bn:.0f}元) | 目标 {len(last['target'])} 只"
+    )
+    print(f"  当前隐含资金量 ≈ {need / 1e4:.0f} 万 (575×{Bn:.0f}元)")
+    print(
+        f"  年化 {m['年化']:.1%} | 同池等权基准 {ann_bench:.1%} | 全口径超额 {exc:+.2%}pp"
+    )
+    print(
+        f"  夏普 {m['夏普']:.2f} | 最大回撤 {m['最大回撤']:.1%} | 期末净值 {nav.iloc[-1]:.2f}"
+    )
+    print(
+        f"  费用率 {tot_fee / aum0 / years:.2%}/年 (累计 {tot_fee / 1e4:.1f}万) | 分红(税后) {pf.div_cash / 1e4:.1f}万"
+    )
+    print("\n  对比参考 (既有回测):")
+    print(
+        "    300万: 预算5212元/只 持551只 年化11.9% 超额+4.43pp 回撤-49.2% 费用1.32%/年"
+    )
+    print(
+        "    600万: 预算10430元/只 持575只 年化12.2% 超额+4.72pp 回撤-49.4% 费用0.95%/年"
+    )
 
 
 if __name__ == "__main__":

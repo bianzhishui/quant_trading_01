@@ -5,6 +5,7 @@
 - 权重在每根 K 线的**收盘时刻**计算，只能用到截至当日的数据；
 - 回测引擎会自动把权重延后一根 K 线、用次日开盘价撮合。
 """
+
 from .dual_ma import dual_moving_average
 
 __all__ = ["dual_moving_average"]

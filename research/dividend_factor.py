@@ -14,6 +14,7 @@
 
 用法: uv run python research/dividend_factor.py
 """
+
 from __future__ import annotations
 
 import math
@@ -21,6 +22,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,12 +37,14 @@ from src.data_loader import load_index_daily
 
 FDIR = Path(__file__).resolve().parent.parent / "data" / "fundamental"
 LOVE = "爱我中华"
-BASE_COST = 15e-4                 # 基础全成本 15bp/单边
+BASE_COST = 15e-4  # 基础全成本 15bp/单边
 C_SWEEP = [15e-4, 25e-4, 35e-4, 45e-4]
-ERAS = {"2014-2017": ("2014-01-01", "2017-12-31"),
-        "2018-2021": ("2018-01-01", "2021-12-31"),
-        "2022-2026": ("2022-01-01", None)}
-START = "2013-06-01"              # 数据起点(2014-01首调仓, 375日计数用全历史)
+ERAS = {
+    "2014-2017": ("2014-01-01", "2017-12-31"),
+    "2018-2021": ("2018-01-01", "2021-12-31"),
+    "2022-2026": ("2022-01-01", None),
+}
+START = "2013-06-01"  # 数据起点(2014-01首调仓, 375日计数用全历史)
 
 
 def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -73,8 +77,9 @@ def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     uni = pd.read_parquet(FDIR / "universe.parquet").set_index("code")
     names = uni["name"].to_dict()
     div = pd.read_parquet(FDIR / "dividends.parquet")
-    div_mat = div.pivot_table(index="code", columns="year",
-                              values="cash_ps_total", fill_value=0.0)
+    div_mat = div.pivot_table(
+        index="code", columns="year", values="cash_ps_total", fill_value=0.0
+    )
     return close, real, pb, tst, isst, names, div_mat
 
 
@@ -86,10 +91,15 @@ def month_last_days(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:
 def pick_sets(close, real, pb, tst, isst, names, div_mat) -> tuple[dict, dict]:
     """每月末信号日 → (B入选集合, A入选集合)。"""
     days_count = close.notna().cumsum()
-    board_ok = pd.Series({c: not (c.startswith("bj.") or c[3:6] in {"300", "688"})
-                          for c in close.columns})
-    name_ok = pd.Series({c: any(ch in (names.get(c) or "") for ch in LOVE)
-                         for c in close.columns})
+    board_ok = pd.Series(
+        {
+            c: not (c.startswith("bj.") or c[3:6] in {"300", "688"})
+            for c in close.columns
+        }
+    )
+    name_ok = pd.Series(
+        {c: any(ch in (names.get(c) or "") for ch in LOVE) for c in close.columns}
+    )
     sig_days = month_last_days(close.index)
     B_sets, A_sets, exec_map = {}, {}, {}
     idx = close.index
@@ -97,18 +107,30 @@ def pick_sets(close, real, pb, tst, isst, names, div_mat) -> tuple[dict, dict]:
         i = idx.get_loc(T)
         if i + 1 >= len(idx):
             break
-        exec_day = idx[i + 1]                       # 次月首个交易日开盘执行
-        elig = (days_count.loc[T] >= 375) & (tst.loc[T] == "1") & \
-               (isst.loc[T] == "0") & board_ok & (pb.loc[T] > 0) & \
-               (pb.loc[T] < 1) & real.loc[T].notna() & close.loc[T].notna()
+        exec_day = idx[i + 1]  # 次月首个交易日开盘执行
+        elig = (
+            (days_count.loc[T] >= 375)
+            & (tst.loc[T] == "1")
+            & (isst.loc[T] == "0")
+            & board_ok
+            & (pb.loc[T] > 0)
+            & (pb.loc[T] < 1)
+            & real.loc[T].notna()
+            & close.loc[T].notna()
+        )
         elig_codes = list(elig[elig].index)
         if not elig_codes:
-            B_sets[exec_day] = set(); A_sets[exec_day] = set()
+            B_sets[exec_day] = set()
+            A_sets[exec_day] = set()
             exec_map[exec_day] = set()
             continue
         Y = T.year
         cols = [y for y in (Y - 3, Y - 2, Y - 1) if y in div_mat.columns]
-        div3y = div_mat.reindex(elig_codes).reindex(columns=cols, fill_value=0.0).sum(axis=1)
+        div3y = (
+            div_mat.reindex(elig_codes)
+            .reindex(columns=cols, fill_value=0.0)
+            .sum(axis=1)
+        )
         dy = div3y / real.loc[T][elig_codes]
         n50 = max(1, math.ceil(len(dy) / 2))
         B = set(dy.nlargest(n50).index)
@@ -125,9 +147,9 @@ def equal_weight_nav(px_ret: pd.DataFrame, sets: dict) -> tuple[pd.Series, float
     w = pd.Series(0.0, index=cols)
     pending = None
     for i, dt in enumerate(px_ret.index):
-        if pending is not None:                      # 信号次月首日生效
+        if pending is not None:  # 信号次月首日生效
             w, pending = pending, None
-        if dt in sets:                               # sets 的键就是执行日
+        if dt in sets:  # sets 的键就是执行日
             S = sets[dt]
             w = pd.Series(0.0, index=cols)
             if S:
@@ -147,8 +169,8 @@ def drift_nav(px_ret: pd.DataFrame, sets: dict, cost: float) -> tuple[pd.Series,
     nav, max_w, top3s, turnover = [], 0.0, [], 0.0
     r = px_ret.fillna(0.0)
     for dt in px_ret.index:
-        for c in vals:                                 # 当日收益先作用于持仓
-            vals[c] *= (1 + r.at[dt, c])
+        for c in vals:  # 当日收益先作用于持仓
+            vals[c] *= 1 + r.at[dt, c]
         if dt in sets:
             S = sets[dt]
             sold = sum(vals.pop(c, 0.0) for c in list(vals) if c not in S)
@@ -166,12 +188,18 @@ def drift_nav(px_ret: pd.DataFrame, sets: dict, cost: float) -> tuple[pd.Series,
         if vals and pv > 0:
             ws = sorted((v / pv for v in vals.values()), reverse=True)
             max_w = max(max_w, ws[0])
-            if str(dt)[:7] != str(px_ret.index[max(px_ret.index.get_loc(dt) - 1, 0)])[:7]:
+            if (
+                str(dt)[:7]
+                != str(px_ret.index[max(px_ret.index.get_loc(dt) - 1, 0)])[:7]
+            ):
                 top3s.append(sum(ws[:3]))
     nav = pd.Series(nav, index=px_ret.index)
     years = len(nav) / 244
-    return nav, {"年换手": float(turnover / 2 / years), "最大单票权重": max_w,
-                 "月末前三大均值": float(np.mean(top3s)) if top3s else 0.0}
+    return nav, {
+        "年换手": float(turnover / 2 / years),
+        "最大单票权重": max_w,
+        "月末前三大均值": float(np.mean(top3s)) if top3s else 0.0,
+    }
 
 
 def metrics(nav: pd.Series) -> dict:
@@ -180,10 +208,13 @@ def metrics(nav: pd.Series) -> dict:
     if len(nav) < 50 or ret.std() == 0:
         return {"年化": np.nan, "夏普": np.nan, "最大回撤": np.nan, "总收益": np.nan}
     years = len(nav) / 244
-    return {"总收益": nav.iloc[-1] - 1, "年化": nav.iloc[-1] ** (1 / years) - 1,
-            "波动": ret.std() * np.sqrt(244),
-            "夏普": ret.mean() / ret.std() * np.sqrt(244),
-            "最大回撤": float((nav / nav.cummax() - 1).min())}
+    return {
+        "总收益": nav.iloc[-1] - 1,
+        "年化": nav.iloc[-1] ** (1 / years) - 1,
+        "波动": ret.std() * np.sqrt(244),
+        "夏普": ret.mean() / ret.std() * np.sqrt(244),
+        "最大回撤": float((nav / nav.cummax() - 1).min()),
+    }
 
 
 def monthly(nav: pd.Series) -> pd.Series:
@@ -194,18 +225,24 @@ def monthly(nav: pd.Series) -> pd.Series:
 def main() -> None:
     print("== 高股息因子四组对照实验 (预注册 v1.0) ==")
     close, real, pb, tst, isst, names, div_mat = load_all()
-    print(f"数据: {close.shape[0]} 交易日 × {close.shape[1]} 只, "
-          f"{close.index[0].date()} ~ {close.index[-1].date()}")
+    print(
+        f"数据: {close.shape[0]} 交易日 × {close.shape[1]} 只, "
+        f"{close.index[0].date()} ~ {close.index[-1].date()}"
+    )
 
     # 前复权→真实价 校验(茅台除息日 2024-06-19 应为 ~1501)
     if "sh.600519" in real.columns:
-        print(f"校验 茅台 2024-06-18 真实价: {real.at[pd.Timestamp('2024-06-18'),'sh.600519']:.1f} (预期≈1521.5)")
+        print(
+            f"校验 茅台 2024-06-18 真实价: {real.at[pd.Timestamp('2024-06-18'), 'sh.600519']:.1f} (预期≈1521.5)"
+        )
 
-    ret_qfq = close.pct_change()                     # 组合收益用前复权(含分红近似)
+    ret_qfq = close.pct_change()  # 组合收益用前复权(含分红近似)
     B_sets, A_sets, exec_map = pick_sets(close, real, pb, tst, isst, names, div_mat)
     sizes = [len(s) for s in B_sets.values() if s]
-    print(f"月度入选数(B): 中位 {int(np.median(sizes))}, 范围 {min(sizes)}~{max(sizes)}; "
-          f"A组月均 {np.mean([len(A_sets[k]) for k in A_sets]):.1f} 只\n")
+    print(
+        f"月度入选数(B): 中位 {int(np.median(sizes))}, 范围 {min(sizes)}~{max(sizes)}; "
+        f"A组月均 {np.mean([len(A_sets[k]) for k in A_sets]):.1f} 只\n"
+    )
 
     navB, turnB = equal_weight_nav(ret_qfq, B_sets)
     navA, turnA = equal_weight_nav(ret_qfq, A_sets)
@@ -224,8 +261,12 @@ def main() -> None:
     t, p_welch = stats.ttest_1samp(diff, 0)
     rng = np.random.default_rng(5)
     arr = diff.to_numpy()
-    p_perm = float((np.abs(rng.choice([1, -1], (10000, len(arr))).dot(arr)) / len(arr)
-                    >= abs(arr.mean())).mean())
+    p_perm = float(
+        (
+            np.abs(rng.choice([1, -1], (10000, len(arr))).dot(arr)) / len(arr)
+            >= abs(arr.mean())
+        ).mean()
+    )
 
     # ---- ③ 稳定性 ----
     print("B组分年代稳定性(第③层):")
@@ -236,8 +277,10 @@ def main() -> None:
         ma, mh = metrics(a), metrics(h)
         ok = ma["夏普"] > 0.3 and ma["年化"] > mh["年化"]
         stable &= ok
-        print(f"  {name}: B年化 {ma['年化']:+.1%} 夏普 {ma['夏普']:.2f} | "
-              f"沪深300 {mh['年化']:+.1%} | 跑赢: {ma['年化'] > mh['年化']}, 夏普>0.3: {ma['夏普'] > 0.3}")
+        print(
+            f"  {name}: B年化 {ma['年化']:+.1%} 夏普 {ma['夏普']:.2f} | "
+            f"沪深300 {mh['年化']:+.1%} | 跑赢: {ma['年化'] > mh['年化']}, 夏普>0.3: {ma['夏普'] > 0.3}"
+        )
 
     # ---- ④ 可交易(C组45bp档): 与B同权重, 全成本改45bp ----
     cols = ret_qfq.columns
@@ -254,40 +297,77 @@ def main() -> None:
                 w[list(S)] = 1.0 / len(S)
         W.iloc[i] = w
     turn = W.diff().abs().sum(axis=1).fillna(0.0)
-    nav45 = (1 + (W.shift(1).fillna(0.0) * ret_qfq.fillna(0.0)).sum(axis=1)
-             - turn * 45e-4).cumprod()
+    nav45 = (
+        1 + (W.shift(1).fillna(0.0) * ret_qfq.fillna(0.0)).sum(axis=1) - turn * 45e-4
+    ).cumprod()
     m45 = metrics(nav45)
     excess45 = m45["年化"] - mBench["年化"]
-    print(f"\nC组 45bp全成本: 年化 {m45['年化']:+.1%} (沪深300 {mBench['年化']:+.1%}) "
-          f"→ 年超额 {excess45:+.1%}, 达标: {excess45 >= 0.03}")
+    print(
+        f"\nC组 45bp全成本: 年化 {m45['年化']:+.1%} (沪深300 {mBench['年化']:+.1%}) "
+        f"→ 年超额 {excess45:+.1%}, 达标: {excess45 >= 0.03}"
+    )
 
     # ---- 汇总 ----
     print("\n== 汇总 (15bp 基础成本) ==")
     rows = []
-    for label, m, tn in [("A 名称过滤", mA, turnA), ("B 基线", mB, turnB),
-                         ("D 漂移式", mD, dstats["年换手"])]:
-        rows.append({"组合": label, "年化": m["年化"], "夏普": m["夏普"],
-                     "回撤": m["最大回撤"], "年换手": tn})
-    rows.append({"组合": "沪深300", "年化": mBench["年化"], "夏普": mBench["夏普"],
-                 "回撤": mBench["最大回撤"], "年换手": 0.0})
-    rows.append({"组合": "等权全池", "年化": mEW["年化"], "夏普": mEW["夏普"],
-                 "回撤": mEW["最大回撤"], "年换手": 0.0})
+    for label, m, tn in [
+        ("A 名称过滤", mA, turnA),
+        ("B 基线", mB, turnB),
+        ("D 漂移式", mD, dstats["年换手"]),
+    ]:
+        rows.append(
+            {
+                "组合": label,
+                "年化": m["年化"],
+                "夏普": m["夏普"],
+                "回撤": m["最大回撤"],
+                "年换手": tn,
+            }
+        )
+    rows.append(
+        {
+            "组合": "沪深300",
+            "年化": mBench["年化"],
+            "夏普": mBench["夏普"],
+            "回撤": mBench["最大回撤"],
+            "年换手": 0.0,
+        }
+    )
+    rows.append(
+        {
+            "组合": "等权全池",
+            "年化": mEW["年化"],
+            "夏普": mEW["夏普"],
+            "回撤": mEW["最大回撤"],
+            "年换手": 0.0,
+        }
+    )
     print(pd.DataFrame(rows).to_string(index=False, float_format=lambda v: f"{v:.3f}"))
 
     # ---- 归因读数 ----
     name_contrib = mA["年化"] - mB["年化"]
     drift_contrib = mD["年化"] - mB["年化"]
-    print(f"\n== 归因读数 ==")
-    print(f"名称过滤贡献 (A−B): {name_contrib:+.2%}/年  "
-          f"→ {'噪音(|差|<1pp)' if abs(name_contrib) < 0.01 else ('央企代理成立(A>B>3pp)' if name_contrib > 0.03 else '负贡献')}")
-    print(f"漂移贡献 (D−B)    : {drift_contrib:+.2%}/年  "
-          f"→ {'漂移式集中是主要收益来源(>3pp)' if drift_contrib > 0.03 else '漂移贡献有限'}")
-    print(f"D组集中度: 最大单票权重 {dstats['最大单票权重']:.1%}, "
-          f"月末前三大均值 {dstats['月末前三大均值']:.1%}, 最大回撤 {mD['最大回撤']:.1%}")
-    print(f"\n②显著性: Welch p={p_welch:.4f}, 置换 p={p_perm:.4f} → "
-          f"{'通过' if p_perm < 0.05 else '未通过'}")
+    print("\n== 归因读数 ==")
+    print(
+        f"名称过滤贡献 (A−B): {name_contrib:+.2%}/年  "
+        f"→ {'噪音(|差|<1pp)' if abs(name_contrib) < 0.01 else ('央企代理成立(A>B>3pp)' if name_contrib > 0.03 else '负贡献')}"
+    )
+    print(
+        f"漂移贡献 (D−B)    : {drift_contrib:+.2%}/年  "
+        f"→ {'漂移式集中是主要收益来源(>3pp)' if drift_contrib > 0.03 else '漂移贡献有限'}"
+    )
+    print(
+        f"D组集中度: 最大单票权重 {dstats['最大单票权重']:.1%}, "
+        f"月末前三大均值 {dstats['月末前三大均值']:.1%}, 最大回撤 {mD['最大回撤']:.1%}"
+    )
+    print(
+        f"\n②显著性: Welch p={p_welch:.4f}, 置换 p={p_perm:.4f} → "
+        f"{'通过' if p_perm < 0.05 else '未通过'}"
+    )
     print(f"③稳定性: {'通过' if stable else '未通过'}")
-    print(f"④可交易: 45bp档年超额 {excess45:+.1%} → {'通过' if excess45 >= 0.03 else '未通过'}")
+    print(
+        f"④可交易: 45bp档年超额 {excess45:+.1%} → {'通过' if excess45 >= 0.03 else '未通过'}"
+    )
 
     # ---- 图 ----
     fig, ax = plt.subplots(figsize=(11.5, 6))
@@ -298,10 +378,13 @@ def main() -> None:
     ax.plot(ew, lw=1, alpha=0.5, label="等权全池")
     for y in ("2018-01-01", "2022-01-01"):
         ax.axvline(pd.Timestamp(y), color="gray", ls="--", lw=0.8)
-    ax.set_yscale("log"); ax.legend(); ax.grid(alpha=0.3)
+    ax.set_yscale("log")
+    ax.legend()
+    ax.grid(alpha=0.3)
     ax.set_title("高股息因子四组对照 (对数净值, 15bp基础成本)")
     out = Path(__file__).resolve().parent.parent / "output" / "dividend_factor.png"
-    fig.tight_layout(); fig.savefig(out, dpi=130)
+    fig.tight_layout()
+    fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")
 
 

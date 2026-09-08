@@ -9,6 +9,7 @@ v2 优化：内存缓冲 + 每 100 只批量写盘（避免 v1 每只重写分�
 断点续传：按 OUT 中已有 code 去重，中断重跑自动跳过。
 用法: uv run python research/fetch_full_market.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -19,16 +20,32 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-OUT = Path(__file__).resolve().parent.parent / "data" / "fundamental" / "full_daily.parquet"
+OUT = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "fundamental"
+    / "full_daily.parquet"
+)
 START = "2012-06-01"
 END = "2026-09-07"
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
-KEEP = ["date", "code", "close", "pbMRQ", "turn", "amount", "peTTM", "tradestatus", "isST"]
+KEEP = [
+    "date",
+    "code",
+    "close",
+    "pbMRQ",
+    "turn",
+    "amount",
+    "peTTM",
+    "tradestatus",
+    "isST",
+]
 FLUSH_EVERY = 100
 
 
 def all_codes() -> list[str]:
     import baostock as bs
+
     rs = bs.query_stock_basic()
     rows = []
     while rs.error_code == "0" and rs.next():
@@ -51,8 +68,9 @@ def local_codes() -> list[str] | None:
 
 
 def fetch_one(bs, code: str) -> pd.DataFrame:
-    rs = bs.query_history_k_data_plus(code, FIELDS, start_date=START, end_date=END,
-                                      frequency="d", adjustflag="2")
+    rs = bs.query_history_k_data_plus(
+        code, FIELDS, start_date=START, end_date=END, frequency="d", adjustflag="2"
+    )
     rows = []
     while rs.error_code == "0" and rs.next():
         rows.append(rs.get_row_data())
@@ -69,19 +87,25 @@ def fetch_one(bs, code: str) -> pd.DataFrame:
 
 def main() -> None:
     import baostock as bs
+
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
     # 单会话: 全程保持登录(本环境 baostock logout 后重登的会话查询会"用户未登录")
     # 优先本地代码清单(query_stock_basic 在本环境会挂起/截断会话)
     lc = local_codes()
     codes = lc if lc else all_codes()
-    print(f"代码来源: {'本地parquet' if lc is not None else 'baostock stock_basic'} {len(codes)} 只", flush=True)
+    print(
+        f"代码来源: {'本地parquet' if lc is not None else 'baostock stock_basic'} {len(codes)} 只",
+        flush=True,
+    )
 
     have = set()
     if OUT.exists():
         have = set(pd.read_parquet(OUT, columns=["code"])["code"].unique())
     todo = [c for c in codes if c not in have]
-    print(f"全市场: 共 {len(codes)} 只, 已完成 {len(have)}, 待抓 {len(todo)}", flush=True)
+    print(
+        f"全市场: 共 {len(codes)} 只, 已完成 {len(have)}, 待抓 {len(todo)}", flush=True
+    )
 
     buf: list[pd.DataFrame] = []
     done = 0
@@ -103,11 +127,18 @@ def main() -> None:
             buf = []
             if new is not None:
                 prev = pd.read_parquet(OUT) if OUT.exists() else None
-                big = pd.concat([prev, new], ignore_index=True) if prev is not None else new
+                big = (
+                    pd.concat([prev, new], ignore_index=True)
+                    if prev is not None
+                    else new
+                )
                 big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
                 big.to_parquet(OUT)
-                print(f"  [{done}/{len(todo)}] 累计 {big['code'].nunique()} 只 "
-                      f"{big.shape[0]:,} 行", flush=True)
+                print(
+                    f"  [{done}/{len(todo)}] 累计 {big['code'].nunique()} 只 "
+                    f"{big.shape[0]:,} 行",
+                    flush=True,
+                )
     bs.logout()
     print("全市场下载完成", flush=True)
 

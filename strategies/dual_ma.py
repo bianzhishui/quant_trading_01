@@ -7,12 +7,15 @@
 
 注意 signal 在 T 日收盘计算，由引擎延到 T+1 开盘执行。
 """
+
 from __future__ import annotations
 
 import pandas as pd
 
 
-def dual_moving_average(close: pd.Series, short: int = 20, long_: int = 60) -> pd.Series:
+def dual_moving_average(
+    close: pd.Series, short: int = 20, long_: int = 60
+) -> pd.Series:
     """返回与 close 对齐的目标权重序列（1.0 持有，0.0 空仓）。"""
     ma_s = close.rolling(short).mean()
     ma_l = close.rolling(long_).mean()

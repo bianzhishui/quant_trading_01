@@ -10,6 +10,7 @@
 
 引擎为学习用途做了合理简化（单标的、现金撮合、不支持融资融券）。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,18 +19,22 @@ import numpy as np
 import pandas as pd
 
 from .costs import (
-    COMMISSION_RATE, INIT_CASH, LOT_SIZE,
-    SLIPPAGE, STAMP_TAX_RATE, TRANSFER_FEE_RATE,
+    COMMISSION_RATE,
+    INIT_CASH,
+    LOT_SIZE,
+    SLIPPAGE,
+    STAMP_TAX_RATE,
+    TRANSFER_FEE_RATE,
 )
 
-_BUY_FEE_RATE = COMMISSION_RATE + TRANSFER_FEE_RATE          # 买入按成交额计的费率
+_BUY_FEE_RATE = COMMISSION_RATE + TRANSFER_FEE_RATE  # 买入按成交额计的费率
 
 
 @dataclass
 class BTResult:
-    equity: pd.Series            # 每日总资产
-    trades: pd.DataFrame         # 成交记录
-    weights: pd.Series           # 实际仓位占资产比例
+    equity: pd.Series  # 每日总资产
+    trades: pd.DataFrame  # 成交记录
+    weights: pd.Series  # 实际仓位占资产比例
     stats: dict = field(default_factory=dict)
 
     def summary(self) -> str:
@@ -79,7 +84,7 @@ def run_backtest(
                      防止因整手取整造成每日微量换手。
     """
     w = target_weights.reindex(df.index).fillna(0.0).clip(0.0, 1.0)
-    exec_w = w.shift(1).fillna(0.0)      # 关键：T 日收盘的信号，次日才执行
+    exec_w = w.shift(1).fillna(0.0)  # 关键：T 日收盘的信号，次日才执行
 
     cash = float(init_cash)
     shares = 0
@@ -107,49 +112,54 @@ def run_backtest(
                     n_rejected += 1
                 else:
                     # 为滑点与费用预留现金后，现金能负担的最大整手数量
-                    afford = int(
-                        cash // (_buy_cost_per_share(o) * LOT_SIZE)
-                    ) * LOT_SIZE
+                    afford = int(cash // (_buy_cost_per_share(o) * LOT_SIZE)) * LOT_SIZE
                     lot = min(net, afford)
                     if lot > 0:
                         px = o * (1 + SLIPPAGE)
-                        gross = lot * o                       # 费用以未含滑点金额计
+                        gross = lot * o  # 费用以未含滑点金额计
                         cost = _commission(gross) + gross * TRANSFER_FEE_RATE
                         spend = lot * px + cost
                         if spend <= cash + 1e-6:
                             cash -= spend
-                            shares += lot                     # 当日买入，明日才可卖
+                            shares += lot  # 当日买入，明日才可卖
                             records.append((dates[i], "BUY", lot, px, cost))
             else:
                 # 跌停卖不出：开盘较昨收跌幅达到限制
                 if prev_c > 0 and o <= prev_c * (1 - limit_pct) + 1e-9:
                     n_rejected += 1
                 else:
-                    lot = min(-net, shares)                   # 只能卖已有持仓(T+1下不含今日买入)
+                    lot = min(-net, shares)  # 只能卖已有持仓(T+1下不含今日买入)
                     px = o * (1 - SLIPPAGE)
                     gross = lot * o
-                    cost = (_commission(gross)
-                            + gross * (STAMP_TAX_RATE + TRANSFER_FEE_RATE))
+                    cost = _commission(gross) + gross * (
+                        STAMP_TAX_RATE + TRANSFER_FEE_RATE
+                    )
                     cash += lot * px - cost
                     shares -= lot
                     records.append((dates[i], "SELL", lot, px, cost))
 
         equity_vals.append(cash + shares * closes[i])
-        wt_vals.append(shares * opens[i] / (cash + shares * o)
-                       if (cash + shares * o) > 0 else 0.0)
+        wt_vals.append(
+            shares * opens[i] / (cash + shares * o) if (cash + shares * o) > 0 else 0.0
+        )
 
     equity = pd.Series(equity_vals, index=df.index, name="equity")
     weights = pd.Series(wt_vals, index=df.index, name="weight")
     trades = pd.DataFrame(records, columns=["date", "side", "shares", "price", "cost"])
 
-    return BTResult(equity=equity, trades=trades, weights=weights,
-                    stats=_calc_stats(equity, init_cash, trades, n_rejected))
+    return BTResult(
+        equity=equity,
+        trades=trades,
+        weights=weights,
+        stats=_calc_stats(equity, init_cash, trades, n_rejected),
+    )
 
 
-def _calc_stats(equity: pd.Series, init_cash: float,
-                trades: pd.DataFrame, n_rejected: int) -> dict:
+def _calc_stats(
+    equity: pd.Series, init_cash: float, trades: pd.DataFrame, n_rejected: int
+) -> dict:
     ret = equity.pct_change().dropna()
-    years = len(equity) / 244.0                    # A 股年均约 244 个交易日
+    years = len(equity) / 244.0  # A 股年均约 244 个交易日
     total_return = equity.iloc[-1] / init_cash - 1
     cagr = (equity.iloc[-1] / init_cash) ** (1 / max(years, 1e-9)) - 1
     ann_vol = ret.std() * np.sqrt(244)

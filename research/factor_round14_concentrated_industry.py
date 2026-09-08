@@ -7,6 +7,7 @@ N ∈ {100,150}, 60万, 全口径成本。
 
 用法: python research/factor_round14_concentrated_industry.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -16,8 +17,15 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import (PaperPortfolio, _load, _load_corp, build_pool, metrics,
-                                  month_last_days, r5_rebalances)
+from research.paper_trade import (
+    PaperPortfolio,
+    _load,
+    _load_corp,
+    build_pool,
+    metrics,
+    month_last_days,
+    r5_rebalances,
+)
 from research.paper_trade import MIN_IND, MIN_N
 from research.factor_round13_concentrated_fill import rebalance_fill
 from research.reversal_factor import ew_nav
@@ -26,7 +34,9 @@ from research.reversal_factor import ew_nav
 def _sc_panel(close, amount, tst, isst, ind, N, industry_neutral):
     """返回 rebs: 全局前N 或 行业中性前N。"""
     pool = build_pool(close, tst, isst)
-    amihud = ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    amihud = (
+        ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    )
     mom = close.shift(21) / close.shift(250) - 1.0
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
@@ -52,8 +62,11 @@ def _sc_panel(close, amount, tst, isst, ind, N, industry_neutral):
             M = max(1, int(round(N / n_ind)))
             within = sc.groupby(ind_s[codes]).rank(ascending=False)
             cand = codes[within <= M]
-            target = (set(sc.loc[cand].nlargest(min(N, len(cand))).index)
-                      if len(cand) >= N else set(sc.nlargest(N).index))
+            target = (
+                set(sc.loc[cand].nlargest(min(N, len(cand))).index)
+                if len(cand) >= N
+                else set(sc.nlargest(N).index)
+            )
         rebs.append({"T": T, "exec": exec_day, "target": target})
     return rebs
 
@@ -82,16 +95,27 @@ def run(aum, rebs, raw, F, trad, idx, ind):
     prices_l = raw.loc[last["exec"]]
     pf0 = PaperPortfolio(aum)
     rebalance_fill(pf0, last["target"], prices_l, trad.loc[last["exec"]])
-    mvs = {c: s * prices_l.get(c, np.nan) for c, s in pf0.shares.items() if pd.notna(prices_l.get(c, np.nan))}
+    mvs = {
+        c: s * prices_l.get(c, np.nan)
+        for c, s in pf0.shares.items()
+        if pd.notna(prices_l.get(c, np.nan))
+    }
     mv_tot = sum(mvs.values())
     w = pd.Series(mvs) / mv_tot
     ind_w = w.groupby(ind.reindex(w.index)).sum().sort_values(ascending=False)
-    return {"持有": len(pf0.shares), "目标": len(last["target"]), "使用率": mv_tot / aum,
-            "年化": m["年化"], "夏普": m["夏普"], "回撤": m["最大回撤"],
-            "净值": nav.iloc[-1], "费用": tot_fee / aum / years,
-            "订单": len(pf.trades),
-            "最大行业权重": ind_w.iloc[0] if len(ind_w) else np.nan,
-            "前5行业权重": ind_w.head(5).sum() if len(ind_w) else np.nan}
+    return {
+        "持有": len(pf0.shares),
+        "目标": len(last["target"]),
+        "使用率": mv_tot / aum,
+        "年化": m["年化"],
+        "夏普": m["夏普"],
+        "回撤": m["最大回撤"],
+        "净值": nav.iloc[-1],
+        "费用": tot_fee / aum / years,
+        "订单": len(pf.trades),
+        "最大行业权重": ind_w.iloc[0] if len(ind_w) else np.nan,
+        "前5行业权重": ind_w.head(5).sum() if len(ind_w) else np.nan,
+    }
 
 
 def main():
@@ -110,22 +134,28 @@ def main():
             rebs = _sc_panel(close, amount, tst, isst, ind, N, neut)
             rows.append((f"前{N}·{label}", run(600_000, rebs, raw, F, trad, idx, ind)))
 
-    print(f"\n{'口径':<12}{'持/目':<8}{'使用率':<7}{'超额':<8}{'夏普':<6}{'回撤':<8}"
-          f"{'费用':<7}{'净值':<6}{'最大行业':<8}{'前5行业'}")
+    print(
+        f"\n{'口径':<12}{'持/目':<8}{'使用率':<7}{'超额':<8}{'夏普':<6}{'回撤':<8}"
+        f"{'费用':<7}{'净值':<6}{'最大行业':<8}{'前5行业'}"
+    )
     for name, r in rows:
         exc = r["年化"] - ann_bench
-        print(f"{name:<12}{r['持有']}/{r['目标']:<5}{r['使用率']:.0%}  {exc:+6.2%}  "
-              f"{r['夏普']:5.2f}  {r['回撤']:7.1%}  {r['费用']:6.2%}  {r['净值']:5.2f}x  "
-              f"{r['最大行业权重']:.0%}    {r['前5行业权重']:.0%}")
+        print(
+            f"{name:<12}{r['持有']}/{r['目标']:<5}{r['使用率']:.0%}  {exc:+6.2%}  "
+            f"{r['夏普']:5.2f}  {r['回撤']:7.1%}  {r['费用']:6.2%}  {r['净值']:5.2f}x  "
+            f"{r['最大行业权重']:.0%}    {r['前5行业权重']:.0%}"
+        )
     print("\n判定(行业中性版超额 ≥ 全局×80% 且 最大行业<20% 且 使用率≥85%):")
     for N in (100, 150):
         g = next(r for n, r in rows if n == f"前{N}·全局")
         i = next(r for n, r in rows if n == f"前{N}·行业中性")
         ge, ie = g["年化"] - ann_bench, i["年化"] - ann_bench
         ok = ie >= ge * 0.8 and i["最大行业权重"] < 0.20 and i["使用率"] >= 0.85
-        print(f"  前{N}: 全局{ge:+.2%} vs 行业中性{ie:+.2%} (保持{ie/ge:.0%}) "
-              f"最大行业{i['最大行业权重']:.0%} 使用率{i['使用率']:.0%} "
-              f"→ {'✅稳健' if ok else '超额缩水/集中未降'}")
+        print(
+            f"  前{N}: 全局{ge:+.2%} vs 行业中性{ie:+.2%} (保持{ie / ge:.0%}) "
+            f"最大行业{i['最大行业权重']:.0%} 使用率{i['使用率']:.0%} "
+            f"→ {'✅稳健' if ok else '超额缩水/集中未降'}"
+        )
 
 
 if __name__ == "__main__":

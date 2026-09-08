@@ -9,6 +9,7 @@ status:   进度报告
 
 用法: uv run python -m src.convertible download [--limit N] | merge | status
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,10 +45,16 @@ def _save_state(st: dict) -> None:
 def get_universe() -> pd.DataFrame:
     """东财发行快照 → universe.parquet (全历史名单, 含退市/未上市)。"""
     df = ak.bond_zh_cov()
-    keep = {"债券代码": "code", "债券简称": "name", "申购日期": "issue_date",
-            "上市时间": "list_date", "正股代码": "stock_code",
-            "正股简称": "stock_name", "发行规模": "issue_size",
-            "信用评级": "rating"}
+    keep = {
+        "债券代码": "code",
+        "债券简称": "name",
+        "申购日期": "issue_date",
+        "上市时间": "list_date",
+        "正股代码": "stock_code",
+        "正股简称": "stock_name",
+        "发行规模": "issue_size",
+        "信用评级": "rating",
+    }
     out = df[list(keep)].rename(columns=keep)
     out["issue_date"] = pd.to_datetime(out["issue_date"], errors="coerce")
     out["list_date"] = pd.to_datetime(out["list_date"], errors="coerce")
@@ -58,13 +65,20 @@ def get_universe() -> pd.DataFrame:
 
 def download_one(code: str) -> pd.DataFrame:
     va = ak.bond_zh_cov_value_analysis(symbol=code)
-    va = va.rename(columns={"日期": "date", "收盘价": "close",
-                            "纯债价值": "pb_value", "转股价值": "conv_value",
-                            "纯债溢价率": "pb_premium", "转股溢价率": "premium"})
+    va = va.rename(
+        columns={
+            "日期": "date",
+            "收盘价": "close",
+            "纯债价值": "pb_value",
+            "转股价值": "conv_value",
+            "纯债溢价率": "pb_premium",
+            "转股溢价率": "premium",
+        }
+    )
     va["date"] = pd.to_datetime(va["date"])
     for c in ("close", "pb_value", "conv_value", "pb_premium", "premium"):
         va[c] = pd.to_numeric(va[c], errors="coerce")
-    va = va.dropna(subset=["close"])          # 上市前/退市后的空行
+    va = va.dropna(subset=["close"])  # 上市前/退市后的空行
     va["code"] = code
     return va[_COLS]
 
@@ -104,7 +118,8 @@ def download(limit: int | None = None) -> None:
         if len(buf) >= SHARD_SIZE:
             idx = len(list(SHARD_DIR.glob("batch_*.parquet")))
             pd.concat(buf, ignore_index=True).to_parquet(
-                SHARD_DIR / f"batch_{idx:03d}.parquet")
+                SHARD_DIR / f"batch_{idx:03d}.parquet"
+            )
             buf = []
             st["done"] = sorted(done)
             _save_state(st)
@@ -116,7 +131,8 @@ def download(limit: int | None = None) -> None:
     if buf:
         idx = len(list(SHARD_DIR.glob("batch_*.parquet")))
         pd.concat(buf, ignore_index=True).to_parquet(
-            SHARD_DIR / f"batch_{idx:03d}.parquet")
+            SHARD_DIR / f"batch_{idx:03d}.parquet"
+        )
     st["done"] = sorted(done)
     _save_state(st)
     print(f"完成: 本次成功 {ok_n}/{len(pending)}, 累计 {len(done)}")
@@ -135,17 +151,21 @@ def merge() -> None:
     # QC2: 面值100的品种, <10元必为数据错误(真实 distressed 底部≈18元, 保留)
     df = df[df["close"] >= 10]
     n1, b1 = len(df), df["code"].nunique()
-    print(f"QC: 剔除老式分离债/垃圾行 {b0-b1} 只, {n0-n1:,} 行")
+    print(f"QC: 剔除老式分离债/垃圾行 {b0 - b1} 只, {n0 - n1:,} 行")
     out = DATA_DIR / "value_analysis.parquet"
     df.to_parquet(out)
     uni = pd.read_parquet(DATA_DIR / "universe.parquet")
-    print(f"已合并 {out.name}: {len(df):,} 行, {df['code'].nunique()} 只, "
-          f"{df['date'].min().date()} ~ {df['date'].max().date()}")
+    print(
+        f"已合并 {out.name}: {len(df):,} 行, {df['code'].nunique()} 只, "
+        f"{df['date'].min().date()} ~ {df['date'].max().date()}"
+    )
     # 质检: 违约退市债样本 123015(蓝盾) 必须在且尾部完整
     d = df[df["code"] == "123015"]
     if len(d):
-        print(f"质检 123015(蓝盾,违约退市): {len(d)} 行, "
-              f"至 {d['date'].max().date()}, 最后收盘 {d['close'].iloc[-1]} (预期≈26.9)")
+        print(
+            f"质检 123015(蓝盾,违约退市): {len(d)} 行, "
+            f"至 {d['date'].max().date()}, 最后收盘 {d['close'].iloc[-1]} (预期≈26.9)"
+        )
     else:
         print("质检 警告: 123015 缺失!")
     missing = set(uni["code"]) - set(df["code"])
@@ -158,8 +178,10 @@ def status() -> None:
     total = len(pd.read_parquet(uni_path)) if uni_path.exists() else "?"
     shards = sorted(SHARD_DIR.glob("batch_*.parquet")) if SHARD_DIR.exists() else []
     merged = DATA_DIR / "value_analysis.parquet"
-    print(f"universe: {total} 只 | state 已完成: {len(st['done'])} | "
-          f"分片: {len(shards)} 个 | 合并文件: {'有' if merged.exists() else '无'}")
+    print(
+        f"universe: {total} 只 | state 已完成: {len(st['done'])} | "
+        f"分片: {len(shards)} 个 | 合并文件: {'有' if merged.exists() else '无'}"
+    )
 
 
 def main() -> None:

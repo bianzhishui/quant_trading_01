@@ -107,6 +107,8 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 
 ## 8. 禁忌清单
 
+- ✅ **每次改动 Python 代码后必须格式化**：`uv run ruff format .` + `uv run ruff check .`
+  （ruff 默认格式风格，已配 pyproject；提交前 check 必须 0 错误；pre-commit 可选装 `.pre-commit-config.yaml`）；
 - ❌ 不跑多次重回测去"试"：share 级回放 10-20 分钟，**先预注册、后台跑、不重复**；
 - ❌ 不改冻结参数 / 不改 R5 选股逻辑；
 - ❌ 不提交 `output/*.csv`、`output/*.png`（gitignored，可再生成）；

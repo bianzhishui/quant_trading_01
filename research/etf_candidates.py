@@ -8,6 +8,7 @@
 
 用法: uv run python research/etf_candidates.py
 """
+
 from __future__ import annotations
 
 import sys
@@ -25,12 +26,14 @@ POOL = {
     "159845": "中证1000ETF(华夏)",
     "510300": "沪深300ETF(华泰柏瑞, 对照)",
 }
-K_SNAP = np.array([0.2, 0.25, 1/3, 0.5, 2, 3, 4, 5, 8, 10])
+K_SNAP = np.array([0.2, 0.25, 1 / 3, 0.5, 2, 3, 4, 5, 8, 10])
 THRESH = 0.30
 
-ERAS = {"2014-2017": ("2014-01-01", "2017-12-31"),
-        "2018-2021": ("2018-01-01", "2021-12-31"),
-        "2022-2026": ("2022-01-01", None)}
+ERAS = {
+    "2014-2017": ("2014-01-01", "2017-12-31"),
+    "2018-2021": ("2018-01-01", "2021-12-31"),
+    "2022-2026": ("2022-01-01", None),
+}
 
 
 def glue_splits(px: pd.Series, name: str) -> pd.Series:
@@ -45,9 +48,11 @@ def glue_splits(px: pd.Series, name: str) -> pd.Series:
         raw_k = px.loc[px.index[px.index.get_loc(d) - 1]] / px.loc[d]
         k = float(K_SNAP[np.argmin(np.abs(np.log(K_SNAP) - np.log(raw_k)))])
         err = abs(raw_k - k) / k
-        print(f"[{name}] {d.date()}: {px.loc[px.index[px.index.get_loc(d)-1]]:.3f} → "
-              f"{px.loc[d]:.3f} (raw k={raw_k:.4f} → 推断份额倍数 k={k:g}, 偏差{err:.1%})")
-        adj[adj.index < d] *= (1 / k)
+        print(
+            f"[{name}] {d.date()}: {px.loc[px.index[px.index.get_loc(d) - 1]]:.3f} → "
+            f"{px.loc[d]:.3f} (raw k={raw_k:.4f} → 推断份额倍数 k={k:g}, 偏差{err:.1%})"
+        )
+        adj[adj.index < d] *= 1 / k
     return adj
 
 
@@ -55,10 +60,12 @@ def metrics(px: pd.Series) -> dict:
     px = px.dropna()
     r = px.pct_change().dropna()
     yrs = len(px) / 244
-    return {"年化": (px.iloc[-1] / px.iloc[0]) ** (1 / yrs) - 1,
-            "波动": r.std() * np.sqrt(244),
-            "夏普": r.mean() / r.std() * np.sqrt(244),
-            "回撤": float((px / px.cummax() - 1).min())}
+    return {
+        "年化": (px.iloc[-1] / px.iloc[0]) ** (1 / yrs) - 1,
+        "波动": r.std() * np.sqrt(244),
+        "夏普": r.mean() / r.std() * np.sqrt(244),
+        "回撤": float((px / px.cummax() - 1).min()),
+    }
 
 
 def main() -> None:
@@ -69,13 +76,19 @@ def main() -> None:
         g = glue_splits(px, code)
         fixed[code] = g
         m = metrics(g)
-        print(f"  {code} {name}: 起点 {g.index[0].date()}, 年化 {m['年化']:+.1%}, "
-              f"波动 {m['波动']:.1%}, 夏普 {m['夏普']:.2f}, 回撤 {m['回撤']:.1%}, "
-              f"最新价 {g.iloc[-1]:.3f} (1手≈{g.iloc[-1]*100:,.0f}元)\n")
+        print(
+            f"  {code} {name}: 起点 {g.index[0].date()}, 年化 {m['年化']:+.1%}, "
+            f"波动 {m['波动']:.1%}, 夏普 {m['夏普']:.2f}, 回撤 {m['回撤']:.1%}, "
+            f"最新价 {g.iloc[-1]:.3f} (1手≈{g.iloc[-1] * 100:,.0f}元)\n"
+        )
 
     # 交叉验证: 修正后 ETF vs 真实指数(价格口径, ETF≈指数+分红-费率)
     print("== 交叉验证(修正后ETF年化 vs 真实指数年化, 差值应≈分红-费率≈+1pp) ==")
-    for code, idx_code in [("510500", "000905"), ("512100", "000852"), ("510300", "000300")]:
+    for code, idx_code in [
+        ("510500", "000905"),
+        ("512100", "000852"),
+        ("510300", "000300"),
+    ]:
         etf = fixed[code]
         idx = load_index_daily(idx_code, start="20140101", refresh=False)["close"]
         idx = idx.reindex(etf.index).ffill()
@@ -84,7 +97,7 @@ def main() -> None:
         yrs = len(e) / 244
         me = (e.iloc[-1] / e.iloc[0]) ** (1 / yrs) - 1
         mi = (i.iloc[-1] / i.iloc[0]) ** (1 / yrs) - 1
-        print(f"  {code} vs {idx_code}: {me:+.2%} vs {mi:+.2%} → 差 {me-mi:+.2%}/年")
+        print(f"  {code} vs {idx_code}: {me:+.2%} vs {mi:+.2%} → 差 {me - mi:+.2%}/年")
 
     print("\n== 分年代年化(修正后) ==")
     rows = []
@@ -93,7 +106,11 @@ def main() -> None:
         row = {"代码": code, "名称": name}
         for era, (s, t) in ERAS.items():
             seg = px[s:t] if t else px[s:]
-            row[era] = (seg.iloc[-1] / seg.iloc[0]) ** (244 / len(seg)) - 1 if len(seg) > 100 else np.nan
+            row[era] = (
+                (seg.iloc[-1] / seg.iloc[0]) ** (244 / len(seg)) - 1
+                if len(seg) > 100
+                else np.nan
+            )
         rows.append(row)
     print(pd.DataFrame(rows).to_string(index=False, float_format=lambda v: f"{v:+.1%}"))
 

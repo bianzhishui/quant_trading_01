@@ -8,6 +8,7 @@ v2 优化（降发热/降I/O）: 原版每 500 只就全量重写 879万行 parq
 改为**内存攒批 + 结尾一次性原子写**(读1次+写1次), 中断则主文件保持原样(守卫会拦截半成品)。
 用法: python research/fetch_daily_incremental.py [2026-09-04]
 """
+
 from __future__ import annotations
 
 import os
@@ -17,16 +18,32 @@ from pathlib import Path
 
 import pandas as pd
 
-OUT = Path(__file__).resolve().parent.parent / "data" / "fundamental" / "full_daily.parquet"
+OUT = (
+    Path(__file__).resolve().parent.parent
+    / "data"
+    / "fundamental"
+    / "full_daily.parquet"
+)
 TMP = OUT.with_suffix(".parquet.tmp")
 DATE = sys.argv[1] if len(sys.argv) > 1 else "2026-09-04"
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
-KEEP = ["date", "code", "close", "pbMRQ", "turn", "amount", "peTTM", "tradestatus", "isST"]
+KEEP = [
+    "date",
+    "code",
+    "close",
+    "pbMRQ",
+    "turn",
+    "amount",
+    "peTTM",
+    "tradestatus",
+    "isST",
+]
 PRINT_EVERY = 500
 
 
 def main() -> None:
     import baostock as bs
+
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
 
@@ -34,14 +51,18 @@ def main() -> None:
     codes = sorted(d["code"].unique())
     have = set(d[d["date"] == pd.Timestamp(DATE)]["code"])
     todo = [c for c in codes if c not in have]
-    print(f"共 {len(codes)} 只, {DATE} 已有 {len(codes) - len(todo)}, 待补 {len(todo)}", flush=True)
+    print(
+        f"共 {len(codes)} 只, {DATE} 已有 {len(codes) - len(todo)}, 待补 {len(todo)}",
+        flush=True,
+    )
     if not todo:
         print("无需补充", flush=True)
         bs.logout()
         return
     # 单只探测: 该日数据源是否已发布(避免整市查空)
-    probe = bs.query_history_k_data_plus(codes[0], "date", start_date=DATE, end_date=DATE,
-                                         frequency="d", adjustflag="2")
+    probe = bs.query_history_k_data_plus(
+        codes[0], "date", start_date=DATE, end_date=DATE, frequency="d", adjustflag="2"
+    )
     if not (probe.error_code == "0" and probe.next()):
         print(f"⚠️ 数据源尚未发布 {DATE} 的行情 (单只探测为空), 跳过本轮", flush=True)
         bs.logout()
@@ -52,8 +73,9 @@ def main() -> None:
     t0 = time.time()
     for i, c in enumerate(todo, 1):
         try:
-            rs = bs.query_history_k_data_plus(c, FIELDS, start_date=DATE, end_date=DATE,
-                                              frequency="d", adjustflag="2")
+            rs = bs.query_history_k_data_plus(
+                c, FIELDS, start_date=DATE, end_date=DATE, frequency="d", adjustflag="2"
+            )
             rows = []
             while rs.error_code == "0" and rs.next():
                 rows.append(rs.get_row_data())
@@ -71,8 +93,10 @@ def main() -> None:
             n_now = len(have) + sum(len(b) for b in buf)
             rate = i / (time.time() - t0) * 60
             eta = (len(todo) - i) / max(rate, 1e-9) / 60
-            print(f"  [{i}/{len(todo)}] 已抓 {n_now} 只 | 失败 {fail} | {rate:.0f}只/分 | 预计剩 {eta:.0f} 分钟",
-                  flush=True)
+            print(
+                f"  [{i}/{len(todo)}] 已抓 {n_now} 只 | 失败 {fail} | {rate:.0f}只/分 | 预计剩 {eta:.0f} 分钟",
+                flush=True,
+            )
         time.sleep(0.1)
     bs.logout()
 
@@ -81,12 +105,19 @@ def main() -> None:
         return
     new = pd.concat(buf, ignore_index=True)
     big = pd.concat([d, new], ignore_index=True)
-    big = big.drop_duplicates(subset=["date", "code"]).sort_values("date").reset_index(drop=True)
+    big = (
+        big.drop_duplicates(subset=["date", "code"])
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
     # 原子写: 先写临时文件再替换, 中断不损坏主文件
     big.to_parquet(TMP)
     os.replace(TMP, OUT)
     n_final = int(big[big["date"] == pd.Timestamp(DATE)]["code"].nunique())
-    print(f"完成: {DATE} 共 {n_final} 只, 失败 {fail} (一次性原子写, 读1次/写1次)", flush=True)
+    print(
+        f"完成: {DATE} 共 {n_final} 只, 失败 {fail} (一次性原子写, 读1次/写1次)",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

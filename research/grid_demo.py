@@ -13,6 +13,7 @@
     ② 510300 沪深300 牛市段 2019-2021 (趋势向上 -> 网格应跑输持有)
     ③ 510300 沪深300 熊市段 2022-2024 (趋势向下 -> 网格应少亏但仍亏)
 """
+
 from __future__ import annotations
 
 import sys
@@ -27,16 +28,15 @@ from src.data_loader import _fetch_fund_sina
 COST = 1e-3  # 单边0.1%(含滑点)
 
 
-def grid_backtest(close: pd.Series, n_grids: int = 10,
-                  lookback: int = 500) -> dict:
+def grid_backtest(close: pd.Series, n_grids: int = 10, lookback: int = 500) -> dict:
     """区间取过去lookback日的最低/最高价(固定后不重画), 模拟逐日穿越。"""
     c = close.dropna()
     lo, hi = c.iloc[-lookback:].min(), c.iloc[-lookback:].max()
-    levels = np.linspace(lo, hi, n_grids + 1)[1:-1]      # 内部格子线
-    budget = 1.0                                          # 总预算归一化
-    unit = budget / n_grids                               # 每格买入金额
+    levels = np.linspace(lo, hi, n_grids + 1)[1:-1]  # 内部格子线
+    budget = 1.0  # 总预算归一化
+    unit = budget / n_grids  # 每格买入金额
 
-    cash, units = budget, {}                              # units: {格线: 买入价}
+    cash, units = budget, {}  # units: {格线: 买入价}
     nav = []
     for dt, px in c.items():
         # 先卖: 价格站上格线上方 -> 卖出该格持仓
@@ -53,19 +53,26 @@ def grid_backtest(close: pd.Series, n_grids: int = 10,
 
     nav = pd.Series(nav, index=c.index)
     bh = c / c.iloc[0]
-    return {"网格总收益": nav.iloc[-1] - 1, "买入持有": bh.iloc[-1] - 1,
-            "网格回撤": float((nav / nav.cummax() - 1).min()),
-            "持有回撤": float((bh / bh.cummax() - 1).min()),
-            "成交次数": int((n_grids - len(units)) * 2),  # 近似: 已平仓的格
-            "剩余套牢格数": len(units), "nav": nav, "bh": bh}
+    return {
+        "网格总收益": nav.iloc[-1] - 1,
+        "买入持有": bh.iloc[-1] - 1,
+        "网格回撤": float((nav / nav.cummax() - 1).min()),
+        "持有回撤": float((bh / bh.cummax() - 1).min()),
+        "成交次数": int((n_grids - len(units)) * 2),  # 近似: 已平仓的格
+        "剩余套牢格数": len(units),
+        "nav": nav,
+        "bh": bh,
+    }
 
 
 def report(name: str, r: dict) -> None:
     print(f"\n■ {name}")
     print(f"  网格策略: 收益 {r['网格总收益']:+.1%}  回撤 {r['网格回撤']:.1%}")
     print(f"  买入持有: 收益 {r['买入持有']:+.1%}  回撤 {r['持有回撤']:.1%}")
-    print(f"  网格 vs 持有 超额: {r['网格总收益'] - r['买入持有']:+.1%}"
-          f"   套牢未平格: {r['剩余套牢格数']}")
+    print(
+        f"  网格 vs 持有 超额: {r['网格总收益'] - r['买入持有']:+.1%}"
+        f"   套牢未平格: {r['剩余套牢格数']}"
+    )
 
 
 def main() -> None:
@@ -73,11 +80,13 @@ def main() -> None:
     etf = _fetch_fund_sina("512880", "20160101", "20260831")["close"]
     hs = _fetch_fund_sina("510300", "20160101", "20260831")["close"]
 
-    print(f"512880 震荡性检验: 全历史区间 {etf.min():.2f}~{etf.max():.2f},"
-          f" 首尾 {etf.iloc[0]:.2f}→{etf.iloc[-1]:.2f}")
+    print(
+        f"512880 震荡性检验: 全历史区间 {etf.min():.2f}~{etf.max():.2f},"
+        f" 首尾 {etf.iloc[0]:.2f}→{etf.iloc[-1]:.2f}"
+    )
     report("① 证券ETF 512880 全历史 (震荡市假设)", grid_backtest(etf))
 
-    print(f"\n510300 分段验证(同一套网格参数):")
+    print("\n510300 分段验证(同一套网格参数):")
     report("② 牛市段 2019-01 ~ 2021-12", grid_backtest(hs["2019-01-01":"2021-12-31"]))
     report("③ 熊市段 2022-01 ~ 2024-09", grid_backtest(hs["2022-01-01":"2024-09-30"]))
 

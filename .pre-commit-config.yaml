@@ -1,0 +1,9 @@
+# pre-commit: 每次提交自动 ruff 格式化 + 检查
+# 安装: uv tool install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-format   # 代码格式(riff 默认风格)
+      - id: ruff          # lint(默认安全集 E4/E7/E9/F)
+        args: [--fix]

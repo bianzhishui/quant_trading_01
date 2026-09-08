@@ -9,6 +9,7 @@
 
 用法: python research/scenario_ytd.py [--start 2025-01-01]   (默认 2026-01-01)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import (OUT, PaperPortfolio, _load, _load_corp, r5_rebalances)
+from research.paper_trade import OUT, PaperPortfolio, _load, _load_corp, r5_rebalances
 from research.paper_live import _factor_panel
 
 
@@ -42,18 +43,24 @@ def main():
 
     # 起始后首个执行日 (= 指定日期的建仓日)
     rb0 = next(r for r in rebs if r["exec"].date() >= start.date())
-    rb_by_exec = {r["exec"]: r for r in rebs
-                  if r["T"] >= rb0["T"] and r["exec"] <= idx[-1]
-                  and (end is None or r["exec"] <= end)}
+    rb_by_exec = {
+        r["exec"]: r
+        for r in rebs
+        if r["T"] >= rb0["T"]
+        and r["exec"] <= idx[-1]
+        and (end is None or r["exec"] <= end)
+    }
     i0 = idx.get_loc(rb0["exec"])
     i1 = idx.get_indexer([end], method="ffill")[0] if end is not None else len(idx) - 1
 
-    print(f"== 建仓场景: 信号 {rb0['T'].date()} → 建仓执行 {rb0['exec'].date()} "
-          f"({len(rb_by_exec)} 次月频调仓, 至 {idx[i1].date()}) ==")
+    print(
+        f"== 建仓场景: 信号 {rb0['T'].date()} → 建仓执行 {rb0['exec'].date()} "
+        f"({len(rb_by_exec)} 次月频调仓, 至 {idx[i1].date()}) =="
+    )
     for aum in [600_000, 1_000_000, 3_000_000, 6_000_000]:
         pf = PaperPortfolio(aum)
         navs = []
-        funds_rows = []           # 每次调仓的资金变动
+        funds_rows = []  # 每次调仓的资金变动
         prev_post = None
         for i in range(i0, i1 + 1):
             prices = raw.iloc[i]
@@ -70,46 +77,95 @@ def main():
                 post_nav = pf.value(prices)
                 buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
                 sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
-                fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
-                funds_rows.append({
-                    "date": str(idx[i].date()), "pre_nav": pre_nav, "post_nav": post_nav,
-                    "mret": (post_nav / prev_post - 1) * 100 if prev_post is not None else None,
-                    "buy": buy, "sell": sell,
-                    "turnover": (buy + sell) / 2 / pre_nav * 100 if pre_nav else 0.0,
-                    "fee": fee, "div": pf.div_cash - div_before,
-                    "cash": pf.cash, "pos": post_nav - pf.cash})
+                fee = sum(
+                    t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades
+                )
+                funds_rows.append(
+                    {
+                        "date": str(idx[i].date()),
+                        "pre_nav": pre_nav,
+                        "post_nav": post_nav,
+                        "mret": (post_nav / prev_post - 1) * 100
+                        if prev_post is not None
+                        else None,
+                        "buy": buy,
+                        "sell": sell,
+                        "turnover": (buy + sell) / 2 / pre_nav * 100
+                        if pre_nav
+                        else 0.0,
+                        "fee": fee,
+                        "div": pf.div_cash - div_before,
+                        "cash": pf.cash,
+                        "pos": post_nav - pf.cash,
+                    }
+                )
                 prev_post = post_nav
                 pf.trades = []
             navs.append(pf.value(prices))
-        nav = pd.Series(navs, index=idx[i0:i1 + 1])
+        nav = pd.Series(navs, index=idx[i0 : i1 + 1])
         ret = nav.pct_change() * 100
-        df = pd.DataFrame({"date": nav.index.strftime("%Y-%m-%d"), "nav": nav.round(2),
-                           "涨幅%": ret.round(4),
-                           "较本金盈亏": (nav - aum).round(2)})
-        out = OUT / f"daily_nav_{prefix}_aum{int(aum/1e4)}w.csv"
+        df = pd.DataFrame(
+            {
+                "date": nav.index.strftime("%Y-%m-%d"),
+                "nav": nav.round(2),
+                "涨幅%": ret.round(4),
+                "较本金盈亏": (nav - aum).round(2),
+            }
+        )
+        out = OUT / f"daily_nav_{prefix}_aum{int(aum / 1e4)}w.csv"
         df.to_csv(out, index=False)
         # 月度资金变动 CSV (与 paper_live 同列)
-        fdf = pd.DataFrame([{
-            "date": r["date"], "pre_nav": r["pre_nav"], "post_nav": r["post_nav"],
-            "月涨幅%": r["mret"], "买入额": r["buy"], "卖出额": r["sell"],
-            "换手率%": r["turnover"], "费用": r["fee"], "分红入账": r["div"],
-            "期末现金": r["cash"], "期末持仓": r["pos"],
-            "较本金盈亏": r["post_nav"] - aum} for r in funds_rows])
-        fdf = fdf[["date", "pre_nav", "post_nav", "月涨幅%", "买入额", "卖出额",
-                   "换手率%", "费用", "分红入账", "期末现金", "期末持仓", "较本金盈亏"]]
-        fout = OUT / f"monthly_funds_{prefix}_aum{int(aum/1e4)}w.csv"
+        fdf = pd.DataFrame(
+            [
+                {
+                    "date": r["date"],
+                    "pre_nav": r["pre_nav"],
+                    "post_nav": r["post_nav"],
+                    "月涨幅%": r["mret"],
+                    "买入额": r["buy"],
+                    "卖出额": r["sell"],
+                    "换手率%": r["turnover"],
+                    "费用": r["fee"],
+                    "分红入账": r["div"],
+                    "期末现金": r["cash"],
+                    "期末持仓": r["pos"],
+                    "较本金盈亏": r["post_nav"] - aum,
+                }
+                for r in funds_rows
+            ]
+        )
+        fdf = fdf[
+            [
+                "date",
+                "pre_nav",
+                "post_nav",
+                "月涨幅%",
+                "买入额",
+                "卖出额",
+                "换手率%",
+                "费用",
+                "分红入账",
+                "期末现金",
+                "期末持仓",
+                "较本金盈亏",
+            ]
+        ]
+        fout = OUT / f"monthly_funds_{prefix}_aum{int(aum / 1e4)}w.csv"
         fdf.to_csv(fout, index=False)
         cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
-        print(f"\n[{int(aum/1e4)}万] {nav.index[0].date()} → {nav.index[-1].date()} "
-              f"({len(nav)-1} 个交易日) | 期间累计 {cum:+.2f}% | 资金文件 {fout.name}")
-        print(f"  近3次调仓资金变动(买/卖/换手/费用/月涨, 万):")
+        print(
+            f"\n[{int(aum / 1e4)}万] {nav.index[0].date()} → {nav.index[-1].date()} "
+            f"({len(nav) - 1} 个交易日) | 期间累计 {cum:+.2f}% | 资金文件 {fout.name}"
+        )
+        print("  近3次调仓资金变动(买/卖/换手/费用/月涨, 万):")
         for r in funds_rows[-3:]:
             m = r["mret"]
             m_s = f"{m:+.2f}%" if m is not None else "建仓"
-            print(f"    {r['date']}: 买 {r['buy']/1e4:.1f} / 卖 {r['sell']/1e4:.1f} "
-                  f"| 换手 {r['turnover']:.1f}% | 费 {r['fee']:.0f}元 | {m_s}")
+            print(
+                f"    {r['date']}: 买 {r['buy'] / 1e4:.1f} / 卖 {r['sell'] / 1e4:.1f} "
+                f"| 换手 {r['turnover']:.1f}% | 费 {r['fee']:.0f}元 | {m_s}"
+            )
 
 
 if __name__ == "__main__":
     main()
-

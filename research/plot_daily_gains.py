@@ -6,6 +6,7 @@
 上: 每日涨幅% (4条线); 下: 累计净值(建仓日=1.0)。
 用法: python research/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
 """
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +14,7 @@ import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -20,8 +22,14 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.paper_trade import OUT
 
-plt.rcParams["font.sans-serif"] = ["PingFang SC", "Hiragino Sans GB", "Arial Unicode MS",
-                                   "Heiti SC", "SimHei", "STHeiti"]
+plt.rcParams["font.sans-serif"] = [
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Arial Unicode MS",
+    "Heiti SC",
+    "SimHei",
+    "STHeiti",
+]
 plt.rcParams["axes.unicode_minus"] = False
 
 AUM_TAG = [("60w", "60万"), ("100w", "100万"), ("300w", "300万"), ("600w", "600万")]
@@ -33,8 +41,9 @@ def main():
     ap.add_argument("--prefix", default="20250101")
     ap.add_argument("--title", default="2025全年")
     args = ap.parse_args()
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(13, 9), sharex=True,
-                                   gridspec_kw={"height_ratios": [1, 1.6]})
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=(13, 9), sharex=True, gridspec_kw={"height_ratios": [1, 1.6]}
+    )
     for (tag, name), col in zip(AUM_TAG, COLORS):
         csv = OUT / f"daily_nav_{args.prefix}_aum{tag}.csv"
         df = pd.read_csv(csv, parse_dates=["date"])

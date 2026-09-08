@@ -8,12 +8,14 @@
 自检: s=0 无阻塞应复现 Round 7 (+4.6pp)。
 用法: uv run python research/factor_round8_live_validation.py
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +26,7 @@ plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.dividend_factor import month_last_days, metrics
-from research.reversal_factor import ERAS, build_pool, ew_nav
+from research.reversal_factor import build_pool, ew_nav
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"
@@ -39,7 +41,10 @@ LIMIT = 0.098
 def load_full():
     d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet")
     d["date"] = pd.to_datetime(d["date"])
-    piv = lambda c: d.pivot(index="date", columns="code", values=c).sort_index().loc[START:]
+
+    def piv(c):
+        return d.pivot(index="date", columns="code", values=c).sort_index().loc[START:]
+
     return piv("close"), piv("amount"), piv("tradestatus"), piv("isST")
 
 
@@ -51,7 +56,9 @@ def main() -> None:
     ind = pd.read_parquet(R2 / "industry_full.parquet").set_index("code")["industry"]
     ind = ind.reindex(close.columns).dropna()
 
-    amihud = ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    amihud = (
+        ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+    )
     mom = close.shift(21) / close.shift(250) - 1.0
     adv = amount.rolling(21).mean()
 
@@ -59,7 +66,7 @@ def main() -> None:
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
 
     # ---- 预计算每月信号: target set / exec_day / 池 / amihud pct / adv ----
-    rebs = []          # 每次调仓信息
+    rebs = []  # 每次调仓信息
     bench_sets = {}
     for k, T in enumerate(sig_days):
         e = pool.loc[T]
@@ -79,19 +86,29 @@ def main() -> None:
         sc = (pa + pm) / 2
         q = pd.qcut(sc.rank(method="first"), 5, labels=False)
         target = set(codes[q == 4])
-        rebs.append({
-            "T": T, "exec": exec_day, "target": target,
-            "pct_amihud": a.reindex(codes).rank(pct=True),
-            "adv": adv.loc[T], "amihud": a, "mom": m,
-        })
+        rebs.append(
+            {
+                "T": T,
+                "exec": exec_day,
+                "target": target,
+                "pct_amihud": a.reindex(codes).rank(pct=True),
+                "adv": adv.loc[T],
+                "amihud": a,
+                "mom": m,
+            }
+        )
     print(f"调仓期数 {len(rebs)}, 中性化池月均~2279 只")
 
     nav_bench, _ = ew_nav(ret, bench_sets, BASE)
     ann_bench = metrics(nav_bench)["年化"]
 
     # ---- 模拟器(普通循环) ----
-    def run(s: float, flat: float | None = None, block: bool = False,
-            collect_audit: bool = False):
+    def run(
+        s: float,
+        flat: float | None = None,
+        block: bool = False,
+        collect_audit: bool = False,
+    ):
         w = pd.Series(0.0, index=ret.columns)
         navs = np.ones(len(idx))
         n_block_enter = n_block_exit = 0
@@ -104,9 +121,15 @@ def main() -> None:
                 r_exec = ret.loc[dt]
                 blocked_entry = blocked_exit = set()
                 if block:
-                    blocked_entry = {c for c in target if c in r_exec.index and r_exec[c] >= LIMIT}
+                    blocked_entry = {
+                        c for c in target if c in r_exec.index and r_exec[c] >= LIMIT
+                    }
                     held = set(w[w > 0].index)
-                    blocked_exit = {c for c in (held - target) if c in r_exec.index and r_exec[c] <= -LIMIT}
+                    blocked_exit = {
+                        c
+                        for c in (held - target)
+                        if c in r_exec.index and r_exec[c] <= -LIMIT
+                    }
                     n_block_enter += len(blocked_entry)
                     n_block_exit += len(blocked_exit)
                 target = set(target) - blocked_entry
@@ -135,8 +158,15 @@ def main() -> None:
                     for c in target:
                         ad = rb["adv"].get(c, np.nan)
                         if pd.notna(ad) and ad > 0:
-                            audit_rows.append({"date": dt, "code": c, "ADV": ad,
-                                               "N": n_new, "amihud_pct": rb["pct_amihud"].get(c, np.nan)})
+                            audit_rows.append(
+                                {
+                                    "date": dt,
+                                    "code": c,
+                                    "ADV": ad,
+                                    "N": n_new,
+                                    "amihud_pct": rb["pct_amihud"].get(c, np.nan),
+                                }
+                            )
             else:
                 r_row = ret.loc[dt]
                 navs[i] = navs[i - 1] * (1 + float((w * r_row).sum()))
@@ -166,8 +196,10 @@ def main() -> None:
     print(f"\n== 成本敏感度 (超额, 基准 {ann_bench:+.1%}) ==")
     for k, v in results.items():
         print(f"  {k}: {v:+.2%}")
-    print(f"  s=0 阻塞版: {excess_blk:+.2%} (阻塞损失 {e4:+.2%}) | "
-          f"买不进 {n_be} 次, 卖不出 {n_bx} 次")
+    print(
+        f"  s=0 阻塞版: {excess_blk:+.2%} (阻塞损失 {e4:+.2%}) | "
+        f"买不进 {n_be} 次, 卖不出 {n_bx} 次"
+    )
 
     # E3
     def pos_frac_stats(aum: float):
@@ -175,14 +207,16 @@ def main() -> None:
         aud2["pos"] = aum / aud2["N"]
         aud2["pos_frac"] = aud2["pos"] / aud2["ADV"]
         pf = aud2["pos_frac"]
-        return (pf.median(), pf.quantile(0.95),
-                (pf > 0.05).mean(), (pf > 0.10).mean())
+        return (pf.median(), pf.quantile(0.95), (pf > 0.05).mean(), (pf > 0.10).mean())
+
     rows_e3 = {}
     for aum in [10e6, 50e6]:
         p50, p95, gt5, gt10 = pos_frac_stats(aum)
-        rows_e3[f"AUM={aum/1e6:.0f}百万"] = dict(p50=p50, p95=p95, gt5=gt5, gt10=gt10)
-        print(f"  AUM={aum/1e6:.0f}百万: pos_frac p50 {p50:.2%} p95 {p95:.2%} "
-              f">5%占 {gt5:.1%} >10%占 {gt10:.1%}")
+        rows_e3[f"AUM={aum / 1e6:.0f}百万"] = dict(p50=p50, p95=p95, gt5=gt5, gt10=gt10)
+        print(
+            f"  AUM={aum / 1e6:.0f}百万: pos_frac p50 {p50:.2%} p95 {p95:.2%} "
+            f">5%占 {gt5:.1%} >10%占 {gt10:.1%}"
+        )
 
     # E1/E2/E3/E4
     e1 = results["s=40bp"] >= 0.02
@@ -191,7 +225,7 @@ def main() -> None:
     e4_ok = e4 < 0.01
     n_pass = sum([e1, e2, e3, e4_ok])
     verdict = {4: "通过", 3: "部分通过"}.get(n_pass, "未通过")
-    print(f"\n== 判定 ==")
+    print("\n== 判定 ==")
     print(f"  E1 s=40bp 超额≥+2pp: {results['s=40bp']:+.2%} → {e1}")
     print(f"  E2 flat70bp 超额>0: {results['flat70bp']:+.2%} → {e2}")
     print(f"  E3 AUM1000万 >10%占<10%: {rows_e3['AUM=10百万']['gt10']:.1%} → {e3}")
@@ -202,20 +236,32 @@ def main() -> None:
     last = rebs[-1]
     rows_live = []
     for c in sorted(last["target"]):
-        rows_live.append({"code": c, "行业": ind.get(c, ""), "权重": 1.0 / len(last["target"]),
-                          "Amihud": round(float(last["amihud"].get(c, np.nan)), 6),
-                          "动量": round(float(last["mom"].get(c, np.nan)), 4),
-                          "Amihud百分位": round(float(last["pct_amihud"].get(c, np.nan)), 3)})
+        rows_live.append(
+            {
+                "code": c,
+                "行业": ind.get(c, ""),
+                "权重": 1.0 / len(last["target"]),
+                "Amihud": round(float(last["amihud"].get(c, np.nan)), 6),
+                "动量": round(float(last["mom"].get(c, np.nan)), 4),
+                "Amihud百分位": round(float(last["pct_amihud"].get(c, np.nan)), 3),
+            }
+        )
     live = pd.DataFrame(rows_live).sort_values("Amihud百分位", ascending=False)
     live_out = OUT / "factor_round8_holdings_2026-09-03.csv"
     live.to_csv(live_out, index=False)
     print(f"\n== 模拟盘起点 ({last['T'].date()} 信号, {last['exec'].date()} 执行) ==")
     print(f"持仓 {len(live)} 只 | 已存 {live_out.name}")
-    print("Amihud百分位>0.8 的冷门股占比: "
-          f"{(live['Amihud百分位'] > 0.8).mean():.0%} (成本意识: 这些股执行成本高)")
+    print(
+        "Amihud百分位>0.8 的冷门股占比: "
+        f"{(live['Amihud百分位'] > 0.8).mean():.0%} (成本意识: 这些股执行成本高)"
+    )
 
-    pd.DataFrame({"臂": list(results) + [f"s=0阻塞"], "超额": list(results.values())
-                  + [excess_blk]}).to_csv(OUT / "factor_round8_summary.csv", index=False)
+    pd.DataFrame(
+        {
+            "臂": list(results) + ["s=0阻塞"],
+            "超额": list(results.values()) + [excess_blk],
+        }
+    ).to_csv(OUT / "factor_round8_summary.csv", index=False)
     fig, ax = plt.subplots(figsize=(11.5, 6))
     for s in [0, 20, 40, 60]:
         nav, *_ = run(s * 1e-4)
@@ -224,10 +270,12 @@ def main() -> None:
     for y in ("2018-01-01", "2022-01-01"):
         ax.axvline(pd.Timestamp(y), color="gray", ls="--", lw=0.8)
     ax.axhline(1.0, color="gray", lw=0.8)
-    ax.legend(); ax.grid(alpha=0.3)
+    ax.legend()
+    ax.grid(alpha=0.3)
     ax.set_title("Round 8 实盘化验证: 相对基准净值 (不同成本模型)")
-    fig.tight_layout(); fig.savefig(OUT / "factor_round8.png", dpi=130)
-    print(f"\nCSV: output/factor_round8_summary.csv | 图: output/factor_round8.png")
+    fig.tight_layout()
+    fig.savefig(OUT / "factor_round8.png", dpi=130)
+    print("\nCSV: output/factor_round8_summary.csv | 图: output/factor_round8.png")
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 复权说明：baostock adjustflag 中 ``"2"`` 为前复权（回测推荐）、
 ``"3"`` 为不复权；本模块对外统一用 ``adjust="qfq"/"hfq"/""`` 表达。
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -51,14 +52,19 @@ def _fetch_fund_sina(symbol: str, start: str, end: str) -> pd.DataFrame:
         raise RuntimeError(f"{symbol} 新浪未取到数据")
     raw["date"] = pd.to_datetime(raw["date"])
     raw = raw.set_index("date").sort_index()
-    mask = (raw.index >= pd.Timestamp(f"{start[:4]}-{start[4:6]}-{start[6:]}")) & \
-           (raw.index <= pd.Timestamp(f"{end[:4]}-{end[4:6]}-{end[6:]}"))
-    return raw.loc[mask, _COLS].apply(pd.to_numeric, errors="coerce") \
-              .dropna(subset=["close"])
+    mask = (raw.index >= pd.Timestamp(f"{start[:4]}-{start[4:6]}-{start[6:]}")) & (
+        raw.index <= pd.Timestamp(f"{end[:4]}-{end[4:6]}-{end[6:]}")
+    )
+    return (
+        raw.loc[mask, _COLS]
+        .apply(pd.to_numeric, errors="coerce")
+        .dropna(subset=["close"])
+    )
 
 
-def _fetch_baostock(bs_code: str, start: str, end: str,
-                    adjust_flag: str, is_index: bool) -> pd.DataFrame:
+def _fetch_baostock(
+    bs_code: str, start: str, end: str, adjust_flag: str, is_index: bool
+) -> pd.DataFrame:
     """用 baostock 拉日线；start/end 为 YYYY-MM-DD。失败抛 RuntimeError。"""
     import baostock as bs
 
@@ -66,13 +72,19 @@ def _fetch_baostock(bs_code: str, start: str, end: str,
     try:
         if lg.error_code != "0":
             raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
-        fields = ("date,open,high,low,close,volume,amount"
-                  if not is_index else
-                  "date,open,high,low,close,volume,amount")
+        fields = (
+            "date,open,high,low,close,volume,amount"
+            if not is_index
+            else "date,open,high,low,close,volume,amount"
+        )
         rs = bs.query_history_k_data_plus(
-            bs_code, fields, start_date=start, end_date=end,
+            bs_code,
+            fields,
+            start_date=start,
+            end_date=end,
             frequency="d",
-            adjustflag=adjust_flag if not is_index else "3")
+            adjustflag=adjust_flag if not is_index else "3",
+        )
         rows = []
         while rs.error_code == "0" and rs.next():
             rows.append(rs.get_row_data())
@@ -125,22 +137,31 @@ def load_stock_daily(
         df = pd.read_csv(cache, parse_dates=["date"], index_col="date")
         return df[_COLS]
 
-    if _is_fund(symbol):                   # 场内基金：baostock 覆盖不全，直接用新浪
+    if _is_fund(symbol):  # 场内基金：baostock 覆盖不全，直接用新浪
         df = _fetch_fund_sina(symbol, start, e)
         df.to_csv(cache)
         return df
 
-    try:                                   # 个股：首选 baostock
-        df = _fetch_baostock(_bs_symbol(symbol), _s, _e,
-                             _ADJUST_FLAG.get(adjust, "2"), is_index=False)
-    except Exception as exc:               # 兜底 akshare 东方财富源
+    try:  # 个股：首选 baostock
+        df = _fetch_baostock(
+            _bs_symbol(symbol), _s, _e, _ADJUST_FLAG.get(adjust, "2"), is_index=False
+        )
+    except Exception as exc:  # 兜底 akshare 东方财富源
         print(f"baostock 失败({exc})，改用 akshare...")
         import akshare as ak
-        cmap = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high",
-                "最低": "low", "成交量": "volume", "成交额": "amount"}
-        raw = ak.stock_zh_a_hist(symbol=symbol, period="daily",
-                                 start_date=start, end_date=e,
-                                 adjust=adjust)
+
+        cmap = {
+            "日期": "date",
+            "开盘": "open",
+            "收盘": "close",
+            "最高": "high",
+            "最低": "low",
+            "成交量": "volume",
+            "成交额": "amount",
+        }
+        raw = ak.stock_zh_a_hist(
+            symbol=symbol, period="daily", start_date=start, end_date=e, adjust=adjust
+        )
         if raw is None or raw.empty:
             raise RuntimeError(f"股票 {symbol} 两个数据源均未取到数据")
         df = raw.rename(columns=cmap)
@@ -175,12 +196,21 @@ def load_index_daily(
     except Exception as exc:
         print(f"baostock 指数失败({exc})，改用 akshare...")
         import akshare as ak
-        raw = ak.index_zh_a_hist(symbol=symbol, period="daily",
-                                 start_date=start, end_date=e)
+
+        raw = ak.index_zh_a_hist(
+            symbol=symbol, period="daily", start_date=start, end_date=e
+        )
         if raw is None or raw.empty:
             raise RuntimeError(f"指数 {symbol} 未取到数据")
-        cmap = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high",
-                "最低": "low", "成交量": "volume", "成交额": "amount"}
+        cmap = {
+            "日期": "date",
+            "开盘": "open",
+            "收盘": "close",
+            "最高": "high",
+            "最低": "low",
+            "成交量": "volume",
+            "成交额": "amount",
+        }
         df = raw.rename(columns=cmap)
         df["date"] = pd.to_datetime(df["date"])
         df = df.set_index("date").sort_index()[_COLS]
@@ -200,7 +230,13 @@ def make_synthetic_daily(n_days: int = 800, seed: int = 42) -> pd.DataFrame:
     low = np.minimum(open_, close) * (1 - abs(rng.normal(0, 0.006, n_days)))
     vol = rng.integers(5_000_000, 30_000_000, n_days).astype(float)
     return pd.DataFrame(
-        {"open": open_, "high": high, "low": low, "close": close,
-         "volume": vol, "amount": vol * close},
+        {
+            "open": open_,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": vol,
+            "amount": vol * close,
+        },
         index=pd.DatetimeIndex(idx, name="date"),
     )

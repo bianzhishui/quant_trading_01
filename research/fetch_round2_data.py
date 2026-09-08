@@ -14,6 +14,7 @@
   uv run python research/fetch_round2_data.py --baostock   # 只跑某源
   uv run python research/fetch_round2_data.py --roe --limit 20   # 试跑限数
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,6 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -35,23 +35,30 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 def _codes() -> list[str]:
     """直接从 universe.parquet 取 800 只代码（避免触发 load_all 的慢速 real 价计算）。"""
     u = pd.read_parquet(ROOT_DIR / "data" / "fundamental" / "universe.parquet")
-    return [c for c in u["code"].tolist()
-            if c.startswith(("sh.6", "sz.0", "sz.3"))]
+    return [c for c in u["code"].tolist() if c.startswith(("sh.6", "sz.0", "sz.3"))]
 
 
 # ---------------- baostock 扩展日线 ----------------
 def _bs_daily(code: str, start: str, end: str) -> pd.DataFrame:
     import baostock as bs
+
     rs = bs.query_history_k_data_plus(
-        code, "date,code,close,turn,amount,peTTM,tradestatus",
-        start_date=start, end_date=end, frequency="d", adjustflag="2")
+        code,
+        "date,code,close,turn,amount,peTTM,tradestatus",
+        start_date=start,
+        end_date=end,
+        frequency="d",
+        adjustflag="2",
+    )
     rows = []
     while rs.error_code == "0" and rs.next():
         rows.append(rs.get_row_data())
     if rs.error_code != "0":
         raise RuntimeError(rs.error_msg)
     if not rows:
-        return pd.DataFrame(columns=["date", "code", "close", "turn", "amount", "peTTM", "tradestatus"])
+        return pd.DataFrame(
+            columns=["date", "code", "close", "turn", "amount", "peTTM", "tradestatus"]
+        )
     df = pd.DataFrame(rows, columns=rs.fields)
     for c in ["close", "turn", "amount", "peTTM"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
@@ -61,6 +68,7 @@ def _bs_daily(code: str, start: str, end: str) -> pd.DataFrame:
 
 def fetch_baostock(start: str = "2013-01-01", limit: int | None = None) -> None:
     import baostock as bs
+
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
     frames: list[pd.DataFrame] = []
@@ -95,6 +103,7 @@ def fetch_baostock(start: str = "2013-01-01", limit: int | None = None) -> None:
 # ---------------- ROE 财务 ----------------
 def fetch_roe(limit: int | None = None) -> None:
     import akshare as ak
+
     frames: list[pd.DataFrame] = []
     done_f = OUT_DIR / "roe.parquet"
     if done_f.exists():
@@ -131,10 +140,16 @@ def fetch_roe(limit: int | None = None) -> None:
 # ---------------- 两融（月末采样） ----------------
 def fetch_margin() -> None:
     import akshare as ak
+
     close, *_ = load_all()
     sig_days = [d for d in close.index]
     # 用月末交易日
-    months = pd.Series(sig_days).groupby(pd.Series(sig_days).dt.to_period("M")).max().tolist()
+    months = (
+        pd.Series(sig_days)
+        .groupby(pd.Series(sig_days).dt.to_period("M"))
+        .max()
+        .tolist()
+    )
     frames: list[pd.DataFrame] = []
     done_f = OUT_DIR / "margin.parquet"
     if done_f.exists():
@@ -146,16 +161,23 @@ def fetch_margin() -> None:
     print(f"两融: 待抓 {len(dates)} 个月末", flush=True)
     for i, d in enumerate(dates, 1):
         ymd = d.strftime("%Y%m%d")
-        for mkt, fn in [("sse", ak.stock_margin_detail_sse), ("szse", ak.stock_margin_detail_szse)]:
+        for mkt, fn in [
+            ("sse", ak.stock_margin_detail_sse),
+            ("szse", ak.stock_margin_detail_szse),
+        ]:
             try:
                 df = fn(date=ymd)
                 if df is None or df.empty:
                     continue
                 if mkt == "sse":
-                    df = df.rename(columns={"标的证券代码": "code", "融资余额": "margin_bal"})
+                    df = df.rename(
+                        columns={"标的证券代码": "code", "融资余额": "margin_bal"}
+                    )
                     df["code"] = "sh." + df["code"].astype(str).str.zfill(6)
                 else:
-                    df = df.rename(columns={"证券代码": "code", "融资余额": "margin_bal"})
+                    df = df.rename(
+                        columns={"证券代码": "code", "融资余额": "margin_bal"}
+                    )
                     df["code"] = "sz." + df["code"].astype(str).str.zfill(6)
                 df = df[["code", "margin_bal"]].copy()
                 df["date"] = pd.Timestamp(d)
@@ -174,6 +196,7 @@ def fetch_margin() -> None:
 # ---------------- 北向持股 ----------------
 def fetch_hsgt(limit: int | None = None) -> None:
     import akshare as ak
+
     frames: list[pd.DataFrame] = []
     done_f = OUT_DIR / "hsgt.parquet"
     if done_f.exists():
@@ -190,7 +213,9 @@ def fetch_hsgt(limit: int | None = None) -> None:
             h = ak.stock_hsgt_individual_em(symbol=c[3:])
             if h is None or h.empty:
                 continue
-            h = h.rename(columns={"持股日期": "date", "持股数量占A股百分比": "hold_ratio"})
+            h = h.rename(
+                columns={"持股日期": "date", "持股数量占A股百分比": "hold_ratio"}
+            )
             h["date"] = pd.to_datetime(h["date"])
             h["code"] = c
             frames.append(h[["date", "code", "hold_ratio"]])
