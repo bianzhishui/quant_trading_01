@@ -107,6 +107,7 @@ def main() -> None:
     print(f"已落盘 {len(have)}, 待抓 {len(todo)}", flush=True)
 
     # 退市股的起止: 上市日→退市日(减少无效区间查询); 在市股用全局 START/END
+    # 与数据窗口 [2012-06-01, 2026-09-07] 无交集的(如 2006 年前退市)直接跳过
     sb_i = sb.set_index("code")
     buf: list[pd.DataFrame] = []
     done = 0
@@ -115,11 +116,17 @@ def main() -> None:
         start = "2012-06-01"
         end = "2026-09-07"
         if c in sb_i.index:
-            ipo = str(sb_i.at[c, "ipoDate"])[:10]
-            out_d = str(sb_i.at[c, "outDate"])[:10]
-            if out_d and out_d != "nan" and pd.notna(sb_i.at[c, "outDate"]):
-                end = min(end, out_d)  # 退市股只查到退市日
-            start = max(start, ipo) if ipo > start else start
+            ipo = sb_i.at[c, "ipoDate"]
+            out_d = sb_i.at[c, "outDate"]
+            if pd.notna(out_d) and str(out_d).strip():
+                end = min(end, str(out_d)[:10])  # 退市股只查到退市日
+            if pd.notna(ipo) and str(ipo).strip():
+                start = max(start, str(ipo)[:10])
+        if start >= end:
+            print(f"  跳过 {c}: 与数据窗口无交集 [{start}, {end})", flush=True)
+            done += 1
+            _watchdog_tick()
+            continue
         for attempt in range(3):
             try:
                 df = fetch_one(bs, c, start, end)
