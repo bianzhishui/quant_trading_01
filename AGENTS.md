@@ -23,8 +23,11 @@ A 股规则：T+1、1手=100股、涨跌停、佣金/印花/过户/红利税全�
 # 依赖用 uv 管理（pyproject.toml + uv.lock 可复现）
 uv sync                     # 建 .venv
 .venv/bin/python <script>   # 本项目通常直接 .venv/bin/python 跑
+uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cache), 无需外部权限
 ```
 
+- **uv 缓存已配置在项目内**（`uv.toml` 的 `cache-dir = ".uv-cache"`，已 gitignore）——
+  `uv run`/`uv sync` 不依赖工作区外的 `~/.cache/uv`，沙箱默认权限即可，**不要改回全局缓存**。
 - 工作目录 = 仓库根目录；**脚本都在 `research/` 下**。
 - 数据：`data/fundamental/full_daily.parquet`（全市场 879万+ 行，date/code/close/amount/tradestatus/isST…）、
   `data/round2/adjust_factor.parquet`（复权因子）、`data/round2/industry_full.parquet`（行业）。
