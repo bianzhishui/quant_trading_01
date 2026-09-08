@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from research.data_io import load_full_daily  # noqa: E402
+
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
@@ -40,7 +42,7 @@ START = "2013-06-01"
 
 def load_full() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """全市场: 返回 (close, amount, tst, isst) 宽表, 2013-06 起。"""
-    d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet")
+    d = load_full_daily()
     d["date"] = pd.to_datetime(d["date"])
 
     def _pivot(col: str) -> pd.DataFrame:

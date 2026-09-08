@@ -26,8 +26,9 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.dividend_factor import month_last_days, metrics
-from research.reversal_factor import build_pool, ew_nav
+from research.data_io import load_full_daily  # noqa: E402
+from research.dividend_factor import month_last_days, metrics  # noqa: E402
+from research.reversal_factor import build_pool, ew_nav  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"
@@ -45,7 +46,7 @@ DIV_TAX = 0.10  # 红利税 10% (1个月-1年持仓口径, 保守)
 
 
 def _load():
-    d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet")
+    d = load_full_daily()
     d["date"] = pd.to_datetime(d["date"])
 
     def piv(c):

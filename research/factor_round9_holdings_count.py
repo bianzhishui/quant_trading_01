@@ -15,6 +15,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from research.data_io import load_full_daily  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.dividend_factor import month_last_days, metrics
 from research.reversal_factor import build_pool, ew_nav
@@ -32,7 +34,7 @@ CUTS = [0.20, 0.10, 0.05, 0.02]
 
 def main() -> None:
     print("== Round 9 持仓数量敏感度 (预注册 v1.0) ==")
-    d = pd.read_parquet(ROOT / "data" / "fundamental" / "full_daily.parquet")
+    d = load_full_daily()
     d["date"] = pd.to_datetime(d["date"])
 
     def piv(c):

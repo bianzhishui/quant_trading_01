@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from research.data_io import load_full_daily
+
 ROOT = Path(__file__).resolve().parent.parent
 AUM_LIST = [
     (600_000, "60w"),
@@ -31,9 +33,7 @@ WD = "一二三四五六日"
 
 
 def data_max_date() -> str:
-    d = pd.read_parquet(
-        ROOT / "data" / "fundamental" / "full_daily.parquet", columns=["date"]
-    )
+    d = load_full_daily(columns=["date"])
     return str(d["date"].max().date())
 
 
@@ -44,9 +44,7 @@ def completeness_guard(date_s: str) -> tuple[bool, str]:
     基线取前5日最大值(抗单日异常+抗停牌抖动), 再加总code下限双保险。
     返回 (是否通过, 诊断信息)。
     """
-    d = pd.read_parquet(
-        ROOT / "data" / "fundamental" / "full_daily.parquet", columns=["date", "code"]
-    )
+    d = load_full_daily(columns=["date", "code"])
     cnt = d.groupby("date")["code"].count()
     dates = sorted(cnt.index)
     last_s = str(dates[-1].date())

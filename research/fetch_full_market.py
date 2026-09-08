@@ -1,13 +1,21 @@
 #!/usr/bin/env -S uv run --no-sync
 # -*- coding: utf-8 -*-
-"""全市场扩展数据抓取 v2 —— 去幸存者偏差（主连 + 中小板，非 300/688/北交）。
+"""全市场日线抓取 v3 —— 含退市股(去幸存者偏差, Round 17) + 按年分区存储。
 
-产出 data/fundamental/full_daily.parquet：date, code, close(qfq), pbMRQ, turn,
-amount, peTTM, tradestatus, isST。与现有 800 只管线同口径（adjustflag=2 前复权）。
+产出 data/fundamental/full_daily/ 年分区(2012.parquet...):
+date, code, close(qfq), pbMRQ, turn, amount, peTTM, tradestatus, isST。
+数值列 float64, 压缩 snappy(默认), 写盘 index=False + 原子写。
 
-v2 优化：内存缓冲 + 每 100 只批量写盘（避免 v1 每只重写分片的 O(n²) 开销）。
-断点续传：按 OUT 中已有 code 去重，中断重跑自动跳过。
-用法: uv run python research/fetch_full_market.py
+宇宙: data/fundamental/stock_basic.parquet 中 type=1 且 sh.60/sz.00, **status 不限
+(在市+退市都收, 修正退市股缺席的幸存者偏差)**。
+
+容错:
+- 断点续传: 已落盘 code 自动跳过, 中断重跑即续
+- 会话失效("用户未登录"): fail-fast 退出(码3), 本环境 logout+login 会制造坏会话
+- 看门狗: rs.next() 挂起 8 分钟无进展强制退出(码5)
+- 重试: 每只 3 次(网络错误退避 2s)
+
+用法: python research/fetch_full_market.py
 """
 
 from __future__ import annotations
@@ -16,35 +24,18 @@ import os
 import sys
 import threading
 import time
-from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-OUT = (
-    Path(__file__).resolve().parent.parent
-    / "data"
-    / "fundamental"
-    / "full_daily.parquet"
+from research.data_io import (
+    full_daily_codes,
+    stock_basic,
+    universe_codes,
+    write_full_daily,
 )
-START = "2012-06-01"
-END = "2026-09-07"
-FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
-KEEP = [
-    "date",
-    "code",
-    "close",
-    "pbMRQ",
-    "turn",
-    "amount",
-    "peTTM",
-    "tradestatus",
-    "isST",
-]
+
 FLUSH_EVERY = 100
 STALL_LIMIT_S = 480  # 看门狗: 连续无进展(rs.next挂起)超过8分钟 → 强制退出由续传接管
-NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
 
 _wd_last = time.time()
 
@@ -57,7 +48,8 @@ def _watchdog_start():
             time.sleep(30)
             if time.time() - _wd_last > STALL_LIMIT_S:
                 print(
-                    "⚠️ 看门狗: 8分钟无进展(疑似挂起), 强制退出, 请重跑续传", flush=True
+                    "⚠️ 看门狗: 8分钟无进展(疑似挂起), 强制退出, 请重跑续传",
+                    flush=True,
                 )
                 os._exit(5)
 
@@ -69,42 +61,12 @@ def _watchdog_tick():
     _wd_last = time.time()
 
 
-def compact(df: pd.DataFrame) -> pd.DataFrame:
-    """写盘前压缩: 数值列→float32(相对精度不变), 供 zstd 更高压缩率。"""
-    out = df.copy()
-    for c in NUMERIC:
-        if c in out.columns:
-            out[c] = out[c].astype("float32")
-    return out
-
-
-def all_codes() -> list[str]:
-    import baostock as bs
-
-    rs = bs.query_stock_basic()
-    rows = []
-    while rs.error_code == "0" and rs.next():
-        rows.append(rs.get_row_data())
-    df = pd.DataFrame(rows, columns=rs.fields)
-    ok = df[(df["type"] == "1") & (df["status"] == "1")].copy()
-    return [c for c in ok["code"] if c.startswith(("sh.60", "sz.00"))]
-
-
-def local_codes() -> list[str] | None:
-    """从本地既有 parquet(含损坏备份)读代码清单 —— 不依赖 query_stock_basic
-    (该接口在本环境会挂起/截断会话)。返回 None 表示无本地来源。"""
-    for p in [OUT.with_suffix(".parquet.broken"), OUT]:
-        if p.exists():
-            try:
-                return sorted(pd.read_parquet(p, columns=["code"])["code"].unique())
-            except Exception:  # noqa: BLE001
-                continue
-    return None
-
-
-def fetch_one(bs, code: str) -> pd.DataFrame:
+def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
+    """抓单只全部历史(退市股止于退市日, baostock 保留)。停牌日(tradestatus≠1)不入库。"""
+    fields = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
+    keep = fields.split(",")
     rs = bs.query_history_k_data_plus(
-        code, FIELDS, start_date=START, end_date=END, frequency="d", adjustflag="2"
+        code, fields, start_date=start, end_date=end, frequency="d", adjustflag="2"
     )
     rows = []
     while rs.error_code == "0" and rs.next():
@@ -112,12 +74,12 @@ def fetch_one(bs, code: str) -> pd.DataFrame:
     if rs.error_code != "0":
         raise RuntimeError(f"{code}: {rs.error_msg}")
     if not rows:
-        return pd.DataFrame(columns=KEEP)
+        return pd.DataFrame(columns=keep)
     df = pd.DataFrame(rows, columns=rs.fields)
     for c in ["close", "pbMRQ", "turn", "amount", "peTTM"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     df["date"] = pd.to_datetime(df["date"])
-    return df[df["tradestatus"] == "1"][KEEP]
+    return df[df["tradestatus"] == "1"][keep]
 
 
 def main() -> None:
@@ -126,29 +88,37 @@ def main() -> None:
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
     # 单会话: 全程保持登录(本环境 baostock logout 后重登的会话查询会"用户未登录")
-    # 优先本地代码清单(query_stock_basic 在本环境会挂起/截断会话)
-    lc = local_codes()
-    codes = lc if lc else all_codes()
+    sb = stock_basic()
+    delisted = int(
+        ((sb["type"] == "1") & (sb["outDate"].notna()) & (sb["outDate"] != "")).sum()
+    )
+    codes = universe_codes()  # stock_basic: type=1, sh.60/sz.00, status 不限(含退市)
     print(
-        f"代码来源: {'本地parquet' if lc is not None else 'baostock stock_basic'} {len(codes)} 只",
+        f"宇宙: {len(codes)} 只 (stock_basic 权威清单, 含退市; 全类型退市 {delisted} 只)",
         flush=True,
     )
 
-    have = set()
-    if OUT.exists():
-        have = set(pd.read_parquet(OUT, columns=["code"])["code"].unique())
+    have = full_daily_codes()
     todo = [c for c in codes if c not in have]
-    print(
-        f"全市场: 共 {len(codes)} 只, 已完成 {len(have)}, 待抓 {len(todo)}", flush=True
-    )
+    print(f"已落盘 {len(have)}, 待抓 {len(todo)}", flush=True)
 
+    # 退市股的起止: 上市日→退市日(减少无效区间查询); 在市股用全局 START/END
+    sb_i = sb.set_index("code")
     buf: list[pd.DataFrame] = []
     done = 0
-    _watchdog_start()  # 防 rs.next() 挂死进程
+    _watchdog_start()
     for i, c in enumerate(todo, 1):
+        start = "2012-06-01"
+        end = "2026-09-07"
+        if c in sb_i.index:
+            ipo = str(sb_i.at[c, "ipoDate"])[:10]
+            out_d = str(sb_i.at[c, "outDate"])[:10]
+            if out_d and out_d != "nan" and pd.notna(sb_i.at[c, "outDate"]):
+                end = min(end, out_d)  # 退市股只查到退市日
+            start = max(start, ipo) if ipo > start else start
         for attempt in range(3):
             try:
-                df = fetch_one(bs, c)
+                df = fetch_one(bs, c, start, end)
                 if len(df):
                     buf.append(df)
                 break
@@ -169,27 +139,13 @@ def main() -> None:
         done += 1
         _watchdog_tick()
         if done % FLUSH_EVERY == 0 or done == len(todo):
-            new = pd.concat(buf, ignore_index=True) if buf else None
-            buf = []
-            if new is not None:
-                prev = pd.read_parquet(OUT) if OUT.exists() else None
-                big = (
-                    pd.concat([prev, new], ignore_index=True)
-                    if prev is not None
-                    else new
-                )
-                big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
-                big = compact(big)
-                # 原子写: 先写临时文件再替换, 中断不损坏主文件
-                big.to_parquet(
-                    TMP := OUT.with_suffix(".parquet.tmp"),
-                    index=False,
-                    compression="zstd",
-                )
-                os.replace(TMP, OUT)
+            if buf:
+                new = pd.concat(buf, ignore_index=True)
+                buf = []
+                written = write_full_daily(new)  # 按年分区合并原子写(float64+snappy)
                 print(
-                    f"  [{done}/{len(todo)}] 累计 {big['code'].nunique()} 只 "
-                    f"{big.shape[0]:,} 行",
+                    f"  [{done}/{len(todo)}] 累计 {len(have) + done} 只 | "
+                    f"本次落盘 {sum(written.values()):,} 行",
                     flush=True,
                 )
     bs.logout()

@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from research.data_io import universe_codes  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 OUTF = ROOT / "data" / "round2" / "adjust_factor.parquet"
 OUTD = ROOT / "data" / "round2" / "dividends.parquet"
@@ -25,7 +27,8 @@ BACKOFF = 90
 
 
 def all_codes():
-    return sorted(pd.read_parquet(SRC, columns=["code"])["code"].unique().tolist())
+    """策略宇宙(含退市股): stock_basic type=1, sh.60/sz.00, status 不限。"""
+    return universe_codes()
 
 
 def save(path, buf):
