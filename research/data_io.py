@@ -65,16 +65,15 @@ def delist_map() -> dict[str, pd.Timestamp]:
     return {r["code"]: pd.Timestamp(r["outDate"]) for _, r in out.iterrows()}
 
 
-def write_full_daily(df: pd.DataFrame) -> dict[str, int]:
+def write_full_daily(df: pd.DataFrame) -> int:
     """按年分区原子写入(全量合并语义: df 与既有分区合并去重)。
 
-    返回 {年份: 写入行数}。供 fetch 脚本落盘; 调用方需已去重排序或交由本函数处理。
+    返回**真实全量行数**(全部年份分区之和, 用 parquet 元数据, 秒级)。
     """
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
     FULL_DIR.mkdir(parents=True, exist_ok=True)
-    written: dict[str, int] = {}
     for year, g in df.groupby("year"):
         path = FULL_DIR / f"{int(year)}.parquet"
         merged = g.drop(columns=["year"])
@@ -85,8 +84,12 @@ def write_full_daily(df: pd.DataFrame) -> dict[str, int]:
         tmp = path.with_suffix(".parquet.tmp")
         merged.to_parquet(tmp, index=False)  # snappy 默认, float64 保持
         os.replace(tmp, path)
-        written[str(int(year))] = len(merged)
-    return written
+    # 真实全量行数(元数据, 秒级)
+    import pyarrow.parquet as pq
+
+    return int(
+        sum(pq.ParquetFile(p).metadata.num_rows for p in FULL_DIR.glob("*.parquet"))
+    )
 
 
 def write_full_daily_replace(df: pd.DataFrame) -> dict[str, int]:

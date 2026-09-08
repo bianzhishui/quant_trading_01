@@ -107,10 +107,9 @@ def main() -> None:
     new = pd.concat(buf, ignore_index=True)
     big = pd.concat([load_full_daily(), new], ignore_index=True)
     big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
-    written = write_full_daily(big)  # 按年分区原子写(通常仅影响 1 个年份)
-    n_final = sum(written.values())
+    total = write_full_daily(big)  # 按年分区原子写, 返回真实全量行数
     print(
-        f"完成: {DATE} 现共 {n_final:,} 行, 失败 {fail} (按年分区原子写: {written})",
+        f"完成: {DATE} 现共 {total:,} 行, 失败 {fail} (按年分区原子写)",
         flush=True,
     )
 

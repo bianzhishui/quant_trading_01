@@ -153,10 +153,10 @@ def main() -> None:
             if buf:
                 new = pd.concat(buf, ignore_index=True)
                 buf = []
-                written = write_full_daily(new)  # 按年分区合并原子写(float64+snappy)
+                total_rows = write_full_daily(new)  # 按年分区合并原子写(float64+snappy)
                 print(
                     f"  [{done}/{len(todo)}] 累计 {len(have) + done} 只 | "
-                    f"本次落盘 {sum(written.values()):,} 行",
+                    f"全量 {total_rows:,} 行",
                     flush=True,
                 )
     bs.logout()
