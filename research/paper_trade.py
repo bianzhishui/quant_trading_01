@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.data_io import load_full_daily  # noqa: E402
+from research.data_io import delist_map, load_full_daily  # noqa: E402
 from research.dividend_factor import month_last_days, metrics  # noqa: E402
 from research.reversal_factor import build_pool, ew_nav  # noqa: E402
 
@@ -271,6 +271,31 @@ def replay_w(aum: float, slip: float = 0.0, min_notional: float = 3000.0):
     return exc
 
 
+def force_liquidate_delisted(
+    pf: PaperPortfolio,
+    delist: dict[str, pd.Timestamp],
+    dt: pd.Timestamp,
+    raw: pd.DataFrame,
+):
+    """Round 17 引擎语义A: 持仓股到退市日(outDate)强制以最后可得价清仓。
+
+    退市股 raw 经 ffill 后末价为最后交易价; 完全无价可依时归零(极端兜底)。
+    卖出走 _order(含费用), 与真实退市整理期卖出口径一致。
+    """
+    for c in list(pf.shares.keys()):
+        dl = delist.get(c)
+        if dl is None or dt < dl:
+            continue
+        px = raw.loc[dt, c]
+        if pd.isna(px):
+            s = raw.loc[:dt, c].dropna()
+            px = float(s.iloc[-1]) if len(s) else np.nan
+        if pd.notna(px):
+            pf._order(c, "sell", pf.shares[c], float(px))
+        else:
+            pf.shares.pop(c, None)  # 无价可依: 该持仓归零
+
+
 def replay(aum: float, slip: float = 0.0):
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
@@ -290,6 +315,7 @@ def replay(aum: float, slip: float = 0.0):
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
 
     pf = PaperPortfolio(aum, slip)
+    delist = delist_map()  # Round 17: 退市股清单(仅 type=1, 主板)
     idx = close.index
     F_prev = F.shift(1).fillna(F.iloc[0])
     navs, tot_fee = [], 0.0
@@ -300,6 +326,7 @@ def replay(aum: float, slip: float = 0.0):
         for c in list(pf.shares.keys()):
             if f_now[c] != f_prev[c]:
                 pf.corp_action_f(c, prices.get(c, np.nan), f_prev[c], f_now[c])
+        force_liquidate_delisted(pf, delist, dt, raw)  # Round 17 退市强制清仓
         rb = next((r for r in rebs if r["exec"] == dt), None)
         if rb is not None:
             pf.rebalance(rb["target"], prices, trad.loc[dt])
