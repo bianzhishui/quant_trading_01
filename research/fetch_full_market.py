@@ -85,7 +85,6 @@ def main() -> None:
 
     buf: list[pd.DataFrame] = []
     done = 0
-    t0 = time.time()
     for i, c in enumerate(todo, 1):
         for attempt in range(3):
             try:
@@ -107,10 +106,8 @@ def main() -> None:
                 big = pd.concat([prev, new], ignore_index=True) if prev is not None else new
                 big = big.drop_duplicates(subset=["date", "code"]).sort_values("date")
                 big.to_parquet(OUT)
-                rate = done / (time.time() - t0) * 60
-                eta = (len(todo) - done) / max(rate, 1e-9) / 60
                 print(f"  [{done}/{len(todo)}] 累计 {big['code'].nunique()} 只 "
-                      f"{big.shape[0]:,} 行 | {rate:.0f}只/分 | 预计还需 {eta:.0f} 分钟", flush=True)
+                      f"{big.shape[0]:,} 行", flush=True)
     bs.logout()
     print("全市场下载完成", flush=True)
 
