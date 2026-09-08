@@ -27,6 +27,10 @@ import time
 
 import pandas as pd
 
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from research.data_io import (
     full_daily_codes,
     stock_basic,

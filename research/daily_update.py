@@ -20,6 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from research.data_io import load_full_daily
 
 ROOT = Path(__file__).resolve().parent.parent

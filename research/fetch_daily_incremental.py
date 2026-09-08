@@ -18,6 +18,10 @@ import time
 
 import pandas as pd
 
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from research.data_io import full_daily_codes, load_full_daily, write_full_daily
 
 DATE = sys.argv[1] if len(sys.argv) > 1 else "2026-09-04"
