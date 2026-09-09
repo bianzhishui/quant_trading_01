@@ -502,15 +502,28 @@ def main():
     ap.add_argument("--aum", type=float, default=0.0)
     args = ap.parse_args()
     aums = [args.aum] if args.aum > 0 else [600_000, 1_000_000, 3_000_000, 6_000_000]
+    step_done = False
     for a in aums:
         if args.mode == "init":
             init_ledger(a)
         elif args.mode == "step":
             step(a)
+            step_done = True
         elif args.mode == "mark":
             mark(a)
         else:
             report(a)
+    # Round18 因子失效监控: step 完成后打印状态灯摘要(失败仅提示, 不影响 step 结果)
+    if step_done:
+        try:
+            from research.factor_health import factor_health_summary  # noqa: PLC0415
+
+            factor_health_summary()
+        except Exception as e:  # noqa: BLE001 — 监控失败不阻断运营
+            print(
+                f"  [提示] 因子健康摘要跳过 ({type(e).__name__}: {e}); "
+                "可单独跑 research/factor_health.py"
+            )
 
 
 if __name__ == "__main__":

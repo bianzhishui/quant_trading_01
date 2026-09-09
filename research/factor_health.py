@@ -114,38 +114,116 @@ def load_or_compute_baseline(df: pd.DataFrame) -> dict:
     return base
 
 
+def _classify(roll: float, neg_streak: int, mu: float, sigma: float) -> str:
+    """状态灯规则（方案 §2.4）：roll=12期滚动均值, neg_streak=尾部连续负期数。
+
+    t_mu = 滚动均值对基准 μ 的 t 检验: (roll-μ)/(σ/√12)。⚠️ 不能对 0 检验——
+    动量历史 μ≈0，对 0 检验会几乎全亮 🔴（验证阶段实测发现的缺陷，已修正）。
+    """
+    t_mu = (roll - mu) / (sigma / np.sqrt(12)) if sigma > 0 else 0.0
+    if roll < mu - 2 * sigma or neg_streak >= 12 or t_mu < -2.0:
+        return "🔴 失效预警"
+    if roll < mu - sigma or neg_streak >= 6:
+        return "🟡 警戒"
+    return "🟢 正常"
+
+
+def _trailing_neg_streak(s: pd.Series) -> int:
+    """序列尾部连续 RankIC<0 的期数。"""
+    streak = 0
+    for v in s[::-1]:
+        if v < 0:
+            streak += 1
+        else:
+            break
+    return streak
+
+
 def status_light(ic: pd.Series, base: dict) -> tuple[str, float | None, int | None]:
     """运营期状态灯: (灯, 12期滚动均值, 连续负期数)。样本<6期返回'样本不足'。"""
     if len(ic) < 6:
         return "样本不足", None, None
-    mu, sigma = base["mu"], base["sigma"]
     roll = ic.iloc[-12:].mean()
-    neg_streak = 0
-    for v in ic.iloc[::-1]:
-        if v < 0:
-            neg_streak += 1
-        else:
-            break
-    if (
-        roll < mu - 2 * sigma
-        or neg_streak >= 12
-        or roll / (sigma / np.sqrt(len(ic.iloc[-12:]))) < 1.0
-    ):
-        return "🔴 失效预警", roll, neg_streak
-    if roll < mu - sigma or neg_streak >= 6:
-        return "🟡 警戒", roll, neg_streak
-    return "🟢 正常", roll, neg_streak
+    streak = _trailing_neg_streak(ic)
+    return _classify(roll, streak, base["mu"], base["sigma"]), roll, streak
+
+
+def validate_history(df: pd.DataFrame, base: dict) -> None:
+    """预警规则历史区分度验证（方案 §3）：逐期滚动（自第 13 期起）判断状态灯，
+    统计 🔴/🟡 出现期数与月份，对照已知弱期（2015 股灾/2018 熊市/2022/2024-02 微盘）。"""
+    print("\n-- 预警规则历史区分度验证 (逐期滚动, 自第13期起) --")
+    for c in COLS:
+        s = df[c].dropna()
+        mu, sigma = base[c]["mu"], base[c]["sigma"]
+        reds, ambers = [], []
+        for i in range(12, len(s)):
+            roll = s.iloc[i - 12 : i].mean()
+            streak = _trailing_neg_streak(s.iloc[:i])
+            st = _classify(roll, streak, mu, sigma)
+            if st.startswith("🔴"):
+                reds.append(s.index[i])
+            elif st.startswith("🟡"):
+                ambers.append(s.index[i])
+        print(f"  {c:<11} 🔴×{len(reds)} 🟡×{len(ambers)} / 可判期数 {len(s) - 12}")
+        for tag, dates in (("🔴", reds), ("🟡", ambers)):
+            if dates:
+                print(
+                    f"    {tag} 月份: {', '.join(d.strftime('%Y-%m') for d in dates)}"
+                )
+
+
+def print_live_lights(df: pd.DataFrame, base: dict) -> None:
+    """打印运营期状态灯（2026-09 起，行业内口径为主）。"""
+    print("\n-- 运营期状态灯 (2026-09 起, 行业内口径为主) --")
+    live = df.loc[df.index >= LIVE_START]
+    for c in COLS:
+        ic = live[c].dropna()
+        light, roll, streak = status_light(ic, base[c])
+        detail = (
+            f"  已积累 {len(ic)} 期"
+            if light == "样本不足"
+            else (
+                f"12期滚动={roll:+.3f} (基准μ={base[c]['mu']:+.3f}σ={base[c]['sigma']:.3f}) "
+                f"连负={streak}期"
+            )
+        )
+        print(f"  {c:<11} {light} | {detail}")
+
+
+def factor_health_summary() -> None:
+    """轻量摘要（供 paper_live step 集成）: 只打印运营期状态灯, 不写 CSV/图。"""
+    df = compute_rankic_panel()
+    base = load_or_compute_baseline(df)
+    print("  [因子健康] R5 RankIC 状态灯 (行业内口径):")
+    live = df.loc[df.index >= LIVE_START]
+    for c in COLS:
+        ic = live[c].dropna()
+        light, roll, streak = status_light(ic, base[c])
+        detail = (
+            f"已积累 {len(ic)} 期"
+            if light == "样本不足"
+            else f"12期滚动={roll:+.3f} 连负={streak}期"
+        )
+        print(f"    {c:<11} {light} | {detail}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="R5 因子失效监控 (RankIC 滚动)")
     ap.add_argument("--chart", action="store_true", help="画出 RankIC 时序 + μ±2σ 带")
+    ap.add_argument(
+        "--validate",
+        action="store_true",
+        help="预警规则历史区分度验证(逐期滚动, 不出运营期报告)",
+    )
     args = ap.parse_args()
 
     print("== R5 因子失效监控 (Round 18) ==")
     df = compute_rankic_panel()
     print(f"  RankIC 期数: {len(df)} ({df.index[0].date()} ~ {df.index[-1].date()})")
     base = load_or_compute_baseline(df)
+    if args.validate:
+        validate_history(df, base)
+        return
 
     # 历史复现检查 (Amihud 应显著为正, 动量弱正)
     seg = df.loc[BASELINE_START:BASELINE_END]
@@ -158,17 +236,7 @@ def main() -> None:
             f"胜率={(s > 0).mean():.0%} t={t:+.1f} n={len(s)}"
         )
 
-    print("\n-- 运营期状态灯 (2026-09 起, 行业内口径为主) --")
-    live = df.loc[df.index >= LIVE_START]
-    for c in COLS:
-        ic = live[c].dropna()
-        light, roll, streak = status_light(ic, base[c])
-        detail = (
-            f"  已积累 {len(ic)} 期"
-            if light == "样本不足"
-            else f"12期滚动={roll:+.3f} (基准μ={base[c]['mu']:+.3f}σ={base[c]['sigma']:.3f}) 连负={streak}期"
-        )
-        print(f"  {c:<11} {light} | {detail}")
+    print_live_lights(df, base)
 
     # 落盘 CSV (追加合并去重)
     if CSV_FILE.exists():
