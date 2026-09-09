@@ -1,10 +1,10 @@
 #!/usr/bin/env -S uv run --no-sync
 # -*- coding: utf-8 -*-
-"""绘制四账户每日涨幅图（年度场景 或 建仓以来实时场景）。
+"""绘制四账户每日图（年度场景 或 建仓以来实时场景）。
 
 - 年度: 读 output/daily_nav_{PREFIX}_aum*.csv → 输出 output/daily_gains_{PREFIX}.png
 - 实时: --live 读 output/daily_nav_aum*.csv(建仓以来, 无前缀) → 输出 output/daily_gains_live.png
-上: 累计净值(建仓日=1.0); 下: 每日涨幅% (细线=当日, 粗线=20日MA)。
+上: 每日NAV(元); 中: 累计净值(建仓日=1.0); 下: 每日涨幅% (细线=当日, 粗线=20日MA)。
 用法: python research/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
       python research/plot_daily_gains.py --live
 """
@@ -39,26 +39,38 @@ COLORS = ["#c0392b", "#e67e22", "#2980b9", "#27ae60"]
 
 
 def _draw(csv_tpl: str, title: str, out: Path) -> Path:
-    """读四账户 CSV（模板含 {tag}）→ 画双面板图 → 返回输出路径。"""
-    fig, (ax1, ax2) = plt.subplots(
-        2, 1, figsize=(13, 9), sharex=True, gridspec_kw={"height_ratios": [1, 1.6]}
+    """读四账户 CSV（模板含 {tag}）→ 画三面板图 → 返回输出路径。
+
+    面板: 上=每日NAV(元), 中=累计净值(建仓日=1.0), 下=每日涨幅%(细线) + 20日MA(粗线)。
+    """
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        3,
+        1,
+        figsize=(13, 12),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.4, 1, 1.2]},
     )
     for (tag, name), col in zip(AUM_TAG, COLORS):
         df = pd.read_csv(OUT / csv_tpl.format(tag=tag), parse_dates=["date"])
         df["涨幅%"] = df["涨幅%"].fillna(0.0)
         nav_norm = df["nav"] / df["nav"].iloc[0]
-        ax1.plot(df["date"], nav_norm, label=name, color=col, lw=1.4)
-        ax2.plot(df["date"], df["涨幅%"], label=name, color=col, lw=0.7, alpha=0.55)
+        ax1.plot(df["date"], df["nav"], label=name, color=col, lw=1.4)
+        ax2.plot(df["date"], nav_norm, label=name, color=col, lw=1.4)
+        ax3.plot(df["date"], df["涨幅%"], label=name, color=col, lw=0.7, alpha=0.55)
         ma = df["涨幅%"].rolling(20).mean()
-        ax2.plot(df["date"], ma, color=col, lw=1.5, alpha=0.95)
-    ax1.set_title(f"{title} · 四账户累计净值（建仓日=1.0）", fontsize=13)
+        ax3.plot(df["date"], ma, color=col, lw=1.5, alpha=0.95)
+    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+    ax1.set_title(f"{title} · 四账户每日 NAV（元）", fontsize=13)
     ax1.legend(loc="upper left", fontsize=10)
     ax1.grid(alpha=0.3)
-    ax2.set_title("每日涨幅 %（细线=当日涨幅，粗线=20日滚动均线）", fontsize=13)
-    ax2.axhline(0, color="gray", lw=0.8)
-    ax2.legend(loc="upper left", fontsize=10, ncol=4)
+    ax2.set_title("累计净值（建仓日=1.0）", fontsize=13)
+    ax2.legend(loc="upper left", fontsize=10)
     ax2.grid(alpha=0.3)
-    ax2.set_xlabel("日期")
+    ax3.set_title("每日涨幅 %（细线=当日涨幅，粗线=20日滚动均线）", fontsize=13)
+    ax3.axhline(0, color="gray", lw=0.8)
+    ax3.legend(loc="upper left", fontsize=10, ncol=4)
+    ax3.grid(alpha=0.3)
+    ax3.set_xlabel("日期")
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     plt.close(fig)
