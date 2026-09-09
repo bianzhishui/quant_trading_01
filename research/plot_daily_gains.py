@@ -4,7 +4,7 @@
 
 - 年度: 读 output/daily_nav_{PREFIX}_aum*.csv → 输出 output/daily_gains_{PREFIX}.png
 - 实时: --live 读 output/daily_nav_aum*.csv(建仓以来, 无前缀) → 输出 output/daily_gains_live.png
-上: 每日NAV(元); 中: 累计净值(建仓日=1.0); 下: 每日涨幅% (细线=当日, 粗线=20日MA)。
+布局: 4行×3列 — 行=账户(独立y轴尺度), 列=每日NAV(元)/累计净值(建仓日=1.0)/每日涨幅%(细线+20日MA粗线)。
 用法: python research/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
       python research/plot_daily_gains.py --live
 """
@@ -39,39 +39,45 @@ COLORS = ["#c0392b", "#e67e22", "#2980b9", "#27ae60"]
 
 
 def _draw(csv_tpl: str, title: str, out: Path) -> Path:
-    """读四账户 CSV（模板含 {tag}）→ 画三面板图 → 返回输出路径。
+    """读四账户 CSV（模板含 {tag}）→ 画 4行×3列 分账户图 → 返回输出路径。
 
-    面板: 上=每日NAV(元), 中=累计净值(建仓日=1.0), 下=每日涨幅%(细线) + 20日MA(粗线)。
+    行=账户(60万/100万/300万/600万)，每行独立 y 轴尺度；
+    列=每日NAV(元) / 累计净值(建仓日=1.0) / 每日涨幅%(细线)+20日MA(粗线)。
     """
-    fig, (ax1, ax2, ax3) = plt.subplots(
+    fig, axes = plt.subplots(
+        4,
         3,
-        1,
-        figsize=(13, 12),
+        figsize=(16, 16),
         sharex=True,
-        gridspec_kw={"height_ratios": [1.4, 1, 1.2]},
+        gridspec_kw={"hspace": 0.35, "wspace": 0.28},
     )
-    for (tag, name), col in zip(AUM_TAG, COLORS):
+    col_titles = [
+        "每日 NAV（元）",
+        "累计净值（建仓日=1.0）",
+        "每日涨幅 %（细线=当日，粗线=20日MA）",
+    ]
+    for i, ((tag, name), col) in enumerate(zip(AUM_TAG, COLORS)):
         df = pd.read_csv(OUT / csv_tpl.format(tag=tag), parse_dates=["date"])
         df["涨幅%"] = df["涨幅%"].fillna(0.0)
         nav_norm = df["nav"] / df["nav"].iloc[0]
-        ax1.plot(df["date"], df["nav"], label=name, color=col, lw=1.4)
-        ax2.plot(df["date"], nav_norm, label=name, color=col, lw=1.4)
-        ax3.plot(df["date"], df["涨幅%"], label=name, color=col, lw=0.7, alpha=0.55)
+        ax_nav, ax_norm, ax_ret = axes[i]
+        ax_nav.plot(df["date"], df["nav"], color=col, lw=1.6)
+        ax_nav.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        ax_norm.plot(df["date"], nav_norm, color=col, lw=1.6)
+        ax_ret.plot(df["date"], df["涨幅%"], color=col, lw=0.7, alpha=0.55)
         ma = df["涨幅%"].rolling(20).mean()
-        ax3.plot(df["date"], ma, color=col, lw=1.5, alpha=0.95)
-    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
-    ax1.set_title(f"{title} · 四账户每日 NAV（元）", fontsize=13)
-    ax1.legend(loc="upper left", fontsize=10)
-    ax1.grid(alpha=0.3)
-    ax2.set_title("累计净值（建仓日=1.0）", fontsize=13)
-    ax2.legend(loc="upper left", fontsize=10)
-    ax2.grid(alpha=0.3)
-    ax3.set_title("每日涨幅 %（细线=当日涨幅，粗线=20日滚动均线）", fontsize=13)
-    ax3.axhline(0, color="gray", lw=0.8)
-    ax3.legend(loc="upper left", fontsize=10, ncol=4)
-    ax3.grid(alpha=0.3)
-    ax3.set_xlabel("日期")
-    fig.tight_layout()
+        ax_ret.plot(df["date"], ma, color=col, lw=1.6)
+        ax_ret.axhline(0, color="gray", lw=0.8)
+        for ax in (ax_nav, ax_norm, ax_ret):
+            ax.grid(alpha=0.3)
+        ax_nav.set_ylabel(name, fontsize=12, fontweight="bold")
+        if i == 0:
+            for ax, ct in zip((ax_nav, ax_norm, ax_ret), col_titles):
+                ax.set_title(ct, fontsize=12)
+    fig.suptitle(f"{title} · 四账户每日图（分账户独立尺度）", fontsize=14)
+    for ax in axes[-1]:
+        ax.set_xlabel("日期")
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
     fig.savefig(out, dpi=130)
     plt.close(fig)
     print(f"已输出: {out}")
