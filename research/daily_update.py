@@ -6,6 +6,7 @@
   python research/daily_update.py             # 自动判断最新交易日(以数据源为准)
   python research/daily_update.py 2026-09-07  # 指定日期补跑
   python research/daily_update.py --table     # 只读现有CSV打印总表(不抓数不mark)
+  python research/daily_update.py --chart     # mark 后自动出四账户每日涨幅图(daily_gains_live.png)
 
 总表口径: 盈亏(元) = NAV - 本金(含一次性建仓费); 盈亏率相对本金。
 每日涨幅 = 当天收盘NAV / 前一日收盘NAV - 1 (数据源最新K线为准, 非系统日历)。
@@ -25,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.data_io import data_max_date_fast, load_full_daily  # noqa: E402
 from research.fetch_daily_incremental import update_date  # noqa: E402
 from research.paper_live import mark as live_mark  # noqa: E402
+from research.plot_daily_gains import plot_live  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 AUM_LIST = [
@@ -133,6 +135,9 @@ def main() -> None:
     for aum, tag in AUM_LIST:
         live_mark(aum)  # 导入直调(替代 subprocess × 4)
     print_table()
+    if "--chart" in args:
+        print("出图 daily_gains_live.png...")
+        plot_live()  # 导入直调(读最新 mark 后的 CSV)
 
 
 if __name__ == "__main__":
