@@ -8,6 +8,7 @@
   output/daily_nav_{START}start_aum{60w,100w,300w,600w}.csv  (date, nav, 涨幅%)
 
 用法: python research/scenario_ytd.py [--start 2025-01-01]   (默认 2026-01-01)
+核心: run_scenario(start, end, out_prefix, verbose) 可导入复用(AGENTS.md §5.6)。
 """
 
 from __future__ import annotations
@@ -23,15 +24,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.paper_trade import OUT, PaperPortfolio, _load, _load_corp, r5_rebalances
 from research.paper_live import _factor_panel
 
+AUM_LIST = [600_000, 1_000_000, 3_000_000, 6_000_000]
+TAG = lambda a: f"aum{int(a / 1e4)}w"  # noqa: E731
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default="2026-01-01")
-    ap.add_argument("--end", default=None, help="截止日期(含), 默认数据末尾")
-    args = ap.parse_args()
-    start = pd.Timestamp(args.start)
-    end = pd.Timestamp(args.end) if args.end else None
-    prefix = start.strftime("%Y%m%d")
+
+def run_scenario(
+    start: str,
+    end: str | None = None,
+    out_prefix: str | None = None,
+    verbose: bool = True,
+) -> dict[str, pd.Series]:
+    """场景回放: 指定建仓起点, 返回 {tag: nav Series(DatetimeIndex)}。
+
+    start/end 为日期字符串; out_prefix 给定时写 daily_nav/monthly_funds CSV;
+    verbose 控制打印。返回 nav 供统计/绘图复用(不重复回放)。
+    """
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end) if end else None
 
     close, amount, tst, isst, ind = _load()
     raw, _ = _load_corp(close)
@@ -42,22 +51,27 @@ def main():
     F_prev = F.shift(1).fillna(F.iloc[0])
 
     # 起始后首个执行日 (= 指定日期的建仓日)
-    rb0 = next(r for r in rebs if r["exec"].date() >= start.date())
+    rb0 = next(r for r in rebs if r["exec"].date() >= start_ts.date())
     rb_by_exec = {
         r["exec"]: r
         for r in rebs
         if r["T"] >= rb0["T"]
         and r["exec"] <= idx[-1]
-        and (end is None or r["exec"] <= end)
+        and (end_ts is None or r["exec"] <= end_ts)
     }
     i0 = idx.get_loc(rb0["exec"])
-    i1 = idx.get_indexer([end], method="ffill")[0] if end is not None else len(idx) - 1
-
-    print(
-        f"== 建仓场景: 信号 {rb0['T'].date()} → 建仓执行 {rb0['exec'].date()} "
-        f"({len(rb_by_exec)} 次月频调仓, 至 {idx[i1].date()}) =="
+    i1 = (
+        idx.get_indexer([end_ts], method="ffill")[0]
+        if end_ts is not None
+        else len(idx) - 1
     )
-    for aum in [600_000, 1_000_000, 3_000_000, 6_000_000]:
+    if verbose:
+        print(
+            f"== 建仓场景: 信号 {rb0['T'].date()} → 建仓执行 {rb0['exec'].date()} "
+            f"({len(rb_by_exec)} 次月频调仓, 至 {idx[i1].date()}) =="
+        )
+    result: dict[str, pd.Series] = {}
+    for aum in AUM_LIST:
         pf = PaperPortfolio(aum)
         navs = []
         funds_rows = []  # 每次调仓的资金变动
@@ -103,39 +117,40 @@ def main():
                 pf.trades = []
             navs.append(pf.value(prices))
         nav = pd.Series(navs, index=idx[i0 : i1 + 1])
-        ret = nav.pct_change() * 100
-        df = pd.DataFrame(
-            {
-                "date": nav.index.strftime("%Y-%m-%d"),
-                "nav": nav.round(2),
-                "涨幅%": ret.round(4),
-                "较本金盈亏": (nav - aum).round(2),
-            }
-        )
-        out = OUT / f"daily_nav_{prefix}_aum{int(aum / 1e4)}w.csv"
-        df.to_csv(out, index=False)
-        # 月度资金变动 CSV (与 paper_live 同列)
-        fdf = pd.DataFrame(
-            [
+        result[TAG(aum)] = nav
+        if out_prefix is not None:
+            ret = nav.pct_change() * 100
+            df = pd.DataFrame(
                 {
-                    "date": r["date"],
-                    "pre_nav": r["pre_nav"],
-                    "post_nav": r["post_nav"],
-                    "月涨幅%": r["mret"],
-                    "买入额": r["buy"],
-                    "卖出额": r["sell"],
-                    "换手率%": r["turnover"],
-                    "费用": r["fee"],
-                    "分红入账": r["div"],
-                    "期末现金": r["cash"],
-                    "期末持仓": r["pos"],
-                    "较本金盈亏": r["post_nav"] - aum,
+                    "date": nav.index.strftime("%Y-%m-%d"),
+                    "nav": nav.round(2),
+                    "涨幅%": ret.round(4),
+                    "较本金盈亏": (nav - aum).round(2),
                 }
-                for r in funds_rows
-            ]
-        )
-        fdf = fdf[
-            [
+            )
+            df.to_csv(
+                OUT / f"daily_nav_{out_prefix}_aum{int(aum / 1e4)}w.csv", index=False
+            )
+            fdf = pd.DataFrame(
+                [
+                    {
+                        "date": r["date"],
+                        "pre_nav": r["pre_nav"],
+                        "post_nav": r["post_nav"],
+                        "月涨幅%": r["mret"],
+                        "买入额": r["buy"],
+                        "卖出额": r["sell"],
+                        "换手率%": r["turnover"],
+                        "费用": r["fee"],
+                        "分红入账": r["div"],
+                        "期末现金": r["cash"],
+                        "期末持仓": r["pos"],
+                        "较本金盈亏": r["post_nav"] - aum,
+                    }
+                    for r in funds_rows
+                ]
+            )
+            cols = [
                 "date",
                 "pre_nav",
                 "post_nav",
@@ -149,22 +164,33 @@ def main():
                 "期末持仓",
                 "较本金盈亏",
             ]
-        ]
-        fout = OUT / f"monthly_funds_{prefix}_aum{int(aum / 1e4)}w.csv"
-        fdf.to_csv(fout, index=False)
-        cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
-        print(
-            f"\n[{int(aum / 1e4)}万] {nav.index[0].date()} → {nav.index[-1].date()} "
-            f"({len(nav) - 1} 个交易日) | 期间累计 {cum:+.2f}% | 资金文件 {fout.name}"
-        )
-        print("  近3次调仓资金变动(买/卖/换手/费用/月涨, 万):")
-        for r in funds_rows[-3:]:
-            m = r["mret"]
-            m_s = f"{m:+.2f}%" if m is not None else "建仓"
-            print(
-                f"    {r['date']}: 买 {r['buy'] / 1e4:.1f} / 卖 {r['sell'] / 1e4:.1f} "
-                f"| 换手 {r['turnover']:.1f}% | 费 {r['fee']:.0f}元 | {m_s}"
+            fdf[cols].to_csv(
+                OUT / f"monthly_funds_{out_prefix}_aum{int(aum / 1e4)}w.csv",
+                index=False,
             )
+            cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
+            print(
+                f"\n[{int(aum / 1e4)}万] {nav.index[0].date()} → {nav.index[-1].date()} "
+                f"({len(nav) - 1} 个交易日) | 期间累计 {cum:+.2f}%"
+            )
+            print("  近3次调仓资金变动(买/卖/换手/费用/月涨, 万):")
+            for r in funds_rows[-3:]:
+                m = r["mret"]
+                m_s = f"{m:+.2f}%" if m is not None else "建仓"
+                print(
+                    f"    {r['date']}: 买 {r['buy'] / 1e4:.1f} / 卖 {r['sell'] / 1e4:.1f} "
+                    f"| 换手 {r['turnover']:.1f}% | 费 {r['fee']:.0f}元 | {m_s}"
+                )
+    return result
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--start", default="2026-01-01")
+    ap.add_argument("--end", default=None, help="截止日期(含), 默认数据末尾")
+    args = ap.parse_args()
+    prefix = pd.Timestamp(args.start).strftime("%Y%m%d")
+    run_scenario(args.start, args.end, out_prefix=prefix, verbose=True)
 
 
 if __name__ == "__main__":
