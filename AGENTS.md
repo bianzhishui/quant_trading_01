@@ -47,6 +47,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 | `research/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
 | `research/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
 | `research/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
+| `research/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
 
 ---
 
@@ -81,6 +82,15 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
      （否则 import 时读错调用方参数）；
    - subprocess 只留给：跨环境/跨语言、独立一次性工具、需超时强杀的场景；
    - 退出码语义用函数返回值（如 update_date 返回 0/3）+ try/except 保留，不靠进程码。
+7. **探索结束必须归档（不手删、不留在 research/）**：
+   - 流程：plan 写 §0 结论 → 跑 `python research/archive_experiment.py <脚本或单元>`
+     （依赖闭包/import改写/git mv/输出入库/INDEX 更新/校验，`--dry-run` 先预览）
+     → `archive/INDEX.md` 自动登记；
+   - `research/` 只留生产链 + 共享基座（`reversal_factor.py`/`dividend_factor.py` 被
+     `paper_live`/`paper_trade` 依赖，**脚本留位**，其 plan/输出照常归档）；
+   - 归档单元自包含（脚本闭包 + plan + 结论输出 csv/png），结论输出随单元入库
+     （`archive/**` 不受 `output/*.csv` gitignore 影响）；复现命令见单元 README；
+   - 归档一律 `git mv` 保留历史，**禁止 rm/cp 搬移**；归档后须 `py_compile`/import 校验通过。
 
 ---
 

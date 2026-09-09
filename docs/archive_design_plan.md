@@ -1,12 +1,49 @@
 # 探索归档能力建设方案（预注册）
 
-> 状态：**方案已定稿，待用户批准后实施**。本文档是"怎么归档"的规则定死稿；
-> 归档动作本身由 `research/archive_experiment.py` 自动化执行（见 §9）。
-> 与 AGENTS.md 纪律一致：先预注册、后实施；实施结果归档到本文档 §0。
+> 状态：**已实施（2026-09-09），20 个单元全部归档，见 §0**。本文档是"怎么归档"的
+> 规则定死稿；归档动作由 `research/archive_experiment.py` 自动化执行（见 §8）。
+> 与 AGENTS.md 纪律一致：先预注册、后实施。
 
-## 0. 实施结果归档
+## 0. 实施结果归档（2026-09-09）
 
-（实施后填写：试点单元、批量进度、INDEX 链接、遗留问题）
+**判定：通过。** 20/20 归档单元落地，`research/` 仅剩生产链 15 个白名单脚本 + 工具本身，
+`archive/INDEX.md` 覆盖全部单元，生产链 import 冒烟通过，git 历史经 `--follow` 验证保留。
+
+### 0.1 归档批次（4 个 commit）
+
+| commit | 内容 |
+|---|---|
+| `fc121b9` | 试点 3 单元：`round16_crowding_timing`（❌）、`reversal_short_term`（❌，基座留位）、`round12_15_concentrated`（⏸，闭包合并 4 脚本 + 3 处 import 改写） |
+| `d6c9f0c` | 风控系列：`round04_risk_breakers`（4/4b/4c/4d 合并）+ `round06_r5_ma` |
+| `743e6f9` | 主策略系列：`screen01`/`screen02`/`round03`/`round05`/`round07`/`round08`/`round09`/`round11` |
+| `5c5xx`（收尾） | 独立方向：`dividend_factor`（基座留位）/`convertible_double_low`/`ew_base`/`etf_exploration`/`weekday_effect`/`grid_demo`/`yearly_breakdown` + AGENTS.md/README 更新 |
+
+### 0.2 与方案的偏差（如实记录）
+
+1. **单元合并**：`round4/4b/4c/4d` 合并为 `round04_risk_breakers`（同一风控系列连续迭代，
+   无 import 链但语义一体）；`round12~15` 由依赖闭包强制合并（`round13→12`、`round14→13`、
+   `round15→12/13`），且 3 处闭包内 import 改写为 `research.X → X`（同目录可导入，
+   已冒烟验证 `r5_topN_rebalances` 可用）。最终 **20 个单元**（方案预估 23，因合并减少）。
+2. **输出归属**：初版按"单单元前缀"收集导致 `screen01` 抢走 `factor_corr_*_round2.csv`
+   （属 screen02）——已改为**全局最长前缀**判定并归位（commit `743e6f9` 含修复）。
+3. **.gitignore 无需例外**：核实 `output/*.csv`/`output/*.png` 规则仅匹配 `output/` 下文件，
+   `archive/` 结论输出天然可入库，方案 §4 的 `!archive/` 例外不必要。
+4. **校验口径**：归档脚本未逐一真跑全量回放（share 级 10-20 分钟/个，代价过高），
+   以 `py_compile` + 静态依赖检查 + 生产链/闭包脚本 import 冒烟替代；复现命令见各单元 README。
+
+### 0.3 判定标准自查（方案 §10）
+
+- [x] `archive/INDEX.md` 覆盖 20 个单元，状态与结论齐全
+- [x] 抽样校验（round12_15 闭包改写、round16、生产链）：py_compile 通过、import 链完整
+- [x] 归档后 `research/` 仅剩白名单 15 + `archive_experiment.py`
+- [x] 全程 git mv，`git log --follow` 历史保留（如 round16 脚本可追溯到 `864a224` 格式化 commit）
+- [x] AGENTS.md（§3 表格 + §5.7 归档纪律）/ README（目录结构 + 探索表指向 INDEX）已更新
+
+### 0.4 遗留
+
+- 各归档单元的重跑真实验证留待需要时按 README 复现命令执行（数据依赖不变）。
+- `etf_candidates.py`/`etf_lowvol_replica.py` 无独立 plan 文档（仅 `etf_momentum_plan.md`），
+  结论摘要以 README 表为准。
 
 ## 1. 背景与动机
 

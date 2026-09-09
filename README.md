@@ -25,6 +25,7 @@
 >
 > **说明：以上是探索历史产出的多个版本，不代表项目最终定论；R5 等权575 只是其中
 > 当前投入运营的一版，后续如有新版本取代，本文档与 README 标注将同步更新。**
+> **已结束探索的完整归档（代码+plan+结论输出）见 [`archive/INDEX.md`](archive/INDEX.md)。**
 > 每日涨幅/月度资金变动等运营数据在 `output/`（详见手册 §8-§11）。
 >
 > > 🤖 **给 AI 代理/协作者**：改动本仓库前请先读 **[`AGENTS.md`](AGENTS.md)**
@@ -70,6 +71,7 @@ tests/
   test_backtest.py     引擎正确性单元测试 (uv run pytest)
 research/              市场规律与策略研究脚本（可执行）
 docs/                  设计文档与研究方案（入口见 docs/README.md）
+archive/               已结束探索归档（代码+plan+结论输出，索引见 archive/INDEX.md）
 data/                  行情缓存（自动生成）
 output/                回测图表与成交明细（自动生成）
 ```
