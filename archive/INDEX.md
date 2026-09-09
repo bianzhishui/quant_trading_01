@@ -11,7 +11,15 @@
 | 单元 | 方向 | 状态 | 结论摘要 | 位置 | 归档日期 |
 |---|---|---|---|---|---|
 | reversal_short_term | 短期反转 | ❌ 已否决 | 短期反转否决（IC 不足 + 15bp 成本致命） | archive/experiments/reversal_short_term/ | 2026-09-09 |
+| round03_combination | Amihud×动量组合 | ✅ 通过并入 | Amihud+中期动量等权组合确立为策略主体（+9.8pp，夏普0.91） | archive/experiments/round03_combination/ | 2026-09-09 |
 | round04_risk_breakers | 风控·熔断/择时 | 🟡 部分通过 | 风控系列：4b 回撤熔断/4c 均线择时正交互补（部分通过）；4d 双熔断否决（防守过度，股灾恢复期钳制踏空） | archive/experiments/round04_risk_breakers/ | 2026-09-09 |
+| round05_industry_neutral | R5 行业中性 | ✅ 通过并入 | R5 行业中性化升级为策略主体（行业内 alpha 真实存在） | archive/experiments/round05_industry_neutral/ | 2026-09-09 |
 | round06_r5_ma | R5+均线择时 | ❌ 已否决 | R5+4c 均线择时叠加否决（择时代价占比过高） | archive/experiments/round06_r5_ma/ | 2026-09-09 |
+| round07_fullmarket | 全市场扩池 | ✅ 通过并入 | 全市场扩池 R5：幸存者偏差仅 1.1pp，泛化成立 | archive/experiments/round07_fullmarket/ | 2026-09-09 |
+| round08_live_validation | 实盘化验证 | ✅ 通过并入 | 实盘化验证：全口径成本下超额 +2.56pp，可执行 | archive/experiments/round08_live_validation/ | 2026-09-09 |
+| round09_holdings_count | 持仓数量敏感度 | ⏸ 搁置 | 持仓数量敏感度实验：575 并非必须，结论见 plan §0 表 | archive/experiments/round09_holdings_count/ | 2026-09-09 |
+| round11_fullbuy | 全选满仓 | ❌ 已否决 | 全选满仓变体否决（换手 2.2 倍 + 规则脆弱） | archive/experiments/round11_fullbuy/ | 2026-09-09 |
 | round12_15_concentrated | 小资金规模研究 | ⏸ 搁置 | 小资金规模研究收束：20万不建议（费用吃光）/ 60万可行下限(+3.4~3.6pp) / 300万最优起点(+4.43pp) / 600万效率饱和(+4.72pp) | archive/experiments/round12_15_concentrated/ | 2026-09-09 |
 | round16_crowding_timing | 拥挤度择时 | ❌ 已否决 | 拥挤度极值择时否决（风控五轮收束：压不住回撤且牺牲超额） | archive/experiments/round16_crowding_timing/ | 2026-09-09 |
+| screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
+| screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |

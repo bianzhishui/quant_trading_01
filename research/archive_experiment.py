@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import argparse
-import glob
 import os
 import re
 import subprocess
@@ -349,17 +348,32 @@ def rewrite_closure_imports(unit_dir: str, scripts: set[str]) -> None:
             print(f"  [import 改写] {path}")
 
 
-def collect_outputs(outputs: list[str]) -> list[str]:
-    """按前缀收集 output/ 下的结论型文件（最长前缀优先，避免 _round2 串桶）。"""
-    candidates = []
-    for prefix in sorted(outputs, key=len, reverse=True):
-        for path in sorted(glob.glob(os.path.join("output", prefix + "*"))):
-            if not os.path.isfile(path):
-                continue
-            if path in candidates:
-                continue
-            candidates.append(path)
-    return candidates
+def collect_outputs(unit_name: str, outputs: list[str]) -> list[str]:
+    """收集 output/ 下归属本单元的结论型文件。
+
+    归属判定用全局最长前缀（跨单元），避免 screen01 的 factor_corr_crosssec
+    抢走 factor_corr_crosssec_round2（属 screen02）。
+    """
+    global_prefixes = sorted(
+        {p for u in UNITS for p in u["outputs"]}, key=len, reverse=True
+    )
+
+    def longest_prefix_owner(fname: str) -> tuple[str, str] | None:
+        for p in global_prefixes:
+            if fname.startswith(p):
+                owner = next(u["name"] for u in UNITS if p in u["outputs"])
+                return p, owner
+        return None
+
+    files = []
+    for f in sorted(os.listdir("output")):
+        path = os.path.join("output", f)
+        if not os.path.isfile(path):
+            continue
+        lp = longest_prefix_owner(f)
+        if lp and lp[1] == unit_name:
+            files.append(path)
+    return files
 
 
 def render_readme(
@@ -462,7 +476,7 @@ def main() -> int:
                 if p not in plans:
                     plans.append(p)
             print(f"  [闭包并入] {script} 属单元 {owner}，已并入其 plan 文档")
-    outs = collect_outputs(unit["outputs"])
+    outs = collect_outputs(unit["name"], unit["outputs"])
 
     unit_dir = os.path.join(ARCHIVE, unit["name"])
     print(f"== 归档单元: {unit['name']} ==")
