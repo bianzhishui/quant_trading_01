@@ -31,6 +31,28 @@
 > > 🤖 **给 AI 代理/协作者**：改动本仓库前请先读 **[`AGENTS.md`](AGENTS.md)**
 > > （项目纪律：冻结参数、先预注册后回测、运营细则、禁忌清单）。
 
+## 📊 模拟盘运营每日图（建仓 2026-09-01 起）
+
+> 每日 `python research/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
+> 数据到 **2026-09-08**，最新行情发布后自动续上）。
+
+**每日 NAV（元）——每账户一张（灰色虚线=建仓资金水平线，数据点=当日 NAV）**：
+
+<table>
+  <tr>
+    <td align="center"><b>60万账户</b><br><img src="output/daily_nav_aum60w.png" width="100%"></td>
+    <td align="center"><b>100万账户</b><br><img src="output/daily_nav_aum100w.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>300万账户</b><br><img src="output/daily_nav_aum300w.png" width="100%"></td>
+    <td align="center"><b>600万账户</b><br><img src="output/daily_nav_aum600w.png" width="100%"></td>
+  </tr>
+</table>
+
+**累计净值（建仓日=1.0）+ 每日涨幅% —— 四账户合并双面板**：
+
+<img src="output/daily_gains_live.png" width="100%">
+
 ## 快速开始
 
 本项目使用 **uv** 管理 Python 环境与依赖（锁文件 `uv.lock` 保证可复现）。

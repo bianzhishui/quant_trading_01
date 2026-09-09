@@ -10,6 +10,10 @@ output/*.csv
 .DS_Store
 data/fundamental/
 
+# 运营每日图(5张, daily_update.py --chart 刷新)入库跟踪: 每账户NAV单图×4 + 累计净值/涨幅%双面板×1
+!output/daily_nav_aum*.png
+!output/daily_gains_live.png
+
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
 
