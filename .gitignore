@@ -13,5 +13,5 @@ data/fundamental/
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
 
-# 管线可再生数据(可转债: src/convertible.py 重抓) — 取消跟踪, 保留本地
+# 可转债数据本地保留(gitignore)；再生成管线 src/convertible.py 已于 2026-09-09 删除（方向已归档）
 data/convertible/
