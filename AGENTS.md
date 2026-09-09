@@ -43,7 +43,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 | `research/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号 | 单个 share 级回放 ~8-15 分钟 |
 | `research/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告 | mark 数百只 ~1-2 分钟/账户 |
 | `research/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
-| `research/plot_daily_gains.py` | 四账户每日涨幅图（累计净值 + 每日涨幅 + 20日MA）；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv → daily_gains_live.png） | 秒级 |
+| `research/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
 | `research/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
 | `research/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
 | `research/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
@@ -102,7 +102,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 - 每日：**一键 `python research/daily_update.py`**（自动判断最新交易日 → 缺则补当日
   行情 → 四账户 mark → 输出"账户/本金/最新NAV/当日涨幅/盈亏(元)/盈亏率/建仓日NAV"总表；
   数据源未发布当天会自动探测跳过并以最新已有数据为准；`--table` 只读表不重跑；
-  `--chart` mark 后自动出建仓以来四账户图 `output/daily_gains_live.png`；
+  `--chart` mark 后自动出建仓以来每日图（NAV 单图 `daily_nav_aum{tag}.png` ×4 + 双面板 `daily_gains_live.png`）；
   单独出图可跑 `plot_daily_gains.py --live`）。
   手动分解：`fetch_daily_incremental.py <日期>` → 四账户各跑一次 `paper_live.py mark --aum NNNN`。
 - 每月：`paper_live.py step`（自动推进四账户调仓）+ `report`。
