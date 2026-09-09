@@ -241,6 +241,29 @@ UNITS = [
         "status": "🛠 工具/演示",
         "conclusion": "年度收益分解分析工具（无 plan 文档）",
     },
+    {
+        "name": "round19_concentrated200",
+        "scripts": ["factor_round19_concentrated200.py"],
+        "plans": ["factor_round19_concentrated200_plan.md"],
+        "outputs": [],
+        "status": "❌ 已否决",
+        "conclusion": (
+            "60万 前200+满仓补买 +2.96pp/82%用/2.32%费 未达标; 集中度补买曲线闭合"
+            " 100(+3.59)>150(+3.41)>200(+2.96), 最优仍为前100+补买; 补买对前200仅堆仓位不增超额"
+        ),
+    },
+    {
+        "name": "round20_extreme_scenario",
+        "scripts": ["extreme_scenario.py"],
+        "plans": ["factor_round20_extreme_scenario_plan.md"],
+        "outputs": [],
+        "status": "🛠 工具/演示",
+        "conclusion": (
+            "极端行情回放演练(4场景): 满配极端段-20~-50%级回撤(印证风控收束); "
+            "60万现金缓冲减震约一半(S1差18pp/S3差17pp); S4扛住31-41交易日恢复全年+4~6%; "
+            "S3微盘危机唯一跑输大盘——实操指南入运营手册§10.4"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -268,6 +291,8 @@ DIRECTIONS = {
     "weekday_effect": "周内效应",
     "grid_demo": "网格演示",
     "yearly_breakdown": "年度分解工具",
+    "round19_concentrated200": "小资金集中版·前200",
+    "round20_extreme_scenario": "极端行情演练",
 }
 
 
