@@ -264,6 +264,29 @@ UNITS = [
             "S3微盘危机唯一跑输大盘——实操指南入运营手册§10.4"
         ),
     },
+    {
+        "name": "round21_tier1_screen",
+        "scripts": ["factor_round21_tier1_screen.py"],
+        "plans": ["factor_round21_tier1_screen_plan.md"],
+        "outputs": [],
+        "status": "🟡 部分通过",
+        "conclusion": (
+            "梯队一4因子筛选: 价格水平(低价股)单因子4/4通过(+3.0pp@15bp/换手1.1/三段全正/"
+            "与Amihud截面-0.19)进候选池, 但Round22组合验证否决并入; "
+            "低beta/长期反转/下行波动未通过"
+        ),
+    },
+    {
+        "name": "round22_price_combo",
+        "scripts": ["factor_round22_price_combo.py"],
+        "plans": ["factor_round22_price_combo_plan.md"],
+        "outputs": [],
+        "status": "❌ 已否决",
+        "conclusion": (
+            "三因子(+价格水平)超额+4.20→-0.25pp崩塌, Jaccard44.8%向差分散(分散≠增强); "
+            "3/5维持R5, 价格水平降级单因子参考——单因子通过≠可并入(组合验证守门)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -293,6 +316,8 @@ DIRECTIONS = {
     "yearly_breakdown": "年度分解工具",
     "round19_concentrated200": "小资金集中版·前200",
     "round20_extreme_scenario": "极端行情演练",
+    "round21_tier1_screen": "梯队一筛选·4因子",
+    "round22_price_combo": "价格水平组合验证",
 }
 
 

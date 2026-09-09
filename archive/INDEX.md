@@ -28,6 +28,8 @@
 | round16_crowding_timing | 拥挤度择时 | ❌ 已否决 | 拥挤度极值择时否决（风控五轮收束：压不住回撤且牺牲超额） | archive/experiments/round16_crowding_timing/ | 2026-09-09 |
 | round19_concentrated200 | 小资金集中版·前200 | ❌ 已否决 | 60万 前200+满仓补买 +2.96pp/82%用/2.32%费 未达标; 集中度补买曲线闭合 100(+3.59)>150(+3.41)>200(+2.96), 最优仍为前100+补买; 补买对前200仅堆仓位不增超额 | archive/experiments/round19_concentrated200/ | 2026-09-09 |
 | round20_extreme_scenario | 极端行情演练 | 🛠 工具/演示 | 极端行情回放演练(4场景): 满配极端段-20~-50%级回撤(印证风控收束); 60万现金缓冲减震约一半(S1差18pp/S3差17pp); S4扛住31-41交易日恢复全年+4~6%; S3微盘危机唯一跑输大盘——实操指南入运营手册§10.4 | archive/experiments/round20_extreme_scenario/ | 2026-09-09 |
+| round21_tier1_screen | 梯队一筛选·4因子 | 🟡 部分通过 | 梯队一4因子筛选: 价格水平(低价股)单因子4/4通过(+3.0pp@15bp/换手1.1/三段全正/与Amihud截面-0.19)进候选池, 但Round22组合验证否决并入; 低beta/长期反转/下行波动未通过 | archive/experiments/round21_tier1_screen/ | 2026-09-09 |
+| round22_price_combo | 价格水平组合验证 | ❌ 已否决 | 三因子(+价格水平)超额+4.20→-0.25pp崩塌, Jaccard44.8%向差分散(分散≠增强); 3/5维持R5, 价格水平降级单因子参考——单因子通过≠可并入(组合验证守门) | archive/experiments/round22_price_combo/ | 2026-09-09 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |
