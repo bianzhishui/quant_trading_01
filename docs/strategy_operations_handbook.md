@@ -275,17 +275,30 @@ python research/daily_update.py --table     # 只读现有CSV, 随时查看当�
 ### 8.3 月度例行流程（每月新数据到手后，5 分钟）
 
 ```bash
-# ① 更新行情数据（含月度新交易日）
+# ① 更新行情 + 收编新股（宇宙刷新）：从 stock_basic 对比 full_daily，抓缺失 code 全历史，
+#    当月新上市股票在此被收编（R5 有 375 日上市期，收编后 1.5 年才会入池，时间充裕）
 python research/fetch_full_market.py
 
-# ② 月度调仓 + 记账（四账户自动一起推进）
+# ② 宇宙完整性自查（在市缺失应为 0；>0 说明有新股未收编，先补 ①）
+python - <<'PY'
+from research.data_io import full_daily_codes, stock_basic
+sb = stock_basic()
+alive = set(a for a in sb[(sb["type"]=="1") & ((sb["outDate"].isna())|(sb["outDate"]==""))]["code"]
+            if a.startswith(("sh.60","sz.00")))
+print("在市但 full_daily 缺失:", len(alive - full_daily_codes()))
+PY
+
+# ③ 月度调仓 + 记账（四账户自动一起推进）
 python research/paper_live.py step
 
-# ③ 每日涨幅（当天收盘 vs 前一天收盘 NAV）
+# ④ 每日涨幅（当天收盘 vs 前一天收盘 NAV）
 python research/paper_live.py mark
 
-# ④ 月频报告（净值/年化/超额/月度资金变动）
+# ⑤ 月频报告（净值/年化/超额/月度资金变动）
 python research/paper_live.py report
+
+# ⑥ 因子健康监控（R5 RankIC 状态灯，对比历史基准）
+python research/factor_health.py
 ```
 
 ### 8.4 账户管理
@@ -313,7 +326,8 @@ python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 ### 8.6 数据更新注意事项
 
 - 公司行为（分红/送转）用复权因子事件驱动，**静态因子抓取截止日 2026-09-03**；超过该日后 `step` 会自动通过 baostock 增量查询持仓股因子（限流有 60s 退避），失败会提示"用静态因子继续"——**应尽快重抓静态因子**；
-- 停牌股按最后价计值（价格延续），与回测口径一致。
+- 停牌股按最后价计值（价格延续），与回测口径一致；
+- **宇宙清单（stock_basic）刷新**：`fetch_full_market` 从 `stock_basic` 收编新股——若长期不跑，新上市股票会缺席宇宙，调仓不会报错但会**永久错过该股**（R5 有 375 日上市期 = 1.5 年缓冲窗口）。`stock_basic` 本身由 `src/fundamental.py` 生成，刷新**低频（季度/半年）**即可，且注意 baostock `query_stock_basic` 全量查询在本环境可能挂起——**不要连续重试**，用已有清单 + 定期温和刷新。
 
 ---
 
