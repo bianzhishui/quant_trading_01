@@ -27,7 +27,7 @@ from research.paper_trade import (
     r5_rebalances,
 )
 from research.paper_trade import MIN_IND, MIN_N
-from research.factor_round13_concentrated_fill import rebalance_fill
+from factor_round13_concentrated_fill import rebalance_fill
 from research.reversal_factor import ew_nav
 
 

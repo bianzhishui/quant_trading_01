@@ -24,7 +24,7 @@ from research.paper_trade import (
     metrics,
     r5_rebalances,
 )
-from research.factor_round12_concentrated import r5_topN_rebalances
+from factor_round12_concentrated import r5_topN_rebalances
 from research.reversal_factor import ew_nav
 
 
