@@ -5,17 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "run_backtest",
+            "name": "daily_update (只读总表)",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python", // macOS 路径
-            "program": "run_backtest.py",
+            "program": "${workspaceFolder}/research/daily_update.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": [
-                // "--synthetic",
-                "--symbol",
-                "512880",
+                "--table"
+            ]
+        },
+        {
+            "name": "paper_live report",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_live.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "report"
             ]
         }
     ]

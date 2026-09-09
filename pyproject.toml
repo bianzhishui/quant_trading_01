@@ -35,4 +35,4 @@ ignore = ["E402"]
 testpaths = ["tests"]
 
 # 无 [build-system]：本项目作为“虚拟项目”管理，uv sync 只安装依赖，
-# 代码通过 run_backtest.py 里的 sys.path 直接导入运行。
+# 各脚本通过文件顶部 sys.path 引导（仓库根）直接导入运行。

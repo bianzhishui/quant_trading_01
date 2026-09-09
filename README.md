@@ -42,34 +42,29 @@ brew install uv          # 或: curl -LsSf https://astral.sh/uv/install.sh | sh
 # 创建/同步环境（按 uv.lock 精确还原依赖，自动建 .venv）
 uv sync
 
-# 运行
-uv run run_backtest.py --synthetic                  # 离线演示（合成随机行情）
-uv run run_backtest.py                              # 贵州茅台真实日线 双均线回测（带缓存）
-uv run run_backtest.py --symbol 300750 --short 10 --long 120   # 换标的/参数
-
 # 测试
-uv run pytest                                       # 引擎正确性单元测试 (4项)
+uv run pytest                                       # 回测引擎正确性单元测试 (4项)
+
+# 研究/运营入口（常用，详见 AGENTS.md §3 核心脚本一览）
+.venv/bin/python research/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
+.venv/bin/python research/paper_live.py report      # 四账户报告
 ```
 
-> 提示：`run_backtest.py` 的 shebang 已改为 `uv run`，也可直接 `./run_backtest.py --synthetic`。
->
 > 数据源：首选 **baostock**（稳定、免费、含前复权），失败时自动兜底 **akshare**(东方财富源)。
 
 ## 目录结构
 
 ```
-run_backtest.py        回测入口脚本（shebang 已指向 uv run）
 pyproject.toml         项目与依赖声明
 uv.lock                依赖锁文件（保证环境可复现）
 src/
   data_loader.py       baostock(首选)+akshare(兜底) 取数 + CSV 本地缓存 (+ 合成数据)
-  backtest.py          事件式回测引擎
+  backtest.py          事件式回测引擎（入门版，含单元测试保护）
   costs.py             A股费用与规则常量（佣金/印花税/T+1/一手100股）
-strategies/
-  dual_ma.py           双均线择时策略示例
+  fundamental.py       基本面/宇宙清单管线（stock_basic.parquet 生产权威清单）
 tests/
   test_backtest.py     引擎正确性单元测试 (uv run pytest)
-research/              市场规律与策略研究脚本（可执行）
+research/              市场规律与策略研究脚本（可执行，含模拟盘运营链）
 docs/                  设计文档与研究方案（入口见 docs/README.md）
 archive/               已结束探索归档（代码+plan+结论输出，索引见 archive/INDEX.md）
 data/                  行情缓存（自动生成）
@@ -197,7 +192,7 @@ T+1 涨跌停阻塞损失仅 0.18pp（每月约 8 买不进/3 卖不出，同组
 
 1. 先 `--synthetic` 跑通，读懂 `backtest.py` 的逐日循环
 2. 拉真实数据，观察策略 vs 买入持有 vs 沪深300
-3. 改造策略：把 `strategies/dual_ma.py` 的权重逻辑换成你自己的想法（动量、轮动、多因子…）
+3. 改造策略：把 `src/backtest.py` 的事件循环接入你自己的权重逻辑（动量、轮动、多因子…）
 4. 加参数扫描看过拟合：同一策略在不同 (short, long) 下表现差异越大越危险
 5. 用聚宽/米筐模拟盘验证 3 个月后再考虑 QMT 实盘
 
