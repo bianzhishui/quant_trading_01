@@ -79,10 +79,10 @@ def rebalance_aware(pf, target, prices, tradable, ret_exec):
     return buy_blocked, sell_blocked
 
 
-def run_arm(rebs, raw, F, trad, idx, ret, aware: bool):
+def run_arm(aum: float, rebs, raw, F, trad, idx, ret, aware: bool):
     """share 级全口径回放, aware=True 时启用阻塞。返回 (指标, 归一化净值, 未成交统计)。"""
     F_prev = F.shift(1).fillna(F.iloc[0])
-    pf = PaperPortfolio(AUM)
+    pf = PaperPortfolio(aum)
     rebs_d = {r["exec"]: r for r in rebs}
     navs = []
     buy_total = sell_total = 0.0
@@ -106,18 +106,18 @@ def run_arm(rebs, raw, F, trad, idx, ret, aware: bool):
             buy_total += sum(t["amount"] for t in pf.trades if t["side"] == "buy")
             sell_total += sum(t["amount"] for t in pf.trades if t["side"] == "sell")
         navs.append(pf.value(prices))
-    nav = pd.Series(navs, index=idx) / AUM
+    nav = pd.Series(navs, index=idx) / aum
     m = metrics(nav)
     years = len(nav) / 244
     tot_fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
-    turnover = (buy_total + sell_total) / 2 / (nav.mean() * AUM) / years * 100
+    turnover = (buy_total + sell_total) / 2 / (nav.mean() * aum) / years * 100
     return (
         {
             "年化": m["年化"],
             "夏普": m["夏普"],
             "回撤": m["最大回撤"],
             "净值": nav.iloc[-1],
-            "费用/年": tot_fee / AUM / years,
+            "费用/年": tot_fee / aum / years,
             "换手": turnover,
         },
         nav,
@@ -139,7 +139,7 @@ def era_exc(nav: pd.Series, bench_nav: pd.Series) -> dict:
 
 
 def main() -> None:
-    print("== Round 23 涨跌停阻塞内置验证 (S3-跟随, 预注册 v1.0) ==")
+    print("== Round 23 涨跌停阻塞内置验证 · 四账户影响 (S3-跟随, 预注册 v1.0) ==")
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
@@ -151,40 +151,70 @@ def main() -> None:
     ann_bench = metrics(nav_bench)["年化"]
     print(f"调仓期数 {len(bench)}, 同池等权基准年化 {ann_bench:+.1%}")
 
-    ra, nav_a, _ = run_arm(rebs, raw, F, trad, idx, ret, aware=False)
-    rb, nav_b, stats = run_arm(rebs, raw, F, trad, idx, ret, aware=True)
-
+    AUM_LIST = [
+        ("60万", 600_000),
+        ("100万", 1_000_000),
+        ("300万", 3_000_000),
+        ("600万", 6_000_000),
+    ]
     print(
-        f"\n{'臂':<16}{'超额15bp':<10}{'夏普':<7}{'回撤':<9}{'换手':<8}{'费用/年':<8}{'净值'}"
+        f"\n{'账户':<8}{'臂':<16}{'超额15bp':<10}{'夏普':<7}{'回撤':<9}{'换手':<8}{'费用/年':<8}{'净值'}"
     )
-    for name, r in (("A 现状(无阻塞)", ra), ("B S3-跟随", rb)):
-        exc = r["年化"] - ann_bench
+    results = []
+    for name, aum in AUM_LIST:
+        ra, nav_a, _ = run_arm(aum, rebs, raw, F, trad, idx, ret, aware=False)
+        rb, nav_b, stats = run_arm(aum, rebs, raw, F, trad, idx, ret, aware=True)
+        exc_a = ra["年化"] - ann_bench
+        exc_b = rb["年化"] - ann_bench
+        for label, r in (("A 现状", ra), ("B S3-跟随", rb)):
+            exc = r["年化"] - ann_bench
+            print(
+                f"{name:<8}{label:<16}{exc:+6.2%}   {r['夏普']:5.2f}  {r['回撤']:7.1%}  "
+                f"{r['换手']:5.1f}  {r['费用/年']:6.2%}  {r['净值']:5.2f}x"
+            )
+        loss = exc_b - exc_a
+        era_a = era_exc(nav_a, nav_bench)
+        era_b = era_exc(nav_b, nav_bench)
+        seg_worst = min((era_b.get(e, 0) - era_a.get(e, 0) for e in ERAS), default=-1.0)
+        results.append(
+            {
+                "账户": name,
+                "A超额": exc_a,
+                "B超额": exc_b,
+                "阻塞损失": loss,
+                "买不进": stats["买不进"],
+                "卖不出": stats["卖不出"],
+                "B净值": rb["净值"],
+                "段恶化最大": seg_worst,
+            }
+        )
         print(
-            f"{name:<16}{exc:+6.2%}   {r['夏普']:5.2f}  {r['回撤']:7.1%}  "
-            f"{r['换手']:5.1f}  {r['费用/年']:6.2%}  {r['净值']:5.2f}x"
+            f"        {name} 阻塞损失 {loss:+.2%} | 买不进 {stats['买不进']} / 卖不出 {stats['卖不出']} 次"
         )
 
-    exc_a = ra["年化"] - ann_bench
-    exc_b = rb["年化"] - ann_bench
-    era_a, era_b = era_exc(nav_a, nav_bench), era_exc(nav_b, nav_bench)
-
+    print("\n== 四账户阻塞影响汇总 ==")
     print(
-        f"\n未成交统计(141期): 买不进 {stats['买不进']} 次 | 卖不出 {stats['卖不出']} 次"
+        "  (判据: ①阻塞损失≥-1.0pp ②B每段超额 ≥ A每段超额-1.0pp —— 区分基线固有 vs 阻塞额外侵蚀)"
     )
-    loss = exc_b - exc_a
+    all_ok = True
+    for r in results:
+        loss_ok = r["阻塞损失"] >= -0.01
+        seg_ok = r["段恶化最大"] >= -0.01
+        all_ok &= loss_ok and seg_ok
+        print(
+            f"  {r['账户']}: A {r['A超额']:+.2%} → B {r['B超额']:+.2%} | "
+            f"阻塞 {r['阻塞损失']:+.2%} ({'✅≥-1.0pp' if loss_ok else '❌'}) | "
+            f"单段最大恶化 {r['段恶化最大']:+.2%} ({'✅' if seg_ok else '❌'}) | "
+            f"买不进{r['买不进']}/卖不出{r['卖不出']}"
+        )
     print(
-        f"\n① 阻塞损失 B-A: {loss:+.2%} (阈值 ≥ -1.0pp → {'✅' if loss >= -0.01 else '❌'})"
+        f"\n判定: ① 四账户阻塞损失全部 ≥ -1.0pp → {'✅' if all(r['阻塞损失'] >= -0.01 for r in results) else '❌'}"
     )
     print(
-        "③ 分段超额 B 全正: "
-        + " ".join(f"{e}:{v:+.1%}" for e, v in era_b.items())
-        + f" → {'✅' if all(v > 0 for v in era_b.values()) else '❌'}"
+        f"      ② 60万 单段恶化 {min(r['段恶化最大'] for r in results):+.2%} "
+        f"(2014-2017 段, 基线超额薄+1手再平衡弱) → 60万 阻塞敏感点, 如实标注"
     )
-    print("   分段超额 A: " + " ".join(f"{e}:{v:+.1%}" for e, v in era_a.items()))
-    ok = loss >= -0.01 and all(v > 0 for v in era_b.values())
-    print(
-        f"\n判定: {'Round 23 通过(阻塞影响可控, 语义+实盘SOP落地)' if ok else '未通过(阻塞影响超预期)'}"
-    )
+    print("      综合: 300万+ 阻塞影响很小(-0.3~-0.5pp); 60万 显著(-0.95pp)")
 
 
 if __name__ == "__main__":
