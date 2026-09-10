@@ -324,6 +324,30 @@ UNITS = [
             "是否调权重=用户决策点(需另开预注册+细扫防过拟合)"
         ),
     },
+    {
+        "name": "round27_weight_tuning",
+        "scripts": ["factor_round27_weight_tuning.py"],
+        "plans": ["factor_round27_weight_tuning_plan.md"],
+        "outputs": [],
+        "status": "⏸ 搁置",
+        "conclusion": (
+            "权重细扫0.55~0.80: 超额单调递增至0.80(+7.04pp)但无高原(双侧高原判据全❌); "
+            "端点0.80伪通过被双侧判据拦截(数据挖掘陷阱); 结论: 趋势真实但无稳健选择"
+            "——由Round28扩展扫描+样本外验证接续"
+        ),
+    },
+    {
+        "name": "round28_weight_tuning_oos",
+        "scripts": ["factor_round28_weight_tuning_oos.py"],
+        "plans": ["factor_round28_weight_tuning_oos_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "扩展扫描0.80~1.00顶点0.95(+7.49%)+样本外验证(训练14-21独立选权→验证22-26 "
+            "超额差+6.5pp)+高原0.90~1.00波动0.15pp——四项全过; 用户批准折中w=0.85落地生产"
+            "(保留15%动量缓冲), 账本重建"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -358,6 +382,8 @@ DIRECTIONS = {
     "round23_limit_aware": "涨跌停阻塞验证",
     "round25_pead": "PEAD业绩预告",
     "round26_weight_sensitivity": "R5权重敏感性",
+    "round27_weight_tuning": "权重细扫·无高原",
+    "round28_weight_tuning_oos": "权重样本外验证",
 }
 
 

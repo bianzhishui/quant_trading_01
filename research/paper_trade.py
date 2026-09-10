@@ -37,6 +37,10 @@ START = "2013-06-01"
 MIN_N = 50
 MIN_IND = 5
 
+# Round 28/29: R5 打分权重 — Amihud 0.85 : 动量 0.15（用户 2026-09-10 批准, 原 0.5:0.5）
+# 依据: 权重敏感性(R26 单调) + 样本外验证(R28, 训练14-21选权→验证22-26 +6.2pp, 高原0.80~0.90)
+AMIHUD_W = 0.85
+
 # ---- 真实费率(2026-09 联网核实, 预注册固定) ----
 COMM_RATE = 0.00015  # 万1.5
 COMM_MIN = 5.0  # 单笔最低 5 元
@@ -106,7 +110,7 @@ def r5_rebalances(close, amount, tst, isst, ind):
             bench[exec_day] = set(codes)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = (pa + pm) / 2
+        sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm  # Round 29: Amihud 0.85 : 动量 0.15
         q = pd.qcut(sc.rank(method="first"), 5, labels=False)
         rebs.append({"T": T, "exec": exec_day, "target": set(codes[q == 4])})
     return rebs, bench, ret

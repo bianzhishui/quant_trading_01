@@ -26,7 +26,7 @@ from scipy import stats as sps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.dividend_factor import month_last_days  # noqa: E402
-from research.paper_trade import MIN_IND, MIN_N, _load  # noqa: E402
+from research.paper_trade import MIN_IND, MIN_N, AMIHUD_W, _load  # noqa: E402
 from research.reversal_factor import build_pool  # noqa: E402
 
 OUT = Path("output")
@@ -79,7 +79,7 @@ def compute_rankic_panel() -> pd.DataFrame:
         # 行业内 pct rank (与 R5 打分同口径)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = (pa + pm) / 2  # 合成分已是行业内口径, 无全池/行业内之分
+        sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm  # 合成分, 与 R5 打分同权重(0.85)
         row = {"date": T.date().isoformat()}
         row["amihud_full"] = sps.spearmanr(a[m2], fwd[m2])[0]
         row["amihud_ind"] = sps.spearmanr(pa[m2], fwd[m2])[0]

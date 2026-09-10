@@ -33,6 +33,8 @@
 | round23_limit_aware | 涨跌停阻塞验证 | ✅ 通过并入 | 涨跌停阻塞验证(S3-跟随): 阻塞损失-0.31pp@300万/-0.95pp@60万(四账户全≥-1.0pp), 三段全正策略结论不变; 结论并入生产Round24(引擎内置+实盘SOP入运营手册§8.7) | archive/experiments/round23_limit_aware/ | 2026-09-10 |
 | round25_pead | PEAD业绩预告 | ❌ 已否决 | PEAD业绩预告后漂移: IC+0.003(t=0.46)极弱/分组不单调(Q3峰)/超额+0.4pp, 1/4未通过; 与中期动量IC序列相关+0.629强重叠(非独立信息源)——不进入组合验证, R5不变 | archive/experiments/round25_pead/ | 2026-09-10 |
 | round26_weight_sensitivity | R5权重敏感性 | ⏸ 搁置 | R5权重敏感性: 50:50非最优且脆弱(邻域波动+3.17pp>0.5pp); Amihud权重单调递增超额(−0.37→+6.38pp)——Amihud是超额主源, 动量是稀释项; 生产不动(冻结), 是否调权重=用户决策点(需另开预注册+细扫防过拟合) | archive/experiments/round26_weight_sensitivity/ | 2026-09-10 |
+| round27_weight_tuning | 权重细扫·无高原 | ⏸ 搁置 | 权重细扫0.55~0.80: 超额单调递增至0.80(+7.04pp)但无高原(双侧高原判据全❌); 端点0.80伪通过被双侧判据拦截(数据挖掘陷阱); 结论: 趋势真实但无稳健选择——由Round28扩展扫描+样本外验证接续 | archive/experiments/round27_weight_tuning/ | 2026-09-10 |
+| round28_weight_tuning_oos | 权重样本外验证 | ✅ 通过并入 | 扩展扫描0.80~1.00顶点0.95(+7.49%)+样本外验证(训练14-21独立选权→验证22-26 超额差+6.5pp)+高原0.90~1.00波动0.15pp——四项全过; 用户批准折中w=0.85落地生产(保留15%动量缓冲), 账本重建 | archive/experiments/round28_weight_tuning_oos/ | 2026-09-10 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |

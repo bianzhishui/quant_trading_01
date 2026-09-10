@@ -18,7 +18,15 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import OUT, ROOT, build_pool, _load, _load_corp, r5_rebalances
+from research.paper_trade import (
+    OUT,
+    ROOT,
+    AMIHUD_W,
+    build_pool,
+    _load,
+    _load_corp,
+    r5_rebalances,
+)
 
 
 def main(csv: str | None = None):
@@ -43,7 +51,7 @@ def main(csv: str | None = None):
     codes_pool = common[ind_s.isin(keep)]
     pa = a.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
     pm = m.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
-    sc = (pa + pm) / 2
+    sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm
 
     # 名称/行业
     sb = pd.read_parquet(ROOT / "data" / "fundamental" / "stock_basic.parquet")
