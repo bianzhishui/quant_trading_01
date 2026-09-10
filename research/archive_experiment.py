@@ -312,6 +312,18 @@ UNITS = [
             "与中期动量IC序列相关+0.629强重叠(非独立信息源)——不进入组合验证, R5不变"
         ),
     },
+    {
+        "name": "round26_weight_sensitivity",
+        "scripts": ["factor_round26_weight_sensitivity.py"],
+        "plans": ["factor_round26_weight_sensitivity_plan.md"],
+        "outputs": [],
+        "status": "⏸ 搁置",
+        "conclusion": (
+            "R5权重敏感性: 50:50非最优且脆弱(邻域波动+3.17pp>0.5pp); Amihud权重单调递增超额"
+            "(−0.37→+6.38pp)——Amihud是超额主源, 动量是稀释项; 生产不动(冻结), "
+            "是否调权重=用户决策点(需另开预注册+细扫防过拟合)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -345,6 +357,7 @@ DIRECTIONS = {
     "round22_price_combo": "价格水平组合验证",
     "round23_limit_aware": "涨跌停阻塞验证",
     "round25_pead": "PEAD业绩预告",
+    "round26_weight_sensitivity": "R5权重敏感性",
 }
 
 
