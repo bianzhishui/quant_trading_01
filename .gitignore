@@ -8,7 +8,10 @@ data/*.csv
 output/*.png
 output/*.csv
 .DS_Store
-data/fundamental/
+
+# 运营宇宙清单入库(小体积152K, 版本一致); 其余 fundamental(行情697M等)大体积可再生不入库
+data/fundamental/*
+!data/fundamental/stock_basic.parquet
 
 # 运营每日图(5张, daily_update.py --chart 刷新)入库跟踪: 每账户NAV单图×4 + 累计净值/涨幅%双面板×1
 !output/daily_nav_aum*.png
@@ -21,6 +24,13 @@ data/fundamental/
 
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
+
+# Round2 因子实验数据(已归档 screen02, 本地保留可复现, 不入库)
+data/round2/dividends.parquet
+data/round2/hsgt.parquet
+data/round2/margin.parquet
+data/round2/roe.parquet
+data/round2/industry.parquet
 
 # 可转债数据本地保留(gitignore)；再生成管线 src/convertible.py 已于 2026-09-09 删除（方向已归档）
 data/convertible/
