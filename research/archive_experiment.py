@@ -287,6 +287,17 @@ UNITS = [
             "3/5维持R5, 价格水平降级单因子参考——单因子通过≠可并入(组合验证守门)"
         ),
     },
+    {
+        "name": "round23_limit_aware",
+        "scripts": ["factor_round23_limit_aware.py"],
+        "plans": ["factor_round23_limit_aware_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "涨跌停阻塞验证(S3-跟随): 阻塞损失-0.31pp@300万/-0.95pp@60万(四账户全≥-1.0pp), "
+            "三段全正策略结论不变; 结论并入生产Round24(引擎内置+实盘SOP入运营手册§8.7)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -318,6 +329,7 @@ DIRECTIONS = {
     "round20_extreme_scenario": "极端行情演练",
     "round21_tier1_screen": "梯队一筛选·4因子",
     "round22_price_combo": "价格水平组合验证",
+    "round23_limit_aware": "涨跌停阻塞验证",
 }
 
 
