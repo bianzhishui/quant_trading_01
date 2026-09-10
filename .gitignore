@@ -22,6 +22,11 @@ data/fundamental/*
 !output/monthly_funds_aum*.csv
 !output/monthly_holdings_aum*.csv
 
+# 年度场景回放入库跟踪(0.85口径, scenario_ytd.py 产出)
+!output/daily_nav_202*_aum*.csv
+!output/monthly_funds_202*_aum*.csv
+!output/daily_gains_202*.png
+
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
 

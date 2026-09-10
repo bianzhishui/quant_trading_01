@@ -120,12 +120,14 @@ def run_scenario(
         nav = pd.Series(navs, index=idx[i0 : i1 + 1])
         result[TAG(aum)] = nav
         if out_prefix is not None:
-            ret = nav.pct_change() * 100
+            nav_ret = (
+                nav.pct_change() * 100
+            )  # 勿命名 ret: 覆盖外层执行日涨幅(ret)致阻塞判定 bug
             df = pd.DataFrame(
                 {
                     "date": nav.index.strftime("%Y-%m-%d"),
                     "nav": nav.round(2),
-                    "涨幅%": ret.round(4),
+                    "涨幅%": nav_ret.round(4),
                     "较本金盈亏": (nav - aum).round(2),
                 }
             )
