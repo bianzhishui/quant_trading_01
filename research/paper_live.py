@@ -129,6 +129,29 @@ def _append_monthly_funds(aum: float, row: dict):
         f.write(",".join(str(x) for x in r) + "\n")
 
 
+def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
+    """每月持仓快照追加到 monthly_holdings_aum{XX}w.csv (date/code/shares/close/value)。
+
+    独立保留每月调仓后的持仓明细(覆盖式账本 shares 之外的历史快照)。
+    """
+    rows = []
+    for c, s in pf.shares.items():
+        p = prices.get(c, np.nan)
+        if pd.isna(p):
+            continue
+        rows.append(
+            {
+                "date": date_s,
+                "code": c,
+                "shares": s,
+                "close": round(float(p), 3),
+                "value": round(s * p, 2),
+            }
+        )
+    out = OUT / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
+    pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
+
+
 def _seed_build_row(aum: float):
     """账本已有而月度资金 CSV 缺失时, 从账本建仓记录补首行(建仓日)。"""
     p = monthly_funds_path(aum)
@@ -270,10 +293,21 @@ def init_ledger(aum: float):
         "total_fees": round(
             sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades), 2
         ),
+        "last_blocked": {
+            "date": str(last["exec"].date()),
+            "buy": [{"code": c, "amount": a} for c, a in pf.blocked_buys],
+            "sell": [{"code": c, "value": v} for c, v in pf.blocked_sells],
+        },
     }
     path = ledger_path(aum)
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
     _seed_build_row(aum)
+    _append_holdings_snapshot(aum, str(last["exec"].date()), pf, prices)
+    n_block = len(pf.blocked_buys)
+    if n_block:
+        print(
+            f"  [阻塞] 建仓日 {n_block} 只目标股涨停买不进 (钱留现金, 记入 last_blocked)"
+        )
     print(
         f"\n== 建账完成 {int(aum / 1e4)}万 == 信号 {led['last_signal']} → 执行 {led['last_exec']}"
         f" | 持仓 {len(pf.shares)} 只 | 现金 {pf.cash / 1e4:.1f}万"
@@ -329,6 +363,7 @@ def step(aum: float):
     step_fees = 0.0
     _seed_build_row(aum)
     prev_post = led["nav_history"][-1]["nav"]
+    blocked_this_step: list[dict] = []
     for rb in todo:
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
         pre_nav = pf.value(raw.loc[rb["exec"]])
@@ -336,6 +371,14 @@ def step(aum: float):
         pf.rebalance(
             rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
         )
+        if pf.blocked_buys or pf.blocked_sells:
+            blocked_this_step.append(
+                {
+                    "date": str(rb["exec"].date()),
+                    "buy": [{"code": c, "amount": a} for c, a in pf.blocked_buys],
+                    "sell": [{"code": c, "value": v} for c, v in pf.blocked_sells],
+                }
+            )
         post_nav = pf.value(raw.loc[rb["exec"]])
         buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
         sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
@@ -381,8 +424,21 @@ def step(aum: float):
     led["cash"] = pf.cash
     led["div_credited"] = pf.div_cash
     led["total_fees"] = round(led["total_fees"] + step_fees, 2)
+    led["last_blocked"] = blocked_this_step or None
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
+    _append_holdings_snapshot(
+        aum, str(todo[-1]["exec"].date()), pf, raw.loc[todo[-1]["exec"]]
+    )
+    if blocked_this_step:
+        n_b = sum(len(b["buy"]) for b in blocked_this_step)
+        n_s = sum(len(b["sell"]) for b in blocked_this_step)
+        amt_b = sum(b["amount"] for blk in blocked_this_step for b in blk["buy"])
+        print(
+            f"  [阻塞] 本批涨停买不进 {n_b} 只(滞留 {amt_b / 1e4:.1f}万) / "
+            f"跌停卖不出 {n_s} 只 —— 已记入 last_blocked, 下月再平衡"
+        )
     print(f"  本批费用 {step_fees:.0f} 元 | 账本已更新: {path.name}")
+    print(f"  持仓快照已导出: monthly_holdings_aum{int(aum / 1e4)}w.csv")
 
 
 def report(aum: float):
@@ -407,9 +463,26 @@ def report(aum: float):
     print(
         f"\n== 账本报告 {int(aum / 1e4)}万 == (起 {h[0]['date']} → 今 {led['last_exec']})"
     )
+    pos = nav_now - led["cash"]
     print(
         f"  净值 {nav_now / 1e4:.1f}万 | 持仓 {len(led['shares'])} 只 | 现金 {led['cash'] / 1e4:.1f}万"
     )
+    print(
+        f"  资金分布: 持仓 {pos / 1e4:.1f}万 ({pos / nav_now:.1%}) | "
+        f"现金 {led['cash'] / 1e4:.1f}万 ({led['cash'] / nav_now:.1%})"
+    )
+    lb = led.get("last_blocked")
+    if lb:
+        for blk in lb if isinstance(lb, list) else [lb]:
+            amt_b = sum(b["amount"] for b in blk["buy"])
+            codes_b = ", ".join(b["code"] for b in blk["buy"][:10])
+            if len(blk["buy"]) > 10:
+                codes_b += f" 等 {len(blk['buy'])} 只"
+            print(
+                f"  阻塞记录({blk['date']}): 涨停买不进 {len(blk['buy'])} 只"
+                f"(滞留 {amt_b / 1e4:.1f}万: {codes_b}) | "
+                f"跌停卖不出 {len(blk['sell'])} 只"
+            )
     print(
         f"  年化 {ann:.1%} | 同池等权基准年化 {ann_b:.1%} | 超额 {ann - ann_b:+.2%}pp"
     )

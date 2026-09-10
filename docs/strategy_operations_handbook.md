@@ -435,9 +435,10 @@ python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 
 | 文件 | 内容 | 更新频率 |
 |---|---|---|
-| `output/ledger_aum{60w,100w,300w,600w}.json` | 账户账本（持仓/现金/净值历史/费用） | 每月 step |
+| `output/ledger_aum{60w,100w,300w,600w}.json` | 账户账本（持仓/现金/净值历史/费用/**last_blocked 阻塞记录**） | 每月 step |
 | `output/daily_nav_aum*.csv` | 生产账户每日净值+涨幅+较本金盈亏 | 每日 mark |
 | `output/monthly_funds_aum*.csv` | 生产账户月度调仓资金变动 | 每月 step |
+| `output/monthly_holdings_aum*.csv` | **每月持仓快照**（date/code/shares/close/value，追加式独立保留，可查"某月持有明细"） | 每月 step |
 | `output/daily_nav_{YYYY0101}_aum*.csv` | 年度场景每日净值 | 年度复盘 |
 | `output/monthly_funds_{YYYY0101}_aum*.csv` | 年度场景月度资金变动 | 年度复盘 |
 | `output/daily_gains_{YYYY0101}.png` | 年度图（累计净值+每日涨幅） | 年度复盘 |

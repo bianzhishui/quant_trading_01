@@ -127,6 +127,12 @@ class PaperPortfolio:
         self.cash = aum
         self.trades: list[dict] = []
         self.div_cash = 0.0
+        self.blocked_buys: list[
+            tuple[str, float]
+        ] = []  # Round24: (code, 想买资金) 涨停买不进
+        self.blocked_sells: list[
+            tuple[str, float]
+        ] = []  # Round24: (code, 想卖市值) 跌停卖不出
 
     def value(self, prices: pd.Series) -> float:
         v = self.cash
@@ -193,12 +199,17 @@ class PaperPortfolio:
         n = len(target)
         if n == 0:
             return
+        self.blocked_buys = []
+        self.blocked_sells = []
         tgt_val = V / n
         for c in list(self.shares.keys()):
             if c not in target:
                 if tradable.get(c, False):
                     if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
-                        continue  # 跌停卖不出
+                        self.blocked_sells.append(
+                            (c, self.shares[c] * prices.get(c, np.nan))
+                        )  # 跌停卖不出, 记录想卖市值
+                        continue
                     self._order(c, "sell", self.shares[c], prices.get(c, np.nan))
             else:
                 p = prices.get(c, np.nan)
@@ -208,14 +219,23 @@ class PaperPortfolio:
                 tgt_sh = int(tgt_val / p / 100) * 100
                 if held - tgt_sh >= 100:
                     if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
-                        continue  # 跌停卖不出
+                        self.blocked_sells.append(
+                            (c, (held - tgt_sh) * p)
+                        )  # 跌停卖不出
+                        continue
                     self._order(c, "sell", held - tgt_sh, p)
         for c in target:
             p = prices.get(c, np.nan)
             if pd.isna(p) or not tradable.get(c, False):
                 continue
             if ret_exec is not None and ret_exec.get(c, 0.0) >= LIMIT_THR:
-                continue  # 涨停买不进
+                held = self.shares.get(c, 0)
+                tgt_sh = int(tgt_val / p / 100) * 100
+                if tgt_sh - held >= 100:
+                    self.blocked_buys.append(
+                        (c, (tgt_sh - held) * p)
+                    )  # 涨停买不进, 记录想买资金
+                continue
             held = self.shares.get(c, 0)
             tgt_sh = int(tgt_val / p / 100) * 100
             if tgt_sh - held >= 100:
