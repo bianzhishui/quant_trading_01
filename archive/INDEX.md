@@ -31,6 +31,7 @@
 | round21_tier1_screen | 梯队一筛选·4因子 | 🟡 部分通过 | 梯队一4因子筛选: 价格水平(低价股)单因子4/4通过(+3.0pp@15bp/换手1.1/三段全正/与Amihud截面-0.19)进候选池, 但Round22组合验证否决并入; 低beta/长期反转/下行波动未通过 | archive/experiments/round21_tier1_screen/ | 2026-09-09 |
 | round22_price_combo | 价格水平组合验证 | ❌ 已否决 | 三因子(+价格水平)超额+4.20→-0.25pp崩塌, Jaccard44.8%向差分散(分散≠增强); 3/5维持R5, 价格水平降级单因子参考——单因子通过≠可并入(组合验证守门) | archive/experiments/round22_price_combo/ | 2026-09-09 |
 | round23_limit_aware | 涨跌停阻塞验证 | ✅ 通过并入 | 涨跌停阻塞验证(S3-跟随): 阻塞损失-0.31pp@300万/-0.95pp@60万(四账户全≥-1.0pp), 三段全正策略结论不变; 结论并入生产Round24(引擎内置+实盘SOP入运营手册§8.7) | archive/experiments/round23_limit_aware/ | 2026-09-10 |
+| round25_pead | PEAD业绩预告 | ❌ 已否决 | PEAD业绩预告后漂移: IC+0.003(t=0.46)极弱/分组不单调(Q3峰)/超额+0.4pp, 1/4未通过; 与中期动量IC序列相关+0.629强重叠(非独立信息源)——不进入组合验证, R5不变 | archive/experiments/round25_pead/ | 2026-09-10 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |

@@ -34,3 +34,4 @@ data/round2/industry.parquet
 
 # 可转债数据本地保留(gitignore)；再生成管线 src/convertible.py 已于 2026-09-09 删除（方向已归档）
 data/convertible/
+data/round2/earnings_forecast.parquet
