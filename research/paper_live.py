@@ -252,7 +252,7 @@ def init_ledger(aum: float):
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     pf = PaperPortfolio(aum)
     prices = raw.loc[last["exec"]]
-    pf.rebalance(last["target"], prices, trad.loc[last["exec"]])
+    pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
     nav = pf.value(prices)
     bench_lv = _bench_levels(rebs, bench, ret)
     # 基准在建账日归一到 1.0: 模拟盘超额 = 策略自建账起收益 − 同池等权自建账起收益
@@ -333,7 +333,9 @@ def step(aum: float):
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
         pre_nav = pf.value(raw.loc[rb["exec"]])
         div_before = pf.div_cash
-        pf.rebalance(rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]])
+        pf.rebalance(
+            rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
+        )
         post_nav = pf.value(raw.loc[rb["exec"]])
         buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
         sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")

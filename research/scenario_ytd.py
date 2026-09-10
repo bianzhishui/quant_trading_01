@@ -47,6 +47,7 @@ def run_scenario(
     rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     F = _factor_panel(close)
+    ret = close.pct_change()  # Round 24: 涨跌停阻塞需执行日涨幅
     idx = close.index
     F_prev = F.shift(1).fillna(F.iloc[0])
 
@@ -87,7 +88,7 @@ def run_scenario(
             if rb is not None:
                 pre_nav = pf.value(prices)
                 div_before = pf.div_cash
-                pf.rebalance(rb["target"], prices, trad.loc[idx[i]])
+                pf.rebalance(rb["target"], prices, trad.loc[idx[i]], ret.loc[idx[i]])
                 post_nav = pf.value(prices)
                 buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
                 sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")

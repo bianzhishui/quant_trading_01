@@ -28,7 +28,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.data_io import delist_map, load_full_daily  # noqa: E402
 from research.dividend_factor import month_last_days, metrics  # noqa: E402
-from research.reversal_factor import build_pool, ew_nav  # noqa: E402
+from research.reversal_factor import LIMIT_THR, build_pool, ew_nav  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"
@@ -182,7 +182,13 @@ class PaperPortfolio:
                 self.cash += credit
                 self.div_cash += credit
 
-    def rebalance(self, target: set, prices: pd.Series, tradable: pd.Series):
+    def rebalance(
+        self, target: set, prices: pd.Series, tradable: pd.Series, ret_exec=None
+    ):
+        """调仓撮合。ret_exec=None → 理想化(无阻塞, 向后兼容);
+        传入执行日涨幅 Series → S3-跟随 阻塞: 涨停(≥+LIMIT_THR)买不进/跌停(≤-LIMIT_THR)卖不出,
+        未成交递延到下月调仓再平衡(不强制补买)。Round 24 生产真实口径。
+        """
         V = self.value(prices)
         n = len(target)
         if n == 0:
@@ -191,6 +197,8 @@ class PaperPortfolio:
         for c in list(self.shares.keys()):
             if c not in target:
                 if tradable.get(c, False):
+                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
+                        continue  # 跌停卖不出
                     self._order(c, "sell", self.shares[c], prices.get(c, np.nan))
             else:
                 p = prices.get(c, np.nan)
@@ -199,11 +207,15 @@ class PaperPortfolio:
                 held = self.shares[c]
                 tgt_sh = int(tgt_val / p / 100) * 100
                 if held - tgt_sh >= 100:
+                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
+                        continue  # 跌停卖不出
                     self._order(c, "sell", held - tgt_sh, p)
         for c in target:
             p = prices.get(c, np.nan)
             if pd.isna(p) or not tradable.get(c, False):
                 continue
+            if ret_exec is not None and ret_exec.get(c, 0.0) >= LIMIT_THR:
+                continue  # 涨停买不进
             held = self.shares.get(c, 0)
             tgt_sh = int(tgt_val / p / 100) * 100
             if tgt_sh - held >= 100:
@@ -335,7 +347,7 @@ def replay(aum: float, slip: float = 0.0):
         force_liquidate_delisted(pf, delist, dt, raw)  # Round 17 退市强制清仓
         rb = next((r for r in rebs if r["exec"] == dt), None)
         if rb is not None:
-            pf.rebalance(rb["target"], prices, trad.loc[dt])
+            pf.rebalance(rb["target"], prices, trad.loc[dt], ret.loc[dt])
         navs.append(pf.value(prices))
     nav = pd.Series(navs, index=idx) / aum  # 归一化到 1.0 起点(元→单位净值)
     tot_fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
@@ -362,12 +374,12 @@ def replay(aum: float, slip: float = 0.0):
 def init_portfolio(aum: float, slip: float = 0.0):
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
-    rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
+    rebs, _, ret = r5_rebalances(close, amount, tst, isst, ind)
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     pf = PaperPortfolio(aum, slip)
     prices = raw.loc[last["exec"]]
-    pf.rebalance(last["target"], prices, trad.loc[last["exec"]])
+    pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
     total_fee = sum(
         t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades
     )
