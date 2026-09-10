@@ -14,6 +14,11 @@ data/fundamental/
 !output/daily_nav_aum*.png
 !output/daily_gains_live.png
 
+# 运营数据入库跟踪(当前四账户, 无年份前缀): 每日净值/月度资金/月度持仓快照
+!output/daily_nav_aum*.csv
+!output/monthly_funds_aum*.csv
+!output/monthly_holdings_aum*.csv
+
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
 

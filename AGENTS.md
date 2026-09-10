@@ -32,8 +32,10 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 - 数据：`data/fundamental/full_daily.parquet`（全市场 879万+ 行，date/code/close/amount/tradestatus/isST…）、
   `data/round2/adjust_factor.parquet`（复权因子）、`data/round2/industry_full.parquet`（行业）。
 - 输出：`output/`（账本 JSON、每日/月度 CSV、图）。**`output/*.csv` 与 `output/*.png` 被 gitignore**，
-  不入库；**例外：5 张运营每日图入库跟踪**（`daily_nav_aum*.png` ×4 + `daily_gains_live.png` ×1，
-  `daily_update.py --chart` 刷新，README 靠上位置引用）；`output/ledger_aum*.json` 已跟踪。
+  不入库；**例外：当前四账户运营产物全部入库跟踪**——5 张每日图（`daily_nav_aum*.png` ×4 +
+  `daily_gains_live.png` ×1，`daily_update.py --chart` 刷新，README 靠上位置引用）+ 12 个运营 CSV
+  （`daily_nav_aum*.csv` 每日净值 / `monthly_funds_aum*.csv` 月度资金 / `monthly_holdings_aum*.csv`
+  月度持仓快照）；`output/ledger_aum*.json` 已跟踪。
 
 ---
 
@@ -136,8 +138,9 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   （ruff 默认格式风格，已配 pyproject；提交前 check 必须 0 错误；pre-commit 可选装 `.pre-commit-config.yaml`）；
 - ❌ 不跑多次重回测去"试"：share 级回放 10-20 分钟，**先预注册、后台跑、不重复**；
 - ❌ 不改冻结参数 / 不改 R5 选股逻辑；
-- ❌ 不提交 `output/*.csv`、`output/*.png`（gitignored，可再生成）——**仅 5 张运营每日图
-  （`daily_nav_aum*.png` ×4 + `daily_gains_live.png`）豁免入库**，每日 `--chart` 刷新后须随 commit 更新；
+- ❌ 不提交 `output/*.csv`、`output/*.png`（gitignored，可再生成）——**仅当前四账户运营产物豁免
+  （5 张每日图 + 12 个运营 CSV：daily_nav_aum*/monthly_funds_aum*/monthly_holdings_aum*）**，
+  每日 mark/每月 step 后须随 commit 更新；
 - ❌ 不把其他策略版本写进 `docs/strategy_operations_handbook.md`（它只维护 R5）；
 - ❌ 不凭文件时间戳断"今天几号"（先 `date`）；
 - ❌ 不编造回测/账本数字——拿不到就如实说"数据未出/需跑"；
