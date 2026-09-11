@@ -364,6 +364,18 @@ UNITS = [
             "不并入R5; 判据缺陷记录(①超额应为门禁)"
         ),
     },
+    {
+        "name": "round31_lhb",
+        "scripts": ["factor_round31_lhb.py", "fetch_lhb.py"],
+        "plans": ["factor_round31_lhb_plan.md"],
+        "outputs": [],
+        "status": "❌ 已否决",
+        "conclusion": (
+            "龙虎榜净买占比: 未通过(1/4)——机制假设被否定: 上榜后1/2/5日均值+0.32/+0.28/+0.37%"
+            "(上榜=强势延续非散户追高看空); IC无效/分组U型/超额+0.3pp; 正交(-0.04)但无信号; "
+            "月度截面无预测力, 不进入组合验证"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -401,6 +413,7 @@ DIRECTIONS = {
     "round27_weight_tuning": "权重细扫·无高原",
     "round28_weight_tuning_oos": "权重样本外验证",
     "round30_shareholder": "股东户数/筹码集中",
+    "round31_lhb": "龙虎榜席位结构",
 }
 
 

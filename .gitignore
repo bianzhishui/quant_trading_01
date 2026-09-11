@@ -41,3 +41,4 @@ data/round2/industry.parquet
 data/convertible/
 data/round2/earnings_forecast.parquet
 data/round2/shareholder_count.parquet
+data/round2/lhb.parquet

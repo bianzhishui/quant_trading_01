@@ -36,6 +36,7 @@
 | round27_weight_tuning | 权重细扫·无高原 | ⏸ 搁置 | 权重细扫0.55~0.80: 超额单调递增至0.80(+7.04pp)但无高原(双侧高原判据全❌); 端点0.80伪通过被双侧判据拦截(数据挖掘陷阱); 结论: 趋势真实但无稳健选择——由Round28扩展扫描+样本外验证接续 | archive/experiments/round27_weight_tuning/ | 2026-09-10 |
 | round28_weight_tuning_oos | 权重样本外验证 | ✅ 通过并入 | 扩展扫描0.80~1.00顶点0.95(+7.49%)+样本外验证(训练14-21独立选权→验证22-26 超额差+6.5pp)+高原0.90~1.00波动0.15pp——四项全过; 用户批准折中w=0.85落地生产(保留15%动量缓冲), 账本重建 | archive/experiments/round28_weight_tuning_oos/ | 2026-09-10 |
 | round30_shareholder | 股东户数/筹码集中 | ❌ 已否决 | 股东户数/筹码集中度: 单因子3/4(IC-0.02 t=-4.57极显著, 与Amihud/动量正交0.1级), 但等权三因子并入崩塌(+7.31→+3.62pp, 稀释Amihud主源)——正交≠可并入(R22教训重演); 不并入R5; 判据缺陷记录(①超额应为门禁) | archive/experiments/round30_shareholder/ | 2026-09-11 |
+| round31_lhb | 龙虎榜席位结构 | ❌ 已否决 | 龙虎榜净买占比: 未通过(1/4)——机制假设被否定: 上榜后1/2/5日均值+0.32/+0.28/+0.37%(上榜=强势延续非散户追高看空); IC无效/分组U型/超额+0.3pp; 正交(-0.04)但无信号; 月度截面无预测力, 不进入组合验证 | archive/experiments/round31_lhb/ | 2026-09-11 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |
