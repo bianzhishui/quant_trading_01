@@ -348,6 +348,22 @@ UNITS = [
             "(保留15%动量缓冲), 账本重建"
         ),
     },
+    {
+        "name": "round30_shareholder",
+        "scripts": [
+            "factor_round30_shareholder.py",
+            "factor_round30_shareholder_combo.py",
+            "fetch_shareholder_count.py",
+        ],
+        "plans": ["factor_round30_shareholder_plan.md"],
+        "outputs": [],
+        "status": "❌ 已否决",
+        "conclusion": (
+            "股东户数/筹码集中度: 单因子3/4(IC-0.02 t=-4.57极显著, 与Amihud/动量正交0.1级), "
+            "但等权三因子并入崩塌(+7.31→+3.62pp, 稀释Amihud主源)——正交≠可并入(R22教训重演); "
+            "不并入R5; 判据缺陷记录(①超额应为门禁)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -384,6 +400,7 @@ DIRECTIONS = {
     "round26_weight_sensitivity": "R5权重敏感性",
     "round27_weight_tuning": "权重细扫·无高原",
     "round28_weight_tuning_oos": "权重样本外验证",
+    "round30_shareholder": "股东户数/筹码集中",
 }
 
 
