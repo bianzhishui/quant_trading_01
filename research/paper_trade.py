@@ -228,7 +228,9 @@ class PaperPortfolio:
                         )  # 跌停卖不出
                         continue
                     self._order(c, "sell", held - tgt_sh, p)
-        for c in target:
+        for c in sorted(
+            target
+        ):  # 排序迭代: set哈希序随机会致现金约束下买入子集逐次漂移(确定性修复)
             p = prices.get(c, np.nan)
             if pd.isna(p) or not tradable.get(c, False):
                 continue
