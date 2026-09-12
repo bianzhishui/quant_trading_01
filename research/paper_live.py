@@ -6,13 +6,15 @@
 每月新数据到手后运行 step, 自动补跑错过的所有调仓(长期执行核心)。
 
 用法:
-  python research/paper_live.py init --aum 3000000   # 建账(当前信号起)
+  python research/paper_live.py init --aum 3000000   # 建账(当前信号起, 默认滑点15bp)
   python research/paper_live.py init --aum 6000000
   python research/paper_live.py step                 # 推进全部账本到最新数据
   python research/paper_live.py step --aum 3000000   # 只推进单个
   python research/paper_live.py report               # 全部账本报告
+  python research/paper_live.py mark --slip 0        # 每日涨幅(0=旧理想化口径, 默认15bp)
 数据: 行情用 data/fundamental/full_daily.parquet(先跑 fetch_full_market.py 更新);
 公司行为增量用 baostock 实时查询(持仓股), 缓存 data/round2/adjust_factor_live.parquet。
+Round32: 滑点默认 15bp(账本真实化, 与回测基准口径一致); --slip 0 回退理想化。
 """
 
 from __future__ import annotations
@@ -39,6 +41,10 @@ from research.paper_trade import (
 from research.reversal_factor import ew_nav
 
 LIVE_FAC = R2 / "adjust_factor_live.parquet"
+
+# Round32: 模拟盘执行成本口径补齐——滑点默认 15bp(与回测基准口径一致, 账本真实化)。
+# --slip 0 可回退旧理想化口径(全按收盘价成交, 滑点项为 0)。
+SLIP_DEFAULT = 0.0015
 
 # ---- 进程级缓存: daily_update 流程 mark×4+report 只加载/计算一次全量 ----
 # 键 = (data_version, 相关文件 mtime)。data_version 由 data_io 写盘自增,
@@ -269,11 +275,11 @@ def _apply_corp_period(
                 pf.corp_action_f(c, prices.get(c, np.nan), fp[c], fn[c])
 
 
-def init_ledger(aum: float):
+def init_ledger(aum: float, slip: float = SLIP_DEFAULT):
     close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
-    pf = PaperPortfolio(aum)
+    pf = PaperPortfolio(aum, slip)
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
     nav = pf.value(prices)
@@ -316,7 +322,7 @@ def init_ledger(aum: float):
     print(f"  建仓费用 {led['total_fees']:.0f} 元 | 账本 {path.name}")
 
 
-def step(aum: float):
+def step(aum: float, slip: float = SLIP_DEFAULT):
     path = ledger_path(aum)
     if not path.exists():
         raise SystemExit(f"账本不存在: {path.name} → 先跑 init")
@@ -352,7 +358,7 @@ def step(aum: float):
                 flush=True,
             )
     F = _factor_panel_cached(close)
-    pf = PaperPortfolio(led["aum"])
+    pf = PaperPortfolio(led["aum"], slip)
     pf.shares = {k: int(v) for k, v in led["shares"].items()}
     pf.cash = float(led["cash"])
     pf.div_cash = float(led.get("div_credited", 0))
@@ -507,7 +513,7 @@ def report(aum: float):
             )
 
 
-def mark(aum: float):
+def mark(aum: float, slip: float = SLIP_DEFAULT):
     """每日涨幅: 当天收盘 NAV / 前一天收盘 NAV - 1 (逐日盯市, 含分红入账)。
 
     从账本 last_exec 起逐日: 现金 + Σ股数×收盘价(停牌按最后价); 因子事件补除权缺口。
@@ -529,7 +535,7 @@ def mark(aum: float):
             f"  [警告] {int(aum / 1e4)}万 账本落后 {len(pending)} 个月调仓, 涨幅按旧持仓计; 请先跑 step"
         )
     F = _factor_panel_cached(close)
-    pf = PaperPortfolio(led["aum"])
+    pf = PaperPortfolio(led["aum"], slip)
     pf.shares = {k: int(v) for k, v in led["shares"].items()}
     pf.cash = float(led["cash"])
     idx = close.index
@@ -575,17 +581,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["init", "step", "report", "mark"])
     ap.add_argument("--aum", type=float, default=0.0)
+    ap.add_argument(
+        "--slip",
+        type=float,
+        default=SLIP_DEFAULT,
+        help=f"滑点比例(默认 {SLIP_DEFAULT:.4f}=15bp, Round32 账本真实化; 0=旧理想化口径)",
+    )
     args = ap.parse_args()
     aums = [args.aum] if args.aum > 0 else [600_000, 1_000_000, 3_000_000, 6_000_000]
     step_done = False
     for a in aums:
         if args.mode == "init":
-            init_ledger(a)
+            init_ledger(a, args.slip)
         elif args.mode == "step":
-            step(a)
+            step(a, args.slip)
             step_done = True
         elif args.mode == "mark":
-            mark(a)
+            mark(a, args.slip)
         else:
             report(a)
     # Round18 因子失效监控: step 完成后打印状态灯摘要(失败仅提示, 不影响 step 结果)

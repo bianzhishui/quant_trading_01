@@ -44,7 +44,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 | 脚本 | 用途 | 典型耗时 |
 |---|---|---|
 | `research/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号 | 单个 share 级回放 ~8-15 分钟 |
-| `research/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告 | mark 数百只 ~1-2 分钟/账户 |
+| `research/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
 | `research/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
 | `research/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
 | `research/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
