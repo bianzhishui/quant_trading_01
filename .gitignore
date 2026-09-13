@@ -42,3 +42,9 @@ data/convertible/
 data/round2/earnings_forecast.parquet
 data/round2/shareholder_count.parquet
 data/round2/lhb.parquet
+
+# 临时/验证脚本(不入库, 见 AGENTS.md §8)
+tmp/
+
+# 华为云码道
+.codeartsdoer/
