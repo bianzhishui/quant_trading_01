@@ -73,7 +73,7 @@ def run_scenario(
         )
     result: dict[str, pd.Series] = {}
     for aum in AUM_LIST:
-        pf = PaperPortfolio(aum)
+        pf = PaperPortfolio(aum, 0.0015)  # Round33: 滑点 15bp, 与回测/账本口径统一
         navs = []
         funds_rows = []  # 每次调仓的资金变动
         prev_post = None

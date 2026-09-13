@@ -5,7 +5,7 @@
 严格按 docs/factor_round10_paper_sim_plan.md v1.0：
 - 真实价格账: raw = qfq / foreAdjustFactor(前复权因子), 现金用真实价格收付
 - 公司行为: 除权日现金分红(按10%红利税)入现金; 送转调整股数
-- 费率: 佣金万1.5(单笔最低5元,双边) + 印花税万5(卖出) + 过户费万0.1(双边) + 滑点(默认0)
+- 费率: 佣金万1.5(单笔最低5元,双边) + 印花税万5(卖出) + 过户费万0.1(双边) + 滑点(默认15bp, Round33)
 - 1手=100股整数倍买入, 卖出允许零股清仓; 现金无收益; 净值=现金+Σ股数×价(逐日盯市)
 - 调仓: 每月向目标等权再平衡, |Δ|≥1手才交易; 停牌(tradestatus!=1)跳过
 
@@ -13,7 +13,7 @@
   python research/paper_trade.py replay --aum 3000000   # 历史回放(2013-2026, 真实费率)
   python research/paper_trade.py init --aum 3000000     # 当前建仓快照(真实价格)
   python research/paper_trade.py init --aum 100000      # 演示: 10万不可行性
-选项: --slip 0.001 (滑点比例, 默认0)
+选项: --slip 0.001 (滑点比例, 默认0.0015=15bp, Round33 与基准/账本口径统一; 0=纯因子口径)
 """
 
 from __future__ import annotations
@@ -47,6 +47,10 @@ COMM_MIN = 5.0  # 单笔最低 5 元
 STAMP_RATE = 0.0005  # 印花税 万5, 仅卖出
 TRANSFER_RATE = 0.00001  # 过户费 万0.1, 双边
 DIV_TAX = 0.10  # 红利税 10% (1个月-1年持仓口径, 保守)
+
+# Round 33: 回测默认滑点 15bp, 与基准(ew_nav 15e-4)/账本(paper_live SLIP_DEFAULT)三口径统一。
+# 保留 --slip 0 显式回退(纯因子研究/敏感度分析用)。
+SLIP_DEFAULT = 0.0015
 
 
 def _load():
@@ -434,7 +438,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["replay", "replay_w", "init"])
     ap.add_argument("--aum", type=float, default=3_000_000)
-    ap.add_argument("--slip", type=float, default=0.0)
+    ap.add_argument("--slip", type=float, default=SLIP_DEFAULT)
     args = ap.parse_args()
     if args.mode == "replay":
         replay(args.aum, args.slip)
