@@ -1,32 +1,151 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // 常用命令一键运行（调试/运营）。用 F5 或 Run 按钮选择配置执行。
+    // Python 解释器用项目内 .venv（uv 管理），cwd 固定仓库根。
     "version": "0.2.0",
     "configurations": [
+        // ===== 每日运营（daily_update）=====
         {
-            "name": "daily_update (只读总表)",
+            "name": "daily_update 一键运营",
             "type": "debugpy",
             "request": "launch",
-            "python": "${workspaceFolder}/.venv/bin/python", // macOS 路径
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/daily_update.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "daily_update 只读总表",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
             "program": "${workspaceFolder}/research/daily_update.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-            "args": [
-                "--table"
-            ]
+            "args": ["--table"]
         },
+        // ===== 模拟盘四账户（paper_live）=====
         {
-            "name": "paper_live report",
+            "name": "paper_live 月调仓 step",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
             "program": "${workspaceFolder}/research/paper_live.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-            "args": [
-                "report"
-            ]
+            "args": ["step"]
+        },
+        {
+            "name": "paper_live 每日涨幅 mark",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_live.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["mark"]
+        },
+        {
+            "name": "paper_live 报告 report",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_live.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["report"]
+        },
+        // ===== 因子健康监控（factor_health）=====
+        {
+            "name": "factor_health 因子监控",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/factor_health.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "factor_health 因子监控+图",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/factor_health.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--chart"]
+        },
+        // ===== 历史回测（paper_trade）=====
+        {
+            "name": "paper_trade replay 300万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_trade.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["replay", "--aum", "3000000"]
+        },
+        {
+            "name": "paper_trade replay 600万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_trade.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["replay", "--aum", "6000000"]
+        },
+        // ===== 年度场景回放（scenario_ytd）=====
+        {
+            "name": "scenario_ytd 2026全年",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/scenario_ytd.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--start", "2026-01-01"]
+        },
+        {
+            "name": "scenario_ytd 2025全年",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/scenario_ytd.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--start", "2025-01-01", "--end", "2025-12-31"]
+        },
+        // ===== 出图（plot_daily_gains）=====
+        {
+            "name": "plot_daily_gains 运营图(live)",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/plot_daily_gains.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--live"]
+        },
+        {
+            "name": "plot_daily_gains 2015回测图",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/plot_daily_gains.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--prefix", "20150101", "--title", "2015-01起全量回测"]
+        },
+        // ===== 数据更新（fetch）=====
+        {
+            "name": "fetch_full_market 全市场更新",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/fetch_full_market.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
         }
     ]
 }
