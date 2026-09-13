@@ -39,6 +39,17 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 ---
 
+## 2.5 配置系统（Round 34，全量配置化）
+
+**所有可配置项集中在 YAML 文件，代码不 hardcode 配置值**：
+
+- **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；
+- **自定义配置**：`--config config/custom.yaml`（CLI）或 `QUANT_CONFIG` 环境变量 → **深合并覆盖 default.yaml**（同 key 覆盖，缺失项继承 default）；指定文件不存在 → 报错；
+- **代码读取**：函数内 `research.config.get_config()` 惰性单例（方案二）；各脚本 `main()` 里 `load_config(args.config)` 建立单例，之后函数内生效；被 import 的脚本用默认配置；
+- **冻结参数校验**：配置值 ≠ default.yaml 冻结基准 → 打印醒目警告（不阻止），提示需预注册；
+- **支持格式**：YAML（pyyaml）；
+- **代价**：CLI 参数（如 `--slip`）默认取配置值（`--slip` 显式指定时覆盖配置）；各脚本均可 `--config` 指定。
+
 ## 3. 核心脚本一览
 
 | 脚本 | 用途 | 典型耗时 |
@@ -56,6 +67,9 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 ---
 
 ## 4. 冻结参数（**改前必须预注册 + 用户批准**）
+
+> **Round 34 配置化后**：冻结参数已迁移到 `config/default.yaml` 的 `strategy`/`costs` 段（即冻结基准）；
+> 自定义配置覆盖冻结值会触发醒目警告（见 §2.5）。改冻结参数仍需预注册 + 用户批准。
 
 ```
 佣金 万1.5(单笔最低5元, COMM_MIN=5.0) · 印花税 万5(仅卖出) · 过户费 万0.1(双边)

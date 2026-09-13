@@ -18,10 +18,8 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import (
-    OUT,
-    ROOT,
-    AMIHUD_W,
+from research.config import get_config  # noqa: E402
+from research.paper_trade import (  # noqa: E402
     build_pool,
     _load,
     _load_corp,
@@ -30,6 +28,11 @@ from research.paper_trade import (
 
 
 def main(csv: str | None = None):
+    cfg = get_config()
+    out = Path(cfg.paths.output)
+    root = Path(__file__).resolve().parent.parent
+    amihud_w = cfg.strategy.amihud_w
+    min_ind = cfg.strategy.min_ind
     close, amount, tst, isst, ind = _load()
     raw, _ = _load_corp(close)
     rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
@@ -47,21 +50,21 @@ def main(csv: str | None = None):
     m = mom.loc[T][e].dropna()
     common = a.index.intersection(m.index).intersection(ind.index)
     ind_s = ind.reindex(common)
-    keep = ind_s.value_counts()[ind_s.value_counts() >= 5].index
+    keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
     codes_pool = common[ind_s.isin(keep)]
     pa = a.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
     pm = m.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
-    sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm
+    sc = amihud_w * pa + (1 - amihud_w) * pm
 
     # 名称/行业
-    sb = pd.read_parquet(ROOT / "data" / "fundamental" / "stock_basic.parquet")
+    sb = pd.read_parquet(root / "data" / "fundamental" / "stock_basic.parquet")
     names = sb.set_index("code")["code_name"]
     indn = ind.rename("industry")
 
     # 两账户股数(账本)
     qty = {}
     for aum, key in [(3_000_000, "qty300"), (6_000_000, "qty600")]:
-        lp = OUT / f"ledger_aum{int(aum / 1e4)}w.json"
+        lp = out / f"ledger_aum{int(aum / 1e4)}w.json"
         if lp.exists():
             import json
 
@@ -103,8 +106,8 @@ def main(csv: str | None = None):
         "qty600",
         "weight",
     ]
-    out = csv or OUT / f"strategy_holdings_{last['exec'].date()}.csv"
-    df[cols].to_csv(out, index=False)
+    out_csv = csv or out / f"strategy_holdings_{last['exec'].date()}.csv"
+    df[cols].to_csv(out_csv, index=False)
 
     n300 = int((df["qty300"] > 0).sum())
     n600 = int((df["qty600"] > 0).sum())
@@ -113,7 +116,7 @@ def main(csv: str | None = None):
         f"  目标 {len(codes)} 只 | 300万实买 {n300} (差 {len(codes) - n300} 只: 停牌/涨停/1手不足)"
         f" | 600万实买 {n600}"
     )
-    print(f"  文件: {out}")
+    print(f"  文件: {out_csv}")
     print("\n  前 10 (按合成分):")
     print(
         df.head(10)[

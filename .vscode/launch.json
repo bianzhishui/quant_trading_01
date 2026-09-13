@@ -115,6 +115,16 @@
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "6000000"]
         },
+        {
+            "name": "paper_trade replay 300万 (自定义配置)",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_trade.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["replay", "--aum", "3000000", "--config", "config/custom.yaml"]
+        },
         // ===== 年度场景回放（scenario_ytd）=====
         {
             "name": "scenario_ytd 2026全年",

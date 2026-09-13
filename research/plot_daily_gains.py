@@ -26,7 +26,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import OUT
+from research.config import get_config  # noqa: E402
+
+# 模块级从配置读取（本脚本独立运行，main() 里 load_config 后生效；被 import 时用默认）
+OUT = get_config().paths.output
 
 plt.rcParams["font.sans-serif"] = [
     "PingFang SC",
@@ -38,13 +41,12 @@ plt.rcParams["font.sans-serif"] = [
 ]
 plt.rcParams["axes.unicode_minus"] = False
 
-# (tag, 显示名, 建仓本金)
-AUM_LIST = [
-    ("60w", "60万", 600_000),
-    ("100w", "100万", 1_000_000),
-    ("300w", "300万", 3_000_000),
-    ("600w", "600万", 6_000_000),
-]
+# (tag, 显示名, 建仓本金) —— 从配置 accounts.aum_list 生成
+AUM_LIST = []
+for aum in get_config().accounts.aum_list:
+    tag = f"aum{int(aum / 1e4)}w"
+    name = f"{int(aum / 1e4)}万"
+    AUM_LIST.append((tag, name, aum))
 COLORS = ["#c0392b", "#e67e22", "#2980b9", "#27ae60"]
 
 

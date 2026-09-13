@@ -21,10 +21,11 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.paper_trade import OUT, PaperPortfolio, _load, _load_corp, r5_rebalances
-from research.paper_live import _factor_panel
+from research.config import get_config  # noqa: E402
+from research.paper_trade import PaperPortfolio, _load, _load_corp, r5_rebalances  # noqa: E402
+from research.paper_live import _factor_panel  # noqa: E402
 
-AUM_LIST = [600_000, 1_000_000, 3_000_000, 6_000_000]
+AUM_LIST = get_config().accounts.aum_list
 TAG = lambda a: f"aum{int(a / 1e4)}w"  # noqa: E731
 
 
@@ -40,6 +41,7 @@ def run_scenario(
     verbose 控制打印。返回 nav 供统计/绘图复用(不重复回放)。
     """
     start_ts = pd.Timestamp(start)
+    out = Path(get_config().paths.output)
     end_ts = pd.Timestamp(end) if end else None
 
     close, amount, tst, isst, ind = _load()
@@ -132,7 +134,7 @@ def run_scenario(
                 }
             )
             df.to_csv(
-                OUT / f"daily_nav_{out_prefix}_aum{int(aum / 1e4)}w.csv", index=False
+                out / f"daily_nav_{out_prefix}_aum{int(aum / 1e4)}w.csv", index=False
             )
             fdf = pd.DataFrame(
                 [
@@ -168,7 +170,7 @@ def run_scenario(
                 "较本金盈亏",
             ]
             fdf[cols].to_csv(
-                OUT / f"monthly_funds_{out_prefix}_aum{int(aum / 1e4)}w.csv",
+                out / f"monthly_funds_{out_prefix}_aum{int(aum / 1e4)}w.csv",
                 index=False,
             )
             cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100

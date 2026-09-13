@@ -29,19 +29,13 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from research.config import get_config
 from research.dividend_factor import load_all, month_last_days, metrics
 
-LOOKBACK = 21  # 反转回看期(交易日)
-N_Q = 5  # 分组数
-LIMIT_THR = 0.098  # 主板涨停近似阈值(前复权日收益)
-COST_BASE = 15e-4  # 基础全成本 15bp/单边
-COST_SWEEP = [25e-4, 35e-4]
-ERAS = {
-    "2014-2017": ("2014-01-01", "2017-12-31"),
-    "2018-2021": ("2018-01-01", "2021-12-31"),
-    "2022-2026": ("2022-01-01", None),
-}
-OUT = Path(__file__).resolve().parent.parent / "output"
+
+def _cfg():
+    """当前进程配置单例（main() 里 load_config 后生效；被 import 时用默认）。"""
+    return get_config()
 
 
 def ew_nav(ret: pd.DataFrame, sets: dict, cost: float) -> tuple[pd.Series, float]:
@@ -71,6 +65,7 @@ def build_pool(
     close: pd.DataFrame, tst: pd.DataFrame, isst: pd.DataFrame
 ) -> pd.DataFrame:
     """逐日可交易池(布尔宽表): 375日 seasoning + 非ST + 非创业/科创/北交 + 未涨停。"""
+    limit_thr = _cfg().strategy.limit_thr
     days_count = close.notna().cumsum()
     board_ok = pd.Series(
         {
@@ -80,7 +75,7 @@ def build_pool(
     )
     tst_ok = tst.apply(pd.to_numeric, errors="coerce") == 1
     isst_ok = isst.apply(pd.to_numeric, errors="coerce") == 0
-    limit_up = close.pct_change() >= LIMIT_THR
+    limit_up = close.pct_change() >= limit_thr
     pool = (
         (days_count >= 375)
         & tst_ok
@@ -93,6 +88,13 @@ def build_pool(
 
 
 def main() -> None:
+    cfg = _cfg()
+    lookback = cfg.strategy.lookback
+    n_q = cfg.strategy.n_q
+    cost_base = cfg.costs.cost_base
+    cost_sweep = cfg.costs.cost_sweep
+    eras = cfg.strategy.eras
+    out = Path(cfg.paths.output)
     print("== 短期反转因子月频实验 (预注册 v1.0) ==")
     close, real, pb, tst, isst, *_ = load_all()
     print(
@@ -100,14 +102,14 @@ def main() -> None:
         f"{close.index[0].date()} ~ {close.index[-1].date()}"
     )
 
-    rev = close / close.shift(LOOKBACK) - 1.0  # 因子: 越低越超跌
+    rev = close / close.shift(lookback) - 1.0  # 因子: 越低越超跌
     pool = build_pool(close, tst, isst)
     ret_qfq = close.pct_change()  # 组合收益(前复权)
 
     # ---- 逐月: 分组集合 + 基准集合 + 月度 RankIC ----
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
-    q_sets: list[dict] = [dict() for _ in range(N_Q)]
+    q_sets: list[dict] = [dict() for _ in range(n_q)]
     bench_sets: dict = {}
     ics: dict = {}
     pool_sizes, q_sizes = [], []
@@ -118,12 +120,12 @@ def main() -> None:
             continue
         exec_day = idx[idx.get_loc(T) + 1]  # 次月首个交易日生效
         rk = f.rank(method="first")
-        q = pd.qcut(rk, N_Q, labels=False)
-        for g in range(N_Q):
+        q = pd.qcut(rk, n_q, labels=False)
+        for g in range(n_q):
             q_sets[g][exec_day] = set(f.index[q == g])
         bench_sets[exec_day] = set(f.index)
         pool_sizes.append(len(f))
-        q_sizes.append(len(f) / N_Q)
+        q_sizes.append(len(f) / n_q)
         T2 = sig_days[k + 1] if k + 1 < len(sig_days) else None
         if T2 is not None:
             fwd = close.loc[T2] / close.loc[T] - 1.0  # 未来一个月收益
@@ -139,15 +141,15 @@ def main() -> None:
 
     # ---- 回测: 五分组 + 基准 + 成本压测 ----
     navs, turns = {}, {}
-    for g in range(N_Q):
-        navs[f"Q{g + 1}"], turns[f"Q{g + 1}"] = ew_nav(ret_qfq, q_sets[g], COST_BASE)
-    navs["基准(等权全池)"], turns["基准"] = ew_nav(ret_qfq, bench_sets, COST_BASE)
-    q1_25, _ = ew_nav(ret_qfq, q_sets[0], COST_SWEEP[0])
-    q1_35, _ = ew_nav(ret_qfq, q_sets[0], COST_SWEEP[1])
+    for g in range(n_q):
+        navs[f"Q{g + 1}"], turns[f"Q{g + 1}"] = ew_nav(ret_qfq, q_sets[g], cost_base)
+    navs["基准(等权全池)"], turns["基准"] = ew_nav(ret_qfq, bench_sets, cost_base)
+    q1_25, _ = ew_nav(ret_qfq, q_sets[0], cost_sweep[0])
+    q1_35, _ = ew_nav(ret_qfq, q_sets[0], cost_sweep[1])
 
     anns = {k: metrics(v)["年化"] for k, v in navs.items()}
     print("\n== 各分组年化(扣15bp, 2014-2026 全样本) ==")
-    for g in range(N_Q):
+    for g in range(n_q):
         print(
             f"  Q{g + 1}: {anns[f'Q{g + 1}']:+.1%}  (年换手 {turns[f'Q{g + 1}']:.1f})"
         )
@@ -172,7 +174,7 @@ def main() -> None:
     # ---- 分年代稳定性 ----
     print("\n== 分年代 Q1(扣15bp) vs 基准 ==")
     era_excess = {}
-    for name, (s, e) in ERAS.items():
+    for name, (s, e) in eras.items():
         a = navs["Q1"][s:e]
         b = navs["基准(等权全池)"][s:e]
         ma, mb = metrics(a / a.dropna().iloc[0]), metrics(b / b.dropna().iloc[0])
@@ -183,8 +185,8 @@ def main() -> None:
         )
 
     # ---- 预注册判定 ----
-    group_ann = [anns[f"Q{g + 1}"] for g in range(N_Q)]
-    mono_rho = sps.spearmanr(range(1, N_Q + 1), group_ann)[0]
+    group_ann = [anns[f"Q{g + 1}"] for g in range(n_q)]
+    mono_rho = sps.spearmanr(range(1, n_q + 1), group_ann)[0]
     c1 = (ic_mean <= -0.05) and (ic_t <= -2)
     c2 = (group_ann[0] == max(group_ann)) and (group_ann[-1] == min(group_ann))
     c3 = excess15 >= 0.03
@@ -215,22 +217,22 @@ def main() -> None:
     )
 
     # ---- 输出 ----
-    OUT.mkdir(exist_ok=True)
+    out.mkdir(exist_ok=True)
     nav_df = pd.DataFrame(navs)
-    nav_df.to_csv(OUT / "reversal_factor_quantile_navs.csv")
-    ic.to_csv(OUT / "reversal_factor_ic.csv", header=True)
+    nav_df.to_csv(out / "reversal_factor_quantile_navs.csv")
+    ic.to_csv(out / "reversal_factor_ic.csv", header=True)
     pd.DataFrame(
         {
             "年化": anns,
             "年换手": {
-                **{f"Q{g + 1}": turns[f"Q{g + 1}"] for g in range(N_Q)},
+                **{f"Q{g + 1}": turns[f"Q{g + 1}"] for g in range(n_q)},
                 "基准": turns["基准"],
             },
         }
-    ).to_csv(OUT / "reversal_factor_summary.csv")
+    ).to_csv(out / "reversal_factor_summary.csv")
 
     fig, axes = plt.subplots(3, 1, figsize=(11.5, 13))
-    for g in range(N_Q):
+    for g in range(n_q):
         axes[0].plot(
             navs[f"Q{g + 1}"],
             lw=1.1,
@@ -261,7 +263,7 @@ def main() -> None:
     axes[2].set_title(f"月度 RankIC (均值 {ic_mean:+.3f}, 负IC=反转方向成立)")
 
     fig.tight_layout()
-    out_png = OUT / "reversal_factor.png"
+    out_png = out / "reversal_factor.png"
     fig.savefig(out_png, dpi=130)
     print(f"\n图已保存: {out_png}")
     print(

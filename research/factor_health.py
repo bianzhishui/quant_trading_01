@@ -25,8 +25,9 @@ import pandas as pd
 from scipy import stats as sps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from research.config import get_config  # noqa: E402
 from research.dividend_factor import month_last_days  # noqa: E402
-from research.paper_trade import MIN_IND, MIN_N, AMIHUD_W, _load  # noqa: E402
+from research.paper_trade import _load  # noqa: E402
 from research.reversal_factor import build_pool  # noqa: E402
 
 OUT = Path("output")
@@ -52,6 +53,10 @@ def compute_rankic_panel() -> pd.DataFrame:
     """
     close, amount, tst, isst, ind = _load()
     pool = build_pool(close, tst, isst)
+    cfg = get_config()
+    min_ind = cfg.strategy.min_ind
+    min_n = cfg.strategy.min_n
+    amihud_w = cfg.strategy.amihud_w
     ret = close.pct_change()
     amihud = ((ret.abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
     mom = close.shift(21) / close.shift(250) - 1.0
@@ -65,21 +70,21 @@ def compute_rankic_panel() -> pd.DataFrame:
         m = mom.loc[T][e].dropna()
         common = a.index.intersection(m.index).intersection(ind.index)
         ind_s = ind.reindex(common)
-        keep = ind_s.value_counts()[ind_s.value_counts() >= MIN_IND].index
+        keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
         codes = common[ind_s.isin(keep)]
-        if len(codes) < MIN_N:
+        if len(codes) < min_n:
             continue
         if k + 1 >= len(sig_days):
             continue  # 最后一期无未来收益
         T2 = sig_days[k + 1]
         fwd = close.loc[T2] / close.loc[T] - 1.0
         m2 = codes.intersection(fwd.dropna().index)
-        if len(m2) < MIN_N:
+        if len(m2) < min_n:
             continue
         # 行业内 pct rank (与 R5 打分同口径)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm  # 合成分, 与 R5 打分同权重(0.85)
+        sc = amihud_w * pa + (1 - amihud_w) * pm  # 合成分, 与 R5 打分同权重(0.85)
         row = {"date": T.date().isoformat()}
         row["amihud_full"] = sps.spearmanr(a[m2], fwd[m2])[0]
         row["amihud_ind"] = sps.spearmanr(pa[m2], fwd[m2])[0]

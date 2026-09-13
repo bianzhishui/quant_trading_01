@@ -26,39 +26,34 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from research.config import get_config  # noqa: E402
 from research.data_io import delist_map, load_full_daily  # noqa: E402
 from research.dividend_factor import month_last_days, metrics  # noqa: E402
-from research.reversal_factor import LIMIT_THR, build_pool, ew_nav  # noqa: E402
+from research.reversal_factor import build_pool, ew_nav  # noqa: E402
 
+
+# 注：paper_trade 不再定义模块级配置常量。所有配置值在函数内通过 get_config() 读取
+# （方案二：函数内惰性读取，main() 里 load_config(args.config) 后生效）。
+# 外部脚本如需要路径/账户等，请从 research.config 读取，不再 import paper_trade 的常量。
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "output"
-R2 = ROOT / "data" / "round2"
-START = "2013-06-01"
-MIN_N = 50
-MIN_IND = 5
 
-# Round 28/29: R5 打分权重 — Amihud 0.85 : 动量 0.15（用户 2026-09-10 批准, 原 0.5:0.5）
-# 依据: 权重敏感性(R26 单调) + 样本外验证(R28, 训练14-21选权→验证22-26 +6.2pp, 高原0.80~0.90)
-AMIHUD_W = 0.85
 
-# ---- 真实费率(2026-09 联网核实, 预注册固定) ----
-COMM_RATE = 0.00015  # 万1.5
-COMM_MIN = 5.0  # 单笔最低 5 元
-STAMP_RATE = 0.0005  # 印花税 万5, 仅卖出
-TRANSFER_RATE = 0.00001  # 过户费 万0.1, 双边
-DIV_TAX = 0.10  # 红利税 10% (1个月-1年持仓口径, 保守)
-
-# Round 33: 回测默认滑点 15bp, 与基准(ew_nav 15e-4)/账本(paper_live SLIP_DEFAULT)三口径统一。
-# 保留 --slip 0 显式回退(纯因子研究/敏感度分析用)。
-SLIP_DEFAULT = 0.0015
+def _cfg():
+    """当前进程配置单例（main() 里 load_config 后生效；被 import 时用默认）。"""
+    return get_config()
 
 
 def _load():
+    cfg = _cfg()
     d = load_full_daily()
     d["date"] = pd.to_datetime(d["date"])
 
     def piv(c):
-        return d.pivot(index="date", columns="code", values=c).sort_index().loc[START:]
+        return (
+            d.pivot(index="date", columns="code", values=c)
+            .sort_index()
+            .loc[cfg.strategy.start :]
+        )
 
     close, amount, tst, isst = (
         piv("close"),
@@ -66,7 +61,9 @@ def _load():
         piv("tradestatus"),
         piv("isST"),
     )
-    ind = pd.read_parquet(R2 / "industry_full.parquet").set_index("code")["industry"]
+    ind = pd.read_parquet(cfg.paths.round2 + "/industry_full.parquet").set_index(
+        "code"
+    )["industry"]
     ind = ind.reindex(close.columns).dropna()
     return close, amount, tst, isst, ind
 
@@ -75,7 +72,8 @@ def _load_corp(close: pd.DataFrame):
     """真实价格面板 + 复权因子面板。raw = qfq / foreAdjustFactor。
     缺失因子股票回退为 raw=qfq(当前日期正确; 历史日期仅缺 2.2%, 误差可忽略)。
     公司行为由 F 事件驱动: 因子变化日补回除权缺口(见 corp_action_f), 不依赖分红数据。"""
-    fac = pd.read_parquet(R2 / "adjust_factor.parquet")
+    cfg = _cfg()
+    fac = pd.read_parquet(cfg.paths.round2 + "/adjust_factor.parquet")
     fac["date"] = pd.to_datetime(fac["date"])
     idx = close.index
     f_series = {}
@@ -90,6 +88,10 @@ def _load_corp(close: pd.DataFrame):
 
 def r5_rebalances(close, amount, tst, isst, ind):
     """R5 信号: 行业内百分位(Amihud+中期动量), 前20%。返回 rebs+bench(同池等权)。"""
+    cfg = _cfg()
+    min_ind = cfg.strategy.min_ind
+    min_n = cfg.strategy.min_n
+    amihud_w = cfg.strategy.amihud_w
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
     amihud = (
@@ -106,24 +108,25 @@ def r5_rebalances(close, amount, tst, isst, ind):
         m = mom.loc[T][e].dropna()
         common = a.index.intersection(m.index).intersection(ind.index)
         ind_s = ind.reindex(common)
-        keep = ind_s.value_counts()[ind_s.value_counts() >= MIN_IND].index
+        keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
         codes = common[ind_s.isin(keep)]
-        if len(codes) < MIN_N:
+        if len(codes) < min_n:
             continue
         if k + 1 < len(sig_days):
             bench[exec_day] = set(codes)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = AMIHUD_W * pa + (1 - AMIHUD_W) * pm  # Round 29: Amihud 0.85 : 动量 0.15
+        sc = amihud_w * pa + (1 - amihud_w) * pm  # Round 29: Amihud 0.85 : 动量 0.15
         q = pd.qcut(sc.rank(method="first"), 5, labels=False)
         rebs.append({"T": T, "exec": exec_day, "target": set(codes[q == 4])})
     return rebs, bench, ret
 
 
 def fees(amount: float, side: str, slip: float = 0.0) -> dict:
-    comm = max(amount * COMM_RATE, COMM_MIN)
-    stamp = amount * STAMP_RATE if side == "sell" else 0.0
-    transfer = amount * TRANSFER_RATE
+    cfg = _cfg()
+    comm = max(amount * cfg.costs.comm_rate, cfg.costs.comm_min)
+    stamp = amount * cfg.costs.stamp_rate if side == "sell" else 0.0
+    transfer = amount * cfg.costs.transfer_rate
     return {"佣金": comm, "印花税": stamp, "过户费": transfer, "滑点": amount * slip}
 
 
@@ -153,6 +156,7 @@ class PaperPortfolio:
     def _order(self, code: str, side: str, qty: int, price: float):
         if qty == 0 or pd.isna(price):
             return
+        comm_min = _cfg().costs.comm_min
         amt = qty * price
         f = fees(amt, side, self.slip)
         px = price * (1 - self.slip) if side == "sell" else price * (1 + self.slip)
@@ -160,7 +164,7 @@ class PaperPortfolio:
             need = amt * (1 + self.slip) + f["佣金"] + f["过户费"]
             if need > self.cash + 1e-6:
                 qty = (
-                    int((self.cash - COMM_MIN) / (price * (1 + self.slip)) // 100) * 100
+                    int((self.cash - comm_min) / (price * (1 + self.slip)) // 100) * 100
                 )
                 if qty <= 0:
                     return
@@ -191,7 +195,8 @@ class PaperPortfolio:
         现金/送转均价值等效, 不依赖分红数据完整性。"""
         if code in self.shares and f_prev > 0 and f_now != f_prev:
             s = self.shares[code]
-            credit = s * raw_price * (f_now / f_prev - 1.0) * (1 - DIV_TAX)
+            div_tax = _cfg().costs.div_tax
+            credit = s * raw_price * (f_now / f_prev - 1.0) * (1 - div_tax)
             if credit > 0:
                 self.cash += credit
                 self.div_cash += credit
@@ -203,6 +208,7 @@ class PaperPortfolio:
         传入执行日涨幅 Series → S3-跟随 阻塞: 涨停(≥+LIMIT_THR)买不进/跌停(≤-LIMIT_THR)卖不出,
         未成交递延到下月调仓再平衡(不强制补买)。Round 24 生产真实口径。
         """
+        limit_thr = _cfg().strategy.limit_thr
         V = self.value(prices)
         n = len(target)
         if n == 0:
@@ -213,7 +219,7 @@ class PaperPortfolio:
         for c in list(self.shares.keys()):
             if c not in target:
                 if tradable.get(c, False):
-                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
+                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -limit_thr:
                         self.blocked_sells.append(
                             (c, self.shares[c] * prices.get(c, np.nan))
                         )  # 跌停卖不出, 记录想卖市值
@@ -226,7 +232,7 @@ class PaperPortfolio:
                 held = self.shares[c]
                 tgt_sh = int(tgt_val / p / 100) * 100
                 if held - tgt_sh >= 100:
-                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -LIMIT_THR:
+                    if ret_exec is not None and ret_exec.get(c, 0.0) <= -limit_thr:
                         self.blocked_sells.append(
                             (c, (held - tgt_sh) * p)
                         )  # 跌停卖不出
@@ -238,7 +244,7 @@ class PaperPortfolio:
             p = prices.get(c, np.nan)
             if pd.isna(p) or not tradable.get(c, False):
                 continue
-            if ret_exec is not None and ret_exec.get(c, 0.0) >= LIMIT_THR:
+            if ret_exec is not None and ret_exec.get(c, 0.0) >= limit_thr:
                 held = self.shares.get(c, 0)
                 tgt_sh = int(tgt_val / p / 100) * 100
                 if tgt_sh - held >= 100:
@@ -348,7 +354,7 @@ def replay(aum: float, slip: float = 0.0):
     # 守卫: share级回放需要完整复权因子(覆盖历史持仓股的价格调整)。
     # Round17: 退市股缺因子属常见(老退市股常无数据), 允许 qfq 回退(F=1.0);
     # 在市股缺因子 >5% 仍硬拦(真问题)。
-    fac = pd.read_parquet(R2 / "adjust_factor.parquet")
+    fac = pd.read_parquet(_cfg().paths.round2 + "/adjust_factor.parquet")
     have = set(fac["code"].unique())
     miss = set(close.columns) - have
     dl_keys = set(delist_map().keys())
@@ -428,24 +434,36 @@ def init_portfolio(aum: float, slip: float = 0.0):
     if aum < 200_000:
         print("  ⚠️ 10万级资金: 1手约束下多数标的一手都买不起 → 不可行(如预期)")
     df = pd.DataFrame(pf.trades).sort_values("amount", ascending=False)
-    path = OUT / f"paper_init_aum{aum / 1e4:.0f}w.csv"
+    path = Path(_cfg().paths.output) / f"paper_init_aum{aum / 1e4:.0f}w.csv"
     df.to_csv(path, index=False)
     print(f"  建仓明细: {path.name}  | 头部5笔:\n{df.head(5).to_string()}")
     return pf
 
 
 def main():
+    from research.config import add_config_arg, get_config, load_config  # noqa: PLC0415
+
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["replay", "replay_w", "init"])
     ap.add_argument("--aum", type=float, default=3_000_000)
-    ap.add_argument("--slip", type=float, default=SLIP_DEFAULT)
+    ap.add_argument(
+        "--slip",
+        type=float,
+        default=None,
+        help="滑点比例(默认取配置 costs.slip_default=15bp; 0=纯因子口径)",
+    )
+    add_config_arg(ap)
     args = ap.parse_args()
+    load_config(
+        args.config
+    )  # 方案二: 入口处加载配置(含 --config), 之后函数内 get_config() 生效
+    slip = args.slip if args.slip is not None else get_config().costs.slip_default
     if args.mode == "replay":
-        replay(args.aum, args.slip)
+        replay(args.aum, slip)
     elif args.mode == "replay_w":
-        replay_w(args.aum, args.slip)
+        replay_w(args.aum, slip)
     else:
-        init_portfolio(args.aum, args.slip)
+        init_portfolio(args.aum, slip)
 
 
 if __name__ == "__main__":

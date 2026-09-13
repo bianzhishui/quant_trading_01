@@ -29,22 +29,21 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.data_io import data_version
-from research.paper_trade import (
-    OUT,
-    R2,
+from research.config import get_config  # noqa: E402
+from research.data_io import data_version  # noqa: E402
+from research.paper_trade import (  # noqa: E402
     PaperPortfolio,
     _load,
     _load_corp,
     r5_rebalances,
 )
-from research.reversal_factor import ew_nav
+from research.reversal_factor import ew_nav  # noqa: E402
 
-LIVE_FAC = R2 / "adjust_factor_live.parquet"
 
-# Round32: 模拟盘执行成本口径补齐——滑点默认 15bp(与回测基准口径一致, 账本真实化)。
-# --slip 0 可回退旧理想化口径(全按收盘价成交, 滑点项为 0)。
-SLIP_DEFAULT = 0.0015
+def _cfg():
+    """当前进程配置单例（main() 里 load_config 后生效；被 import 时用默认）。"""
+    return get_config()
+
 
 # ---- 进程级缓存: daily_update 流程 mark×4+report 只加载/计算一次全量 ----
 # 键 = (data_version, 相关文件 mtime)。data_version 由 data_io 写盘自增,
@@ -55,9 +54,9 @@ _F_PANEL = None
 _F_PANEL_KEY = None
 
 
-def _mtime(p: Path) -> int | None:
+def _mtime(p: Path | str) -> int | None:
     try:
-        return p.stat().st_mtime_ns
+        return Path(p).stat().st_mtime_ns
     except OSError:
         return None
 
@@ -65,7 +64,7 @@ def _mtime(p: Path) -> int | None:
 def _load_all():
     """全量面板一次加载并缓存: (close, amount, tst, isst, ind, raw, rebs, bench, ret)。"""
     global _CORE, _CORE_KEY
-    key = (data_version(), _mtime(R2 / "adjust_factor.parquet"))
+    key = (data_version(), _mtime(_cfg().paths.round2 + "/adjust_factor.parquet"))
     if _CORE_KEY == key and _CORE is not None:
         return _CORE
     close, amount, tst, isst, ind = _load()
@@ -79,7 +78,7 @@ def _load_all():
 def _factor_panel_cached(close: pd.DataFrame) -> pd.DataFrame:
     """静态+live 因子面板缓存: 键含 live 文件 mtime, step 更新 live 后自动重算。"""
     global _F_PANEL, _F_PANEL_KEY
-    key = (data_version(), _mtime(LIVE_FAC))
+    key = (data_version(), _mtime(_cfg().paths.live_fac))
     if _F_PANEL_KEY == key and _F_PANEL is not None:
         return _F_PANEL
     _F_PANEL = _factor_panel(close)
@@ -88,11 +87,11 @@ def _factor_panel_cached(close: pd.DataFrame) -> pd.DataFrame:
 
 
 def ledger_path(aum: float) -> Path:
-    return OUT / f"ledger_aum{int(aum / 1e4)}w.json"
+    return Path(_cfg().paths.output) / f"ledger_aum{int(aum / 1e4)}w.json"
 
 
 def monthly_funds_path(aum: float) -> Path:
-    return OUT / f"monthly_funds_aum{int(aum / 1e4)}w.csv"
+    return Path(_cfg().paths.output) / f"monthly_funds_aum{int(aum / 1e4)}w.csv"
 
 
 FUNDS_COLS = [
@@ -154,7 +153,7 @@ def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
                 "value": round(s * p, 2),
             }
         )
-    out = OUT / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
+    out = Path(_cfg().paths.output) / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
     pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
 
 
@@ -195,7 +194,11 @@ def _live_factors(held: set, since: str):
     """增量查询持仓股的复权因子事件(自 since 起), 并入 live 缓存。baostock 限流弹性。"""
     import baostock as bs
 
-    prev = pd.read_parquet(LIVE_FAC) if LIVE_FAC.exists() else None
+    prev = (
+        pd.read_parquet(_cfg().paths.live_fac)
+        if Path(_cfg().paths.live_fac).exists()
+        else None
+    )
     have = set(prev["code"]) if prev is not None else set()
     todo = [c for c in sorted(held) if c not in have]
     if not todo:
@@ -234,15 +237,17 @@ def _live_factors(held: set, since: str):
             if prev is not None
             else new
         )
-        big.to_parquet(LIVE_FAC)
+        big.to_parquet(_cfg().paths.live_fac)
         print(f"  [live因子] 新增 {len(buf)} 条({len(todo)} 只持仓)", flush=True)
 
 
 def _factor_panel(close: pd.DataFrame):
     """静态+live 合并的因子面板。"""
-    fac = pd.read_parquet(R2 / "adjust_factor.parquet")
-    if LIVE_FAC.exists():
-        fac = pd.concat([fac, pd.read_parquet(LIVE_FAC)], ignore_index=True)
+    cfg = _cfg()
+    fac = pd.read_parquet(cfg.paths.round2 + "/adjust_factor.parquet")
+    live_fac = Path(cfg.paths.live_fac)
+    if live_fac.exists():
+        fac = pd.concat([fac, pd.read_parquet(live_fac)], ignore_index=True)
     fac["date"] = pd.to_datetime(fac["date"])
     idx = close.index
     f_series = {}
@@ -275,7 +280,8 @@ def _apply_corp_period(
                 pf.corp_action_f(c, prices.get(c, np.nan), fp[c], fn[c])
 
 
-def init_ledger(aum: float, slip: float = SLIP_DEFAULT):
+def init_ledger(aum: float, slip: float | None = None):
+    slip = slip if slip is not None else _cfg().costs.slip_default
     close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
@@ -322,7 +328,8 @@ def init_ledger(aum: float, slip: float = SLIP_DEFAULT):
     print(f"  建仓费用 {led['total_fees']:.0f} 元 | 账本 {path.name}")
 
 
-def step(aum: float, slip: float = SLIP_DEFAULT):
+def step(aum: float, slip: float | None = None):
+    slip = slip if slip is not None else _cfg().costs.slip_default
     path = ledger_path(aum)
     if not path.exists():
         raise SystemExit(f"账本不存在: {path.name} → 先跑 init")
@@ -513,7 +520,8 @@ def report(aum: float):
             )
 
 
-def mark(aum: float, slip: float = SLIP_DEFAULT):
+def mark(aum: float, slip: float | None = None):
+    slip = slip if slip is not None else _cfg().costs.slip_default
     """每日涨幅: 当天收盘 NAV / 前一天收盘 NAV - 1 (逐日盯市, 含分红入账)。
 
     从账本 last_exec 起逐日: 现金 + Σ股数×收盘价(停牌按最后价); 因子事件补除权缺口。
@@ -563,7 +571,7 @@ def mark(aum: float, slip: float = SLIP_DEFAULT):
             "涨幅%": ret.round(4),
         }
     )
-    out = OUT / f"daily_nav_aum{int(aum / 1e4)}w.csv"
+    out = Path(_cfg().paths.output) / f"daily_nav_aum{int(aum / 1e4)}w.csv"
     df.to_csv(out, index=False)
     cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
     print(
@@ -578,26 +586,34 @@ def mark(aum: float, slip: float = SLIP_DEFAULT):
 
 
 def main():
+    from research.config import add_config_arg, get_config, load_config  # noqa: PLC0415
+
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["init", "step", "report", "mark"])
     ap.add_argument("--aum", type=float, default=0.0)
     ap.add_argument(
         "--slip",
         type=float,
-        default=SLIP_DEFAULT,
-        help=f"滑点比例(默认 {SLIP_DEFAULT:.4f}=15bp, Round32 账本真实化; 0=旧理想化口径)",
+        default=None,
+        help="滑点比例(默认取配置 costs.slip_default=15bp; 0=纯因子口径)",
     )
+    add_config_arg(ap)
     args = ap.parse_args()
-    aums = [args.aum] if args.aum > 0 else [600_000, 1_000_000, 3_000_000, 6_000_000]
+    load_config(
+        args.config
+    )  # 方案二: 入口处加载配置(含 --config), 之后函数内 get_config() 生效
+    cfg = get_config()
+    slip = args.slip if args.slip is not None else cfg.costs.slip_default
+    aums = [args.aum] if args.aum > 0 else list(cfg.accounts.aum_list)
     step_done = False
     for a in aums:
         if args.mode == "init":
-            init_ledger(a, args.slip)
+            init_ledger(a, slip)
         elif args.mode == "step":
-            step(a, args.slip)
+            step(a, slip)
             step_done = True
         elif args.mode == "mark":
-            mark(a, args.slip)
+            mark(a, slip)
         else:
             report(a)
     # Round18 因子失效监控: step 完成后打印状态灯摘要(失败仅提示, 不影响 step 结果)

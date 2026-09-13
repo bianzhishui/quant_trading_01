@@ -1,0 +1,14 @@
+# 自定义配置示例（Round 34 配置化）
+# 用法：复制为 config/custom.yaml 后修改，或直接 --config config/custom.yaml
+# 规则：只写想覆盖 default.yaml 的项；同 key 覆盖，缺失项继承 default.yaml。
+# 注意：strategy/costs 段为冻结参数，覆盖会触发醒目警告（改动需预注册）。
+#
+# 示例：换一档滑点跑回测
+#   .venv/bin/python research/paper_trade.py replay --aum 3000000 --config config/custom.yaml
+#
+# costs:
+#   slip_default: 0.0035   # 35bp（Round 8 真实平均口径压测）
+
+# 示例：改 Amihud 权重（⚠️ 冻结参数，仅实验用，会触发警告）
+# strategy:
+#   amihud_w: 0.5
