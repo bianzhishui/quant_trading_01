@@ -76,6 +76,26 @@
         },
         // ===== 历史回测（paper_trade）=====
         {
+            "name": "paper_trade replay 60万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_trade.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["replay", "--aum", "600000"]
+        },
+        {
+            "name": "paper_trade replay 100万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/research/paper_trade.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["replay", "--aum", "1000000"]
+        },
+        {
             "name": "paper_trade replay 300万",
             "type": "debugpy",
             "request": "launch",
