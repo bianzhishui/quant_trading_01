@@ -27,6 +27,10 @@ data/fundamental/*
 !output/monthly_funds_202*_aum*.csv
 !output/daily_gains_202*.png
 
+# 全量回测窗口(2015-01 起, 11.7年)图入库跟踪(Round33 新口径, plot_daily_gains.py 产出)
+!output/daily_nav_20150101_aum*.png
+!output/daily_gains_20150101.png
+
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
 
