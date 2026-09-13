@@ -376,6 +376,48 @@ UNITS = [
             "月度截面无预测力, 不进入组合验证"
         ),
     },
+    {
+        "name": "round17_delisted",
+        "scripts": [],  # 基建轮: 改动在生产代码(full_daily 年分区/退市股宇宙/data_io), 脚本留位
+        "plans": ["factor_round17_delisted_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "退市股宇宙/年分区基建(R17): full_daily 年分区+3409只(含215退市股)+qfq回退"
+        ),
+    },
+    {
+        "name": "round24_prod_limit_aware",
+        "scripts": [],  # 基建轮: 改动在生产代码(paper_trade.rebalance 阻塞), 脚本留位
+        "plans": ["factor_round24_prod_limit_aware_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "生产引擎内置涨跌停阻塞(S3-跟随)+账本统一真实口径; 回测+账本口径一致"
+        ),
+    },
+    {
+        "name": "round32_execution_cost",
+        "scripts": [],  # 基建轮: 改动在生产代码(paper_live 滑点), 脚本留位
+        "plans": ["factor_round32_execution_cost_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "模拟盘账本补上滑点15bp(账本真实化): 300万 replay_w 对照 slip=0 +8.78%→15bp +7.63%; "
+            "每省1bp实际成本≈超额+0.072pp(成本敏感度回测); 四账户从9月重新建仓含滑点"
+        ),
+    },
+    {
+        "name": "round33_backtest_slip",
+        "scripts": [],  # 基建轮: 改动在生产代码(paper_trade/scenario_ytd 默认滑点), 脚本留位
+        "plans": ["factor_round33_backtest_slip_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "回测默认滑点0→15bp, 回测=运营=基准三口径统一; replay四账户重跑: "
+            "60/100/300/600万超额+2.83/+4.92/+6.08/+6.28%, 费用4.48/4.35/3.62/3.36%/年"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -414,6 +456,10 @@ DIRECTIONS = {
     "round28_weight_tuning_oos": "权重样本外验证",
     "round30_shareholder": "股东户数/筹码集中",
     "round31_lhb": "龙虎榜席位结构",
+    "round17_delisted": "退市股宇宙基建",
+    "round24_prod_limit_aware": "阻塞引擎内置",
+    "round32_execution_cost": "模拟盘滑点真实化",
+    "round33_backtest_slip": "回测滑点口径统一",
 }
 
 
