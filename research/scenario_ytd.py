@@ -25,9 +25,6 @@ from research.config import get_config  # noqa: E402
 from research.paper_trade import PaperPortfolio, _load, _load_corp, r5_rebalances  # noqa: E402
 from research.paper_live import _factor_panel  # noqa: E402
 
-AUM_LIST = get_config().accounts.aum_list
-TAG = lambda a: f"aum{int(a / 1e4)}w"  # noqa: E731
-
 
 def run_scenario(
     start: str,
@@ -40,6 +37,7 @@ def run_scenario(
     start/end 为日期字符串; out_prefix 给定时写 daily_nav/monthly_funds CSV;
     verbose 控制打印。返回 nav 供统计/绘图复用(不重复回放)。
     """
+    aum_list = get_config().accounts.aum_list
     start_ts = pd.Timestamp(start)
     out = Path(get_config().paths.output)
     end_ts = pd.Timestamp(end) if end else None
@@ -74,7 +72,7 @@ def run_scenario(
             f"({len(rb_by_exec)} 次月频调仓, 至 {idx[i1].date()}) =="
         )
     result: dict[str, pd.Series] = {}
-    for aum in AUM_LIST:
+    for aum in aum_list:
         pf = PaperPortfolio(aum, 0.0015)  # Round33: 滑点 15bp, 与回测/账本口径统一
         navs = []
         funds_rows = []  # 每次调仓的资金变动
@@ -120,7 +118,7 @@ def run_scenario(
                 pf.trades = []
             navs.append(pf.value(prices))
         nav = pd.Series(navs, index=idx[i0 : i1 + 1])
-        result[TAG(aum)] = nav
+        result[f"aum{int(aum / 1e4)}w"] = nav
         if out_prefix is not None:
             nav_ret = (
                 nav.pct_change() * 100

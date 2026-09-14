@@ -28,8 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.config import get_config
 from research.dividend_factor import load_all
 
-OUT_DIR = Path(get_config().fetch.round2_data.out_dir)
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def _out_dir() -> Path:
+    """round2 输出目录（惰性取配置, 并确保存在）。"""
+    p = Path(get_config().fetch.round2_data.out_dir)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 def _codes() -> list[str]:
@@ -77,7 +81,7 @@ def fetch_baostock(start: str | None = None, limit: int | None = None) -> None:
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
     frames: list[pd.DataFrame] = []
-    done_f = OUT_DIR / "daily_ext.parquet"
+    done_f = _out_dir() / "daily_ext.parquet"
     if done_f.exists():
         frames.append(pd.read_parquet(done_f))
         have = set(pd.read_parquet(done_f)["code"].unique())
@@ -110,7 +114,7 @@ def fetch_roe(limit: int | None = None) -> None:
     import akshare as ak
 
     frames: list[pd.DataFrame] = []
-    done_f = OUT_DIR / "roe.parquet"
+    done_f = _out_dir() / "roe.parquet"
     if done_f.exists():
         frames.append(pd.read_parquet(done_f))
         have = set(frames[0]["code"].unique())
@@ -156,7 +160,7 @@ def fetch_margin() -> None:
         .tolist()
     )
     frames: list[pd.DataFrame] = []
-    done_f = OUT_DIR / "margin.parquet"
+    done_f = _out_dir() / "margin.parquet"
     if done_f.exists():
         frames.append(pd.read_parquet(done_f))
         have = set(pd.to_datetime(frames[0]["date"]).dt.strftime("%Y%m%d"))
@@ -203,7 +207,7 @@ def fetch_hsgt(limit: int | None = None) -> None:
     import akshare as ak
 
     frames: list[pd.DataFrame] = []
-    done_f = OUT_DIR / "hsgt.parquet"
+    done_f = _out_dir() / "hsgt.parquet"
     if done_f.exists():
         frames.append(pd.read_parquet(done_f))
         have = set(frames[0]["code"].unique())

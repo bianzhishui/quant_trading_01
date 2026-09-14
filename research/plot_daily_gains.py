@@ -28,9 +28,6 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.config import get_config  # noqa: E402
 
-# 模块级从配置读取（本脚本独立运行，main() 里 load_config 后生效；被 import 时用默认）
-OUT = Path(get_config().paths.output)
-
 plt.rcParams["font.sans-serif"] = [
     "PingFang SC",
     "Hiragino Sans GB",
@@ -41,13 +38,19 @@ plt.rcParams["font.sans-serif"] = [
 ]
 plt.rcParams["axes.unicode_minus"] = False
 
-# (tag, 显示名, 建仓本金) —— 从配置 accounts.aum_list 生成
-AUM_LIST = []
-for aum in get_config().accounts.aum_list:
-    tag = f"{int(aum / 1e4)}w"
-    name = f"{int(aum / 1e4)}万"
-    AUM_LIST.append((tag, name, aum))
 COLORS = ["#c0392b", "#e67e22", "#2980b9", "#27ae60"]
+
+
+def _out() -> Path:
+    return Path(get_config().paths.output)
+
+
+def _aum_list() -> list[tuple[str, str, int]]:
+    """(tag, 显示名, 建仓本金) —— 从配置 accounts.aum_list 惰性生成。"""
+    return [
+        (f"{int(aum / 1e4)}w", f"{int(aum / 1e4)}万", aum)
+        for aum in get_config().accounts.aum_list
+    ]
 
 
 def _plot_nav_single(
@@ -124,14 +127,16 @@ def _draw(
     nav_tpl: str,
 ) -> list[Path]:
     """读四账户 CSV → 每账户 NAV 单图(nav_tpl 含 {tag}) + 累计净值/涨幅% 双面板(norm_ret_out)。"""
+    out = _out()
+    aum_list = _aum_list()
     dfs: list[tuple[str, str, pd.DataFrame]] = []
-    for (tag, name, aum), col in zip(AUM_LIST, COLORS):
-        df = pd.read_csv(OUT / csv_tpl.format(tag=tag), parse_dates=["date"])
+    for (tag, name, aum), col in zip(aum_list, COLORS):
+        df = pd.read_csv(out / csv_tpl.format(tag=tag), parse_dates=["date"])
         df["涨幅%"] = df["涨幅%"].fillna(0.0)
         dfs.append((name, col, df))
-        _plot_nav_single(name, col, df, OUT / nav_tpl.format(tag=tag), aum)
+        _plot_nav_single(name, col, df, out / nav_tpl.format(tag=tag), aum)
     _plot_norm_ret(dfs, title, norm_ret_out)
-    return [OUT / nav_tpl.format(tag=tag) for tag, _, _ in AUM_LIST] + [norm_ret_out]
+    return [out / nav_tpl.format(tag=tag) for tag, _, _ in aum_list] + [norm_ret_out]
 
 
 def plot_live(title: str | None = None) -> list[Path]:
@@ -141,7 +146,7 @@ def plot_live(title: str | None = None) -> list[Path]:
     return _draw(
         "daily_nav_aum{tag}.csv",
         title,
-        OUT / "daily_gains_live.png",
+        _out() / "daily_gains_live.png",
         "daily_nav_aum{tag}.png",
     )
 
@@ -162,7 +167,7 @@ def main() -> None:
     _draw(
         f"daily_nav_{args.prefix}_aum{{tag}}.csv",
         args.title,
-        OUT / f"daily_gains_{args.prefix}.png",
+        _out() / f"daily_gains_{args.prefix}.png",
         f"daily_nav_{args.prefix}_aum{{tag}}.png",
     )
 

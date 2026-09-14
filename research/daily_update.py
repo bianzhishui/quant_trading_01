@@ -30,9 +30,15 @@ from research.paper_live import mark as live_mark  # noqa: E402
 from research.plot_daily_gains import plot_live  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = Path(get_config().paths.output)
-AUM_LIST = [(aum, f"{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
 WD = "一二三四五六日"
+
+
+def _out_dir() -> Path:
+    return Path(get_config().paths.output)
+
+
+def _aum_list() -> list[tuple[int, str]]:
+    return [(aum, f"{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
 
 
 def data_max_date() -> str:
@@ -82,13 +88,14 @@ def print_table():
         f"\n{'账户':<7}{'本金':<11}{'最新NAV':<12}{'当日涨幅':<9}{'盈亏(元)':<13}"
         f"{'盈亏率':<9}{'闲置现金':<12}{'持仓市值':<12}{'闲置率':<9}{'建仓日NAV'}"
     )
-    for aum, tag in AUM_LIST:
-        df = pd.read_csv(OUT_DIR / f"daily_nav_aum{tag}.csv")
+    out_dir = _out_dir()
+    for aum, tag in _aum_list():
+        df = pd.read_csv(out_dir / f"daily_nav_aum{tag}.csv")
         last = df.iloc[-1]
         first = df.iloc[0]
         nav, ret, first_nav = last["nav"], last.get("涨幅%", float("nan")), first["nav"]
         ret_s = f"{ret:+.2f}%" if pd.notna(ret) else "-"
-        cash = json.loads((OUT_DIR / f"ledger_aum{tag}.json").read_text())["cash"]
+        cash = json.loads((out_dir / f"ledger_aum{tag}.json").read_text())["cash"]
         pos = nav - cash
         print(
             f"{tag:<7}{aum:>11,}{nav:>12,.0f}{ret_s:>9}{nav - aum:>+13,.0f}"
@@ -127,7 +134,7 @@ def main() -> None:
         return
     print(f"[2/2] 数据守卫 {why}")
     print("四账户 mark...")
-    for aum, tag in AUM_LIST:
+    for aum, tag in _aum_list():
         live_mark(aum)  # 导入直调(替代 subprocess × 4)
     print_table()
     if "--chart" in args:

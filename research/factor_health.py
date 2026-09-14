@@ -30,13 +30,30 @@ from research.dividend_factor import month_last_days  # noqa: E402
 from research.paper_trade import _load  # noqa: E402
 from research.reversal_factor import build_pool  # noqa: E402
 
-OUT = Path(get_config().paths.output)
-_mon = get_config().monitor
-BASELINE_START = pd.Timestamp(_mon.baseline_start)
-BASELINE_END = pd.Timestamp(_mon.baseline_end)
-LIVE_START = pd.Timestamp(_mon.live_start)
-BASELINE_FILE = OUT / "factor_health_baseline.json"
-CSV_FILE = OUT / "factor_health_rankic.csv"
+
+def _out() -> Path:
+    return Path(get_config().paths.output)
+
+
+def _baseline_start() -> pd.Timestamp:
+    return pd.Timestamp(get_config().monitor.baseline_start)
+
+
+def _baseline_end() -> pd.Timestamp:
+    return pd.Timestamp(get_config().monitor.baseline_end)
+
+
+def _live_start() -> pd.Timestamp:
+    return pd.Timestamp(get_config().monitor.live_start)
+
+
+def _baseline_file() -> Path:
+    return _out() / "factor_health_baseline.json"
+
+
+def _csv_file() -> Path:
+    return _out() / "factor_health_rankic.csv"
+
 
 # 监控因子×口径 (与 r5_rebalances 逐公式一致)
 COLS = ["amihud_full", "amihud_ind", "mom_full", "mom_ind", "score"]
@@ -100,10 +117,11 @@ def compute_rankic_panel() -> pd.DataFrame:
 
 
 def load_or_compute_baseline(df: pd.DataFrame) -> dict:
-    """历史基准(2014-01~2026-08): μ/σ/胜率。存在则读, 否则计算并写入(固定不复算)。"""
-    if BASELINE_FILE.exists():
-        return json.loads(BASELINE_FILE.read_text())
-    seg = df.loc[BASELINE_START:BASELINE_END]
+    """历史基准: μ/σ/胜率。存在则读, 否则计算并写入(固定不复算)。"""
+    baseline_file = _baseline_file()
+    if baseline_file.exists():
+        return json.loads(baseline_file.read_text())
+    seg = df.loc[_baseline_start() : _baseline_end()]
     base: dict = {}
     for c in COLS:
         s = seg[c].dropna()
@@ -115,8 +133,8 @@ def load_or_compute_baseline(df: pd.DataFrame) -> dict:
             "start": str(seg.index[0].date()),
             "end": str(seg.index[-1].date()),
         }
-    BASELINE_FILE.write_text(json.dumps(base, ensure_ascii=False, indent=2))
-    print(f"  历史基准已写入 {BASELINE_FILE} (不复算)")
+    baseline_file.write_text(json.dumps(base, ensure_ascii=False, indent=2))
+    print(f"  历史基准已写入 {baseline_file} (不复算)")
     return base
 
 
@@ -179,9 +197,10 @@ def validate_history(df: pd.DataFrame, base: dict) -> None:
 
 
 def print_live_lights(df: pd.DataFrame, base: dict) -> None:
-    """打印运营期状态灯（2026-09 起，行业内口径为主）。"""
-    print(f"\n-- 运营期状态灯 ({LIVE_START.date()} 起, 行业内口径为主) --")
-    live = df.loc[df.index >= LIVE_START]
+    """打印运营期状态灯（建仓日起，行业内口径为主）。"""
+    live_start = _live_start()
+    print(f"\n-- 运营期状态灯 ({live_start.date()} 起, 行业内口径为主) --")
+    live = df.loc[df.index >= live_start]
     for c in COLS:
         ic = live[c].dropna()
         light, roll, streak = status_light(ic, base[c])
@@ -201,7 +220,7 @@ def factor_health_summary() -> None:
     df = compute_rankic_panel()
     base = load_or_compute_baseline(df)
     print("  [因子健康] R5 RankIC 状态灯 (行业内口径):")
-    live = df.loc[df.index >= LIVE_START]
+    live = df.loc[df.index >= _live_start()]
     for c in COLS:
         ic = live[c].dropna()
         light, roll, streak = status_light(ic, base[c])
@@ -232,8 +251,8 @@ def main() -> None:
         return
 
     # 历史复现检查 (Amihud 应显著为正, 动量弱正)
-    seg = df.loc[BASELINE_START:BASELINE_END]
-    print(f"\n-- 历史基准 ({BASELINE_START.date()} ~ {BASELINE_END.date()}) --")
+    seg = df.loc[_baseline_start() : _baseline_end()]
+    print(f"\n-- 历史基准 ({_baseline_start().date()} ~ {_baseline_end().date()}) --")
     for c in COLS:
         s = seg[c].dropna()
         t = s.mean() / (s.std(ddof=0) / np.sqrt(len(s))) if len(s) > 1 else 0.0
@@ -245,13 +264,14 @@ def main() -> None:
     print_live_lights(df, base)
 
     # 落盘 CSV (追加合并去重)
-    if CSV_FILE.exists():
-        old = pd.read_csv(CSV_FILE, parse_dates=["date"]).set_index("date")
+    csv_file = _csv_file()
+    if csv_file.exists():
+        old = pd.read_csv(csv_file, parse_dates=["date"]).set_index("date")
         df = pd.concat([old, df])[
             ~pd.concat([old, df]).index.duplicated(keep="last")
         ].sort_index()
-    df.to_csv(CSV_FILE)
-    print(f"\n  RankIC 时序已写入: {CSV_FILE}")
+    df.to_csv(csv_file)
+    print(f"\n  RankIC 时序已写入: {csv_file}")
 
     if args.chart:
         import matplotlib
@@ -280,7 +300,7 @@ def main() -> None:
             ax.grid(alpha=0.3)
         fig.suptitle("R5 因子 RankIC 时序 (阴影=μ±2σ)", fontsize=13)
         fig.tight_layout(rect=(0, 0, 1, 0.985))
-        out = OUT / "factor_health_rankic.png"
+        out = _out() / "factor_health_rankic.png"
         fig.savefig(out, dpi=120)
         plt.close(fig)
         print(f"  图已输出: {out}")

@@ -36,14 +36,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.config import get_config  # noqa: E402
 from src.data_loader import load_index_daily  # noqa: E402
 
-# 配置化（Round 34）：路径/成本/分段从 config 读取；LOAD_BASE 等历史常量保留兼容
-FDIR = Path(get_config().paths.fundamental)
+# 配置化（Round 34）：路径/成本/分段从 config 读取（惰性, 不设模块级常量）
 LOVE = "爱我中华"
 
 
 def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     start = get_config().strategy.start
-    d = pd.read_parquet(FDIR / "daily.parquet")
+    fdir = Path(get_config().paths.fundamental)
+    d = pd.read_parquet(fdir / "daily.parquet")
 
     def _pivot(col: str) -> pd.DataFrame:
         x = d.pivot(index="date", columns="code", values=col).sort_index()
@@ -58,7 +58,7 @@ def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     pb, tst, isst = pb.loc[start:], tst.loc[start:], isst.loc[start:]
 
     # 真实价 = 前复权价 / foreAdjustFactor(事件前向填充, 首事件前=1)
-    f = pd.read_parquet(FDIR / "adjust_factor.parquet")
+    f = pd.read_parquet(fdir / "adjust_factor.parquet")
     real = close.copy()
     for code in close.columns:
         ev = f[f["code"] == code]
@@ -69,9 +69,9 @@ def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         fac = s.reindex(close.index.union(s.index)).ffill().reindex(close.index)
         real[code] = close[code] / fac.fillna(1.0)
 
-    uni = pd.read_parquet(FDIR / "universe.parquet").set_index("code")
+    uni = pd.read_parquet(fdir / "universe.parquet").set_index("code")
     names = uni["name"].to_dict()
-    div = pd.read_parquet(FDIR / "dividends.parquet")
+    div = pd.read_parquet(fdir / "dividends.parquet")
     div_mat = div.pivot_table(
         index="code", columns="year", values="cash_ps_total", fill_value=0.0
     )

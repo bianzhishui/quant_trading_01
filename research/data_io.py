@@ -22,12 +22,8 @@ import pandas as pd
 
 from research.config import get_config
 
-# 路径从配置读取（Round 34 配置化；config.default.yaml 的 paths 段为权威）
+# 路径不设模块级常量（惰性）：每次调用从当前配置单例取，响应 --config/QUANT_CONFIG
 ROOT = Path(__file__).resolve().parent.parent
-cfg_paths = get_config().paths
-FULL_DIR = Path(cfg_paths.full_dir)
-FULL_FILE = Path(cfg_paths.full_file)
-STOCK_BASIC = Path(cfg_paths.stock_basic)
 NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
 
 # 数据版本计数器: 每次写盘 +1。进程内缓存(paper_live._load_all 等)以它为键,
@@ -44,13 +40,20 @@ def _bump_data_version() -> None:
     _DATA_VERSION += 1
 
 
+def _cfg_paths() -> tuple[Path, Path, Path]:
+    """从配置实时取数据路径（惰性, 每次取当前单例）。返回 (full_dir, full_file, stock_basic)。"""
+    p = get_config().paths
+    return Path(p.full_dir), Path(p.full_file), Path(p.stock_basic)
+
+
 def load_full_daily(
     columns: list[str] | None = None, filters: list | None = None
 ) -> pd.DataFrame:
     """读全市场日线(全部行, 或按 filters 行组过滤)。分区目录优先, 不存在则回退旧单文件。"""
-    if FULL_DIR.exists():
-        return pd.read_parquet(FULL_DIR, columns=columns, filters=filters)
-    return pd.read_parquet(FULL_FILE, columns=columns, filters=filters)
+    full_dir, full_file, _ = _cfg_paths()
+    if full_dir.exists():
+        return pd.read_parquet(full_dir, columns=columns, filters=filters)
+    return pd.read_parquet(full_file, columns=columns, filters=filters)
 
 
 def full_daily_codes() -> set[str]:
@@ -69,12 +72,13 @@ def data_max_date_fast() -> pd.Timestamp | None:
 
     年分区缺失或统计不可用时回退 None, 由调用方全读兜底。
     """
-    if not FULL_DIR.exists():
+    full_dir, _, _ = _cfg_paths()
+    if not full_dir.exists():
         return None
     import pyarrow.parquet as pq
 
     mx = None
-    for p in sorted(FULL_DIR.glob("*.parquet")):
+    for p in sorted(full_dir.glob("*.parquet")):
         pf = pq.ParquetFile(p)
         names = pf.schema_arrow.names
         if "date" not in names:
@@ -98,7 +102,8 @@ def universe_codes() -> list[str]:
 
 def stock_basic() -> pd.DataFrame:
     """证券元数据(code, code_name, ipoDate, outDate, type, status)。"""
-    return pd.read_parquet(STOCK_BASIC)
+    _, _, stock_basic_path = _cfg_paths()
+    return pd.read_parquet(stock_basic_path)
 
 
 def delist_map() -> dict[str, pd.Timestamp]:
@@ -117,9 +122,10 @@ def write_full_daily(df: pd.DataFrame) -> int:
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
-    FULL_DIR.mkdir(parents=True, exist_ok=True)
+    full_dir, _, _ = _cfg_paths()
+    full_dir.mkdir(parents=True, exist_ok=True)
     for year, g in df.groupby("year"):
-        path = FULL_DIR / f"{int(year)}.parquet"
+        path = full_dir / f"{int(year)}.parquet"
         merged = g.drop(columns=["year"])
         if path.exists():  # 与既有分区合并(本函数不做全量重算, 去重交给调用前)
             prev = pd.read_parquet(path)
@@ -133,7 +139,7 @@ def write_full_daily(df: pd.DataFrame) -> int:
     import pyarrow.parquet as pq
 
     return int(
-        sum(pq.ParquetFile(p).metadata.num_rows for p in FULL_DIR.glob("*.parquet"))
+        sum(pq.ParquetFile(p).metadata.num_rows for p in full_dir.glob("*.parquet"))
     )
 
 
@@ -142,10 +148,11 @@ def write_full_daily_replace(df: pd.DataFrame) -> dict[str, int]:
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
-    FULL_DIR.mkdir(parents=True, exist_ok=True)
+    full_dir, _, _ = _cfg_paths()
+    full_dir.mkdir(parents=True, exist_ok=True)
     written: dict[str, int] = {}
     for year, g in df.groupby("year"):
-        path = FULL_DIR / f"{int(year)}.parquet"
+        path = full_dir / f"{int(year)}.parquet"
         merged = (
             g.drop(columns=["year"])
             .drop_duplicates(subset=["date", "code"])
