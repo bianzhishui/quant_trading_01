@@ -33,6 +33,8 @@ KEEP = {
     "fetch_full_industry",
     "fetch_full_market",
     "fetch_round2_data",
+    "fetch_stock_basic",  # 生产宇宙清单刷新（季度低频, src/fundamental 迁移）
+    "data_loader",  # 共享基座：dividend_factor 基准 lazy / 归档复现 / tests
     "paper_live",
     "paper_trade",
     "daily_update",

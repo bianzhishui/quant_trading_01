@@ -11,7 +11,8 @@
 **判定：已实施（管线建成；实验结论已归档）。**
 
 - **P1 数据层** `src/fundamental.py` 建成并运行——现为生产 `stock_basic` 宇宙清单的
-  **低频刷新脚本**（季度/半年，见运营手册 §349）；
+  **低频刷新脚本**（季度/半年，见运营手册 §349）；**Round 34 收尾已迁移为
+  `research/fetch_stock_basic.py`**（src/fundamental.py 随 src/ 一并删除）；
 - **P2 数据落盘** `data/fundamental/*.parquet`（daily/dividends/universe/stock_basic）；
 - **P3/P4 高股息 A/B/C/D 实验** 预注册+实施完成，判定=**未通过**，方案/脚本/结论随单元
   归档（`archive/experiments/dividend_factor/`）；

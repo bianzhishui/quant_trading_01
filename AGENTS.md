@@ -60,6 +60,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 | `research/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
 | `research/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
 | `research/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
+| `research/fetch_stock_basic.py` | **宇宙清单（stock_basic+universe）低频刷新**（季度/半年，src/fundamental 迁移，config paths 段） | baostock 全表, 低频 |
 | `research/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
 | `research/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
 | `research/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |

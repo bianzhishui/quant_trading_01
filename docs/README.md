@@ -18,7 +18,7 @@ docs/ 只保留**现行/权威文档**与已闭环的基建记录。
 | [data_sources_integrity.md](data_sources_integrity.md) | 数据完整性档案 | 现行——R5 数据源/窗口/完整性口径 |
 | [strategy_artifacts.md](strategy_artifacts.md) | 程序产物说明 | 现行（09-08 版）——脚本/输出/图清单 |
 | [archive_design_plan.md](archive_design_plan.md) | 归档机制设计 | 已实施——探索归档工具的依据 |
-| [fundamental_pipeline_plan.md](fundamental_pipeline_plan.md) | 基建方案 | 已实施（§0 闭环）——基本面管线（src/fundamental.py）；高股息实验已归档 |
+| [fundamental_pipeline_plan.md](fundamental_pipeline_plan.md) | 基建方案 | 已实施（§0 闭环）——基本面管线（src/fundamental.py，已迁移 research/fetch_stock_basic.py）；高股息实验已归档 |
 | [factor_round10_paper_sim_plan.md](factor_round10_paper_sim_plan.md) | 模拟盘程序（预注册+归档） | 已实施并生产化——paper_trade/paper_live（四账户运营中） |
 | [retail_investor_structure.md](retail_investor_structure.md) | 背景研究笔记 | 参考——散户结构（时效 2025 年中） |
 
