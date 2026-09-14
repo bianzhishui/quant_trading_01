@@ -30,7 +30,6 @@ from research.paper_trade import (  # noqa: E402
 def main(csv: str | None = None):
     cfg = get_config()
     out = Path(cfg.paths.output)
-    root = Path(__file__).resolve().parent.parent
     amihud_w = cfg.strategy.amihud_w
     min_ind = cfg.strategy.min_ind
     close, amount, tst, isst, ind = _load()
@@ -57,7 +56,7 @@ def main(csv: str | None = None):
     sc = amihud_w * pa + (1 - amihud_w) * pm
 
     # 名称/行业
-    sb = pd.read_parquet(root / "data" / "fundamental" / "stock_basic.parquet")
+    sb = pd.read_parquet(cfg.paths.stock_basic)
     names = sb.set_index("code")["code_name"]
     indn = ind.rename("industry")
 

@@ -89,7 +89,9 @@ def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
 def main() -> None:
     import baostock as bs
 
-    flush_every = get_config().fetch.full_market.flush_every
+    fm = get_config().fetch.full_market
+    flush_every = fm.flush_every
+    win_start, win_end = fm.start, fm.end
 
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
@@ -108,15 +110,15 @@ def main() -> None:
     todo = [c for c in codes if c not in have]
     print(f"已落盘 {len(have)}, 待抓 {len(todo)}", flush=True)
 
-    # 退市股的起止: 上市日→退市日(减少无效区间查询); 在市股用全局 START/END
-    # 与数据窗口 [2012-06-01, 2026-09-07] 无交集的(如 2006 年前退市)直接跳过
+    # 退市股的起止: 上市日→退市日(减少无效区间查询); 在市股用全局窗口 [win_start, win_end]
+    # 与数据窗口无交集的(如 2006 年前退市)直接跳过
     sb_i = sb.set_index("code")
     buf: list[pd.DataFrame] = []
     done = 0
     _watchdog_start()
     for i, c in enumerate(todo, 1):
-        start = "2012-06-01"
-        end = "2026-09-07"
+        start = win_start
+        end = win_end
         if c in sb_i.index:
             ipo = sb_i.at[c, "ipoDate"]
             out_d = sb_i.at[c, "outDate"]

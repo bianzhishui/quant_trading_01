@@ -25,8 +25,8 @@ strategy:
   min_ind: 5                 # 行业 < 5 剔除（冻结）
   amihud_w: 0.85             # Amihud 打分权重（冻结，0.85:0.15，Round 28/29 批准）
   limit_thr: 0.098           # 涨停近似阈值（冻结）
-  lookback: 21               # 反转/Amihud 回看期（交易日）
-  n_q: 5                     # 分组数（qcut quintile）
+  lookback: 21               # reversal_factor 探索用回看期（R5 生产公式窗口为冻结常量, 不经预注册不改）
+  n_q: 5                     # reversal_factor 探索用分组数（qcut quintile, 同上）
   eras:                      # 分段检验窗口
     "2014-2017": ["2014-01-01", "2017-12-31"]
     "2018-2021": ["2018-01-01", "2021-12-31"]
@@ -52,16 +52,30 @@ fetch:
   corporate_actions:
     out_factor: "data/round2/adjust_factor.parquet"
     out_dividends: "data/round2/dividends.parquet"
-    pause: 0.15          # 请求间停顿(秒)
-    relogin: 200         # 每 N 次重登
-    empty_streak: 50     # 连续空结果次数阈值
-    backoff: 90          # 退避秒数
+    start: "2012-01-01"      # 复权因子查询起点(早于日线窗口, 覆盖因子预热)
+    end: "2026-09-03"        # 静态因子/分红抓取截止(= paper_live 判断是否需要实时查询的静态截止)
+    pause: 0.15              # 请求间停顿(秒)
+    relogin: 200             # 每 N 次重登
+    empty_streak: 50         # 连续空结果次数阈值
+    backoff: 90              # 退避秒数
   daily_incremental:
-    print_every: 500     # 进度打印间隔
+    print_every: 500         # 进度打印间隔
   full_industry:
     out: "data/round2/industry_full.parquet"
   full_market:
-    flush_every: 100     # 每 N 只刷盘
-    stall_limit_s: 480   # 看门狗: 无进展超时秒数
+    start: "2012-06-01"      # 全市场日线抓取窗口
+    end: "2026-09-07"
+    flush_every: 100         # 每 N 只刷盘
+    stall_limit_s: 480       # 看门狗: 无进展超时秒数
   round2_data:
     out_dir: "data/round2"
+    start: "2013-01-01"      # fetch_round2_data baostock 起点
+    end: "2026-09-03"
+  live:
+    fac_end: "2026-12-31"    # paper_live 实时公司行为查询上界(年末哨兵)
+
+# ---------- 监控（factor_health） ----------
+monitor:
+  baseline_start: "2014-01-01"   # RankIC 历史基准起点
+  baseline_end: "2026-08-31"     # 历史基准终点(建仓前)
+  live_start: "2026-09-01"       # 运营期起点(= 四账户建仓日)

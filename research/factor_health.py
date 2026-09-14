@@ -30,10 +30,11 @@ from research.dividend_factor import month_last_days  # noqa: E402
 from research.paper_trade import _load  # noqa: E402
 from research.reversal_factor import build_pool  # noqa: E402
 
-OUT = Path("output")
-BASELINE_START = pd.Timestamp("2014-01-01")
-BASELINE_END = pd.Timestamp("2026-08-31")
-LIVE_START = pd.Timestamp("2026-09-01")
+OUT = Path(get_config().paths.output)
+_mon = get_config().monitor
+BASELINE_START = pd.Timestamp(_mon.baseline_start)
+BASELINE_END = pd.Timestamp(_mon.baseline_end)
+LIVE_START = pd.Timestamp(_mon.live_start)
 BASELINE_FILE = OUT / "factor_health_baseline.json"
 CSV_FILE = OUT / "factor_health_rankic.csv"
 
@@ -179,7 +180,7 @@ def validate_history(df: pd.DataFrame, base: dict) -> None:
 
 def print_live_lights(df: pd.DataFrame, base: dict) -> None:
     """打印运营期状态灯（2026-09 起，行业内口径为主）。"""
-    print("\n-- 运营期状态灯 (2026-09 起, 行业内口径为主) --")
+    print(f"\n-- 运营期状态灯 ({LIVE_START.date()} 起, 行业内口径为主) --")
     live = df.loc[df.index >= LIVE_START]
     for c in COLS:
         ic = live[c].dropna()
@@ -232,7 +233,7 @@ def main() -> None:
 
     # 历史复现检查 (Amihud 应显著为正, 动量弱正)
     seg = df.loc[BASELINE_START:BASELINE_END]
-    print("\n-- 历史基准 (2014-01 ~ 2026-08) --")
+    print(f"\n-- 历史基准 ({BASELINE_START.date()} ~ {BASELINE_END.date()}) --")
     for c in COLS:
         s = seg[c].dropna()
         t = s.mean() / (s.std(ddof=0) / np.sqrt(len(s))) if len(s) > 1 else 0.0

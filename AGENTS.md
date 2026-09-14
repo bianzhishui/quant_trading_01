@@ -43,7 +43,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 **所有可配置项集中在 YAML 文件，代码不 hardcode 配置值**：
 
-- **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；段结构：paths / strategy（冻结）/ costs（冻结）/ accounts / **fetch**（5 个抓取脚本的参数与路径，fetch 路径键同 paths 一样相对仓库根解析为绝对）；
+- **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；段结构：paths / strategy（冻结）/ costs（冻结）/ accounts / **fetch**（5 个抓取脚本的参数、数据窗口与路径，fetch 路径键同 paths 一样相对仓库根解析为绝对）/ **monitor**（factor_health 基准与运营期窗口）；
 - **自定义配置**：`--config config/custom.yaml`（CLI）或 `QUANT_CONFIG` 环境变量 → **深合并覆盖 default.yaml**（同 key 覆盖，缺失项继承 default）；指定文件不存在 → 报错；
 - **代码读取**：函数内 `research.config.get_config()` 惰性单例（方案二）；各脚本 `main()` 里 `load_config(args.config)` 建立单例，之后函数内生效；被 import 的脚本用默认配置；
 - **冻结参数校验**：配置值 ≠ default.yaml 冻结基准 → 打印醒目警告（不阻止），提示需预注册；
@@ -80,7 +80,8 @@ Amihud:动量 打分权重 = 0.85:0.15 (AMIHUD_W=0.85, Round 28/29 样本外验�
 ```
 
 - **R5 等权575 是用户明确要求"策略不变"的版本**——不经预注册讨论，不要改任何选股/打分/参数。
-- 例外：`paper_live`/`paper_trade` 的成本常量是**硬编码**的（§4 同值），改脚本逻辑时保持一致。
+- 成本/费率（佣金/印花/过户/红利税/滑点）在 `config/default.yaml` 的 `costs` 段（冻结基准）；
+  `paper_trade`/`paper_live` 通过 `_cfg().costs.*` 读取（Round 34 已配置化，不再硬编码）。
 - 打分权重（0.85:0.15）是 2026-09-10 用户批准调整的（原 0.5:0.5，Round 26 敏感性 + Round 28
   样本外验证：训练段 2014-21 选权 → 验证段 2022-26 超额差 +6.2pp）——**再次调整须重走预注册**。
 

@@ -29,13 +29,12 @@ from research.config import get_config
 from research.dividend_factor import load_all
 
 OUT_DIR = Path(get_config().fetch.round2_data.out_dir)
-ROOT_DIR = OUT_DIR.parent.parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _codes() -> list[str]:
     """直接从 universe.parquet 取 800 只代码（避免触发 load_all 的慢速 real 价计算）。"""
-    u = pd.read_parquet(ROOT_DIR / "data" / "fundamental" / "universe.parquet")
+    u = pd.read_parquet(Path(get_config().paths.fundamental) / "universe.parquet")
     return [c for c in u["code"].tolist() if c.startswith(("sh.6", "sz.0", "sz.3"))]
 
 
@@ -67,8 +66,13 @@ def _bs_daily(code: str, start: str, end: str) -> pd.DataFrame:
     return df
 
 
-def fetch_baostock(start: str = "2013-01-01", limit: int | None = None) -> None:
+def fetch_baostock(start: str | None = None, limit: int | None = None) -> None:
     import baostock as bs
+
+    rd = get_config().fetch.round2_data
+    if start is None:
+        start = rd.start
+    end = rd.end
 
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
@@ -85,7 +89,7 @@ def fetch_baostock(start: str = "2013-01-01", limit: int | None = None) -> None:
     print(f"baostock: 待抓 {len(codes)} 只", flush=True)
     for i, c in enumerate(codes, 1):
         try:
-            df = _bs_daily(c, start, "2026-09-03")
+            df = _bs_daily(c, start, end)
             df = df[df["tradestatus"] == "1"]
             frames.append(df[["date", "code", "close", "turn", "amount", "peTTM"]])
             if i % 25 == 0 or i == len(codes):

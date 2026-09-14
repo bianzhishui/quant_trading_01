@@ -378,7 +378,7 @@ def main() -> None:
     ax.legend()
     ax.grid(alpha=0.3)
     ax.set_title("高股息因子四组对照 (对数净值, 15bp基础成本)")
-    out = Path(__file__).resolve().parent.parent / "output" / "dividend_factor.png"
+    out = Path(get_config().paths.output) / "dividend_factor.png"
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")

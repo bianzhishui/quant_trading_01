@@ -134,8 +134,10 @@ def _draw(
     return [OUT / nav_tpl.format(tag=tag) for tag, _, _ in AUM_LIST] + [norm_ret_out]
 
 
-def plot_live(title: str = "建仓以来（2026-09-01 起）") -> list[Path]:
+def plot_live(title: str | None = None) -> list[Path]:
     """建仓以来实时场景：读无前缀 daily_nav_aum*.csv。"""
+    if title is None:
+        title = f"建仓以来（{get_config().monitor.live_start} 起）"
     return _draw(
         "daily_nav_aum{tag}.csv",
         title,

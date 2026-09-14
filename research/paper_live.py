@@ -204,13 +204,14 @@ def _live_factors(held: set, since: str):
     if not todo:
         return
     bs.login()
+    ca = get_config().fetch.corporate_actions
     buf, streak = [], 0
     for c in todo:
         got = False
         for _ in range(3):
             try:
                 rs = bs.query_adjust_factor(
-                    code=c, start_date=since, end_date="2026-12-31"
+                    code=c, start_date=since, end_date=get_config().fetch.live.fac_end
                 )
                 while rs.error_code == "0" and rs.next():
                     r = rs.get_row_data()
@@ -222,10 +223,10 @@ def _live_factors(held: set, since: str):
             except Exception:
                 time.sleep(2.0)
         streak = streak + 1 if not got else 0
-        if streak >= 50:
-            print("  [live因子] 疑似限流, 休眠60s", flush=True)
+        if streak >= ca.empty_streak:
+            print(f"  [live因子] 疑似限流, 休眠{ca.backoff}s", flush=True)
             bs.logout()
-            time.sleep(60)
+            time.sleep(ca.backoff)
             bs.login()
             streak = 0
         time.sleep(0.1)
@@ -348,10 +349,10 @@ def step(aum: float, slip: float | None = None):
             f"\n[{int(aum / 1e4)}万] 已是最新(信号 {led['last_signal']}), 无待处理调仓"
         )
         return
-    # 实时公司行为: 仅当调仓窗口超出静态因子抓取截止日(2026-09-03)才查 baostock。
-    # 静态抓取 end_date=2026-09-03, 覆盖当前全部数据; 新数据超过该日后需重抓或增量查询。
-    STATIC_FAC_END = pd.Timestamp("2026-09-03")
-    need_live = any(r["exec"] > STATIC_FAC_END for r in todo)
+    # 实时公司行为: 仅当调仓窗口超出静态因子抓取截止日(config fetch.corporate_actions.end)才查 baostock。
+    # 静态抓取覆盖当前全部数据; 新数据超过该日后需重抓或增量查询。
+    static_fac_end = pd.Timestamp(get_config().fetch.corporate_actions.end)
+    need_live = any(r["exec"] > static_fac_end for r in todo)
     if need_live:
         try:
             _live_factors(

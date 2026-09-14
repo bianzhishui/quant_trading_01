@@ -51,6 +51,7 @@ def main() -> None:
         fc.empty_streak,
         fc.backoff,
     )
+    fac_start, fac_end = fc.start, fc.end
 
     codes = all_codes()
     have_f = set(pd.read_parquet(outf)["code"].unique()) if outf.exists() else set()
@@ -69,7 +70,7 @@ def main() -> None:
         for _ in range(3):
             try:
                 rs = bs.query_adjust_factor(
-                    code=c, start_date="2012-01-01", end_date="2026-09-03"
+                    code=c, start_date=fac_start, end_date=fac_end
                 )
                 while rs.error_code == "0" and rs.next():
                     r = rs.get_row_data()

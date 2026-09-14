@@ -33,6 +33,7 @@
 | ⑥ 运营链冒烟 | report + mark 300万 正常（NAV 291.81万、mark 到 09-11） | ✅ |
 | ⑦ 抓取链回归（本提交） | 5 个 fetch 脚本 ruff 0 错 + import 通过；fetch 路径键全部解析为绝对且值与原硬编码一致 | ✅ |
 | ⑧ 运营链回归修复（本提交） | 修复 Round 34 引入的 `aum` 双重前缀 bug（daily_update/plot_daily_gains tag 语义）+ plot_daily_gains OUT 未包 Path；`--table` / `--live` / `--prefix 20250101` 冒烟全通 | ✅ |
+| ⑨ 二次配置化审计（本提交） | 硬编码清零：fetch 数据窗口（corporate_actions/full_market/round2_data 各 start/end）、fetch.live.fac_end、monitor 段、export_holdings stock_basic、factor_health OUT、dividend_factor png、fetch_round2_data universe、paper_live live 因子限流参数全部入 config；ruff/pytest/17模块 import/冒烟全通 | ✅ |
 
 ### 0.3 遗留 / 已知边界（诚实记录）
 
@@ -42,7 +43,8 @@
 4. **仅支持 YAML**（用户拍板先只支持 yaml + pyyaml）；JSON/TOML 为扩展预留（loader 结构可扩展，本轮不做）；
 5. **费率等冻结参数在 default.yaml 中即冻结基准**，自定义覆盖触发警告（A1 折中：灵活 + 纪律）；
 6. **fetch 脚本无 `--config` CLI**（本提交）：corporate_actions / full_industry / full_market 为独立入口脚本，未加 argparse `--config`——覆盖走 `QUANT_CONFIG` 环境变量（load_config 支持）或改 default.yaml；`fetch_daily_incremental` 被 daily_update 导入，函数内读取使其响应父进程已加载配置；
-7. **回归修复记录**（本提交，检查"执行正常"时发现）：b62138b/b197fb4 把 tag 从 `"60w"` 改为 `"aum60w"`，与 `daily_nav_aum{tag}` 模板叠加 → `daily_nav_aumaum60w.csv`（daily_update `--table`、plot_daily_gains `--live/--prefix` 均受影响），且 plot_daily_gains 的 OUT 未包 `Path()`（config 解析后为 str，`OUT / "x.png"` 崩溃）——均已修复并验证（§0.2 ⑧）。
+7. **回归修复记录**（本提交，检查"执行正常"时发现）：b62138b/b197fb4 把 tag 从 `"60w"` 改为 `"aum60w"`，与 `daily_nav_aum{tag}` 模板叠加 → `daily_nav_aumaum60w.csv`（daily_update `--table`、plot_daily_gains `--live/--prefix` 均受影响），且 plot_daily_gains 的 OUT 未包 `Path()`（config 解析后为 str，`OUT / "x.png"` 崩溃）——均已修复并验证（§0.2 ⑧）；
+8. **二次配置化审计补全**（本提交，§0.2 ⑨）：新增 `fetch.*.start/end` 数据窗口、`fetch.live.fac_end`、`monitor` 段；清 export_holdings / factor_health / dividend_factor / fetch_round2_data 硬编码路径。**已知边界**：① R5 生产公式窗口（21/250/375 回看、5 分位）为冻结常量、刻意 hardcode 于信号路径（改需预注册），config 的 `lookback`/`n_q` 仅供 reversal_factor 探索用；② archive_experiment 工具按设计硬编码 `output/`（仓库布局约定）；③ fetch_daily_incremental 无参默认日期是每次运行的 CLI 入参（非配置值）。
 
 ### 0.4 补全轮与 fetch 波记录（2026-09-14）
 
@@ -50,7 +52,9 @@
 - **fetch 波（本提交）**：`fetch:` 配置段 + 5 个抓取脚本（corporate_actions / daily_incremental / full_industry / full_market / fetch_round2_data）接入；脚本全部**函数内 `get_config()` 读取**；`round2_data.out_dir` 确认保留并接入 fetch_round2_data（其在 archive 白名单，留位生产）；删除了无脚本读取的死配置键（corporate_actions.src / full_industry.src）；
 - **路径绝对化**：config.py `_resolve_paths` 现解析 paths 全键 + fetch 路径键，统一相对仓库根 → 绝对，CWD 无关；
 - **回归修复**：`aum` 双重前缀（daily_update / plot_daily_gains tag）+ plot_daily_gains OUT 未包 Path（详见 §0.3 7）；
-- **验证**：ruff 全仓 0 错 + pytest 4 passed + 17 个 research 模块 import 全过 + `daily_update --table` / `paper_live report` / `plot_daily_gains --live` / `--prefix 20250101` 冒烟全通（§0.2 ⑦⑧）。
+- **二次配置化审计**：硬编码值清零——fetch 数据窗口（corporate_actions/full_market/round2_data 各 start/end）、fetch.live.fac_end、monitor 段（factor_health 基准/运营期）、export_holdings stock_basic、factor_health OUT、dividend_factor png、fetch_round2_data universe、paper_live live 因子限流参数全部入 config（详见 §0.3 8）；
+- **诚实边界**：R5 公式窗口（21/250/375/5）为冻结常量刻意 hardcode（§0.3 8①）；`--config` CLI 仅 paper_trade/paper_live 有，其余脚本覆盖走 `QUANT_CONFIG` 环境变量（`get_config()` 惰性加载默认即读 env）；
+- **验证**：ruff 全仓 0 错 + pytest 4 passed + 17 个 research 模块 import 全过 + `daily_update --table` / `paper_live report` / `plot_daily_gains --live` / `--prefix 20250101` 冒烟全通（§0.2 ⑦⑧⑨）。
 
 ## 1. 背景与动机
 
