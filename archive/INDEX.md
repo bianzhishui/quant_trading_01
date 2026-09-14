@@ -15,6 +15,7 @@
 | etf_exploration | ETF 轮动 | ⏸ 搁置 | ETF 动量/低波轮动与候选研究（独立方向，失败处置见 plan §0） | archive/experiments/etf_exploration/ | 2026-09-09 |
 | ew_base | 等权底仓 | ⏸ 搁置 | 等权底仓可行性评估（轻量，结论见 plan §0） | archive/experiments/ew_base/ | 2026-09-09 |
 | grid_demo | 网格演示 | 🛠 工具/演示 | 网格交易演示（无 plan 文档） | archive/experiments/grid_demo/ | 2026-09-09 |
+| migrate_full_daily_partitions | 年分区迁移工具 | 🛠 工具/演示 | 一次性迁移工具：full_daily.parquet 单文件 → 按年分区（已完成使命，R17 基建产物） | archive/experiments/migrate_full_daily_partitions/ | 2026-09-14 |
 | reversal_short_term | 短期反转 | ❌ 已否决 | 短期反转否决（IC 不足 + 15bp 成本致命） | archive/experiments/reversal_short_term/ | 2026-09-09 |
 | round03_combination | Amihud×动量组合 | ✅ 通过并入 | Amihud+中期动量等权组合确立为策略主体（+9.8pp，夏普0.91） | archive/experiments/round03_combination/ | 2026-09-09 |
 | round04_risk_breakers | 风控·熔断/择时 | 🟡 部分通过 | 风控系列：4b 回撤熔断/4c 均线择时正交互补（部分通过）；4d 双熔断否决（防守过度，股灾恢复期钳制踏空） | archive/experiments/round04_risk_breakers/ | 2026-09-09 |
