@@ -2,7 +2,7 @@
 
 > 状态：**已实施 —— 中期动量 部分通过(3/4，进入观察名单)；BP / 低波动 / 距52周高点 未通过** ｜ v1.0 ｜ 预注册 2026-09-03 / 实施 2026-09-03
 > 数据：data/fundamental/daily.parquet（沪深300+中证500 当前成分 800 只，2010-01 ~ 2026-09，前复权收盘 + pbMRQ）
-> 候选池依据：[factor_candidates.md](factor_candidates.md) §1 梯队一
+> 候选池依据：[factor_candidates.md](../../../docs/factor_candidates.md) §1 梯队一
 > 代码：research/factor_screen_round1.py ｜ 图：output/factor_screen_round1.png
 
 ---

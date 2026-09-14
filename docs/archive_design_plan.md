@@ -168,7 +168,8 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 
 > 注：`factor_round10`（paper sim）与 `factor_round17`（基建）无独立脚本，不归档；
 > `factor_round10_paper_sim_plan.md` 与 `factor_round17_delisted_plan.md` 留 docs/ 原位
-> （前者是运营手册前身，后者是基建记录）。
+> （前者是运营手册前身，后者是基建记录）。——**更新（2026-09-14）**：Round 10 方案已随
+> Round 34 收尾归档至 `archive/experiments/round10_paper_sim/`（脚本留位 research/）。
 
 ### 6.3 输出归属映射规则
 

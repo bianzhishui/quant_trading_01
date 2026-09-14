@@ -2,7 +2,7 @@
 
 > 状态：**已实施 —— Amihud 通过(4/4) 进入组合候选池；反转/中期动量 部分通过(3/4)；其余 6 个未通过；小市值 数据不可得暂缓** ｜ v1.0 ｜ 预注册 2026-09-03 / 实施 2026-09-03
 > 数据：data/fundamental/daily.parquet + 本轮新抓 data/round2/（baostock turn/amount/peTTM 800只 + ROE 800只 + 两融 + 北向773只）
-> 依据：[factor_top10.md](factor_top10.md) ｜ 代码：research/factor_screen_round2.py ｜ 图：—（结果表为主）
+> 依据：[factor_top10.md](../../../docs/factor_top10.md) ｜ 代码：research/factor_screen_round2.py ｜ 图：—（结果表为主）
 
 ---
 

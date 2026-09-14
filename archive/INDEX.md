@@ -14,6 +14,7 @@
 | dividend_factor | 高股息 | ⏸ 搁置 | 高股息四组对照：按失败处置协议记录（结论见 plan §0） | archive/experiments/dividend_factor/ | 2026-09-09 |
 | etf_exploration | ETF 轮动 | ⏸ 搁置 | ETF 动量/低波轮动与候选研究（独立方向，失败处置见 plan §0） | archive/experiments/etf_exploration/ | 2026-09-09 |
 | ew_base | 等权底仓 | ⏸ 搁置 | 等权底仓可行性评估（轻量，结论见 plan §0） | archive/experiments/ew_base/ | 2026-09-09 |
+| fundamental_pipeline | 基本面数据管线 | ✅ 通过并入 | 基本面数据管线建成（src/fundamental.py → 已迁移 research/fetch_stock_basic.py 生产宇宙刷新）；高股息实验已归档 dividend_factor 单元 | archive/experiments/fundamental_pipeline/ | 2026-09-14 |
 | grid_demo | 网格演示 | 🛠 工具/演示 | 网格交易演示（无 plan 文档） | archive/experiments/grid_demo/ | 2026-09-09 |
 | migrate_full_daily_partitions | 年分区迁移工具 | 🛠 工具/演示 | 一次性迁移工具：full_daily.parquet 单文件 → 按年分区（已完成使命，R17 基建产物） | archive/experiments/migrate_full_daily_partitions/ | 2026-09-14 |
 | reversal_short_term | 短期反转 | ❌ 已否决 | 短期反转否决（IC 不足 + 15bp 成本致命） | archive/experiments/reversal_short_term/ | 2026-09-09 |
@@ -24,10 +25,12 @@
 | round07_fullmarket | 全市场扩池 | ✅ 通过并入 | 全市场扩池 R5：幸存者偏差仅 1.1pp，泛化成立 | archive/experiments/round07_fullmarket/ | 2026-09-09 |
 | round08_live_validation | 实盘化验证 | ✅ 通过并入 | 实盘化验证：全口径成本下超额 +2.56pp，可执行 | archive/experiments/round08_live_validation/ | 2026-09-09 |
 | round09_holdings_count | 持仓数量敏感度 | ⏸ 搁置 | 持仓数量敏感度实验：575 并非必须，结论见 plan §0 表 | archive/experiments/round09_holdings_count/ | 2026-09-09 |
+| round10_paper_sim | 模拟盘程序 | ✅ 通过并入 | 模拟盘程序(paper_trade/paper_live) share级全口径回放 300万+4.37pp/600万+4.87pp, 真实可执行→已生产化(四账户运营); 脚本留位 research/ | archive/experiments/round10_paper_sim/ | 2026-09-14 |
 | round11_fullbuy | 全选满仓 | ❌ 已否决 | 全选满仓变体否决（换手 2.2 倍 + 规则脆弱） | archive/experiments/round11_fullbuy/ | 2026-09-09 |
 | round12_15_concentrated | 小资金规模研究 | ⏸ 搁置 | 小资金规模研究收束：20万不建议（费用吃光）/ 60万可行下限(+3.4~3.6pp) / 300万最优起点(+4.43pp) / 600万效率饱和(+4.72pp) | archive/experiments/round12_15_concentrated/ | 2026-09-09 |
 | round16_crowding_timing | 拥挤度择时 | ❌ 已否决 | 拥挤度极值择时否决（风控五轮收束：压不住回撤且牺牲超额） | archive/experiments/round16_crowding_timing/ | 2026-09-09 |
 | round17_delisted | 退市股宇宙基建 | ✅ 通过并入 | 退市股宇宙/年分区基建(R17): full_daily 年分区+3409只(含215退市股)+qfq回退 | archive/experiments/round17_delisted/ | 2026-09-13 |
+| round18_factor_health | R5 因子失效监控 | ✅ 通过并入 | 因子失效监控实施(R18): 逐月末RankIC+μ±2σ带状态灯, 现行仪表盘(factor_health.py 留位 research/) | archive/experiments/round18_factor_health/ | 2026-09-14 |
 | round19_concentrated200 | 小资金集中版·前200 | ❌ 已否决 | 60万 前200+满仓补买 +2.96pp/82%用/2.32%费 未达标; 集中度补买曲线闭合 100(+3.59)>150(+3.41)>200(+2.96), 最优仍为前100+补买; 补买对前200仅堆仓位不增超额 | archive/experiments/round19_concentrated200/ | 2026-09-09 |
 | round20_extreme_scenario | 极端行情演练 | 🛠 工具/演示 | 极端行情回放演练(4场景): 满配极端段-20~-50%级回撤(印证风控收束); 60万现金缓冲减震约一半(S1差18pp/S3差17pp); S4扛住31-41交易日恢复全年+4~6%; S3微盘危机唯一跑输大盘——实操指南入运营手册§10.4 | archive/experiments/round20_extreme_scenario/ | 2026-09-09 |
 | round21_tier1_screen | 梯队一筛选·4因子 | 🟡 部分通过 | 梯队一4因子筛选: 价格水平(低价股)单因子4/4通过(+3.0pp@15bp/换手1.1/三段全正/与Amihud截面-0.19)进候选池, 但Round22组合验证否决并入; 低beta/长期反转/下行波动未通过 | archive/experiments/round21_tier1_screen/ | 2026-09-09 |
@@ -42,6 +45,7 @@
 | round31_lhb | 龙虎榜席位结构 | ❌ 已否决 | 龙虎榜净买占比: 未通过(1/4)——机制假设被否定: 上榜后1/2/5日均值+0.32/+0.28/+0.37%(上榜=强势延续非散户追高看空); IC无效/分组U型/超额+0.3pp; 正交(-0.04)但无信号; 月度截面无预测力, 不进入组合验证 | archive/experiments/round31_lhb/ | 2026-09-11 |
 | round32_execution_cost | 模拟盘滑点真实化 | ✅ 通过并入 | 模拟盘账本补上滑点15bp(账本真实化): 300万 replay_w 对照 slip=0 +8.78%→15bp +7.63%; 每省1bp实际成本≈超额+0.072pp(成本敏感度回测); 四账户从9月重新建仓含滑点 | archive/experiments/round32_execution_cost/ | 2026-09-13 |
 | round33_backtest_slip | 回测滑点口径统一 | ✅ 通过并入 | 回测默认滑点0→15bp, 回测=运营=基准三口径统一; replay四账户重跑: 60/100/300/600万超额+2.83/+4.92/+6.08/+6.28%, 费用4.48/4.35/3.62/3.36%/年 | archive/experiments/round33_backtest_slip/ | 2026-09-13 |
+| round34_config | 全量配置化 | ✅ 通过并入 | 全量配置化(R34): YAML+惰性读取+冻结校验, 判定6/6+复检全过; 扩展含fetch波/惰性全覆盖/R5窗口配置化/src迁移; config.py+default.yaml 留位 research/ | archive/experiments/round34_config/ | 2026-09-14 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |

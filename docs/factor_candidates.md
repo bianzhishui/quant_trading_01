@@ -31,14 +31,14 @@
 | 股息连续性 | 连续分红年数（dividends.parquet） | 长 | 现金流质量代理 | 基本面源 | ★ |
 
 **已测归档**（结论与数据见对应方案文档，此处只记状态）：
-- 短期反转 rev21 —— **未通过**（②④过线，①强度不足、③成本后 +0.8pp）→ [reversal_factor_plan.md](reversal_factor_plan.md)
-- 高股息 divyield3y —— **未通过**（筛选相对不筛选为负贡献）→ [dividend_factor_plan.md](dividend_factor_plan.md)
-- **Round 1 批量筛选（2026-09-03）** → [factor_screen_round1_plan.md](factor_screen_round1_plan.md)：
+- 短期反转 rev21 —— **未通过**（②④过线，①强度不足、③成本后 +0.8pp）→ [reversal_factor_plan.md](../archive/experiments/reversal_short_term/reversal_factor_plan.md)
+- 高股息 divyield3y —— **未通过**（筛选相对不筛选为负贡献）→ [dividend_factor_plan.md](../archive/experiments/dividend_factor/dividend_factor_plan.md)
+- **Round 1 批量筛选（2026-09-03）** → [factor_screen_round1_plan.md](../archive/experiments/screen01_factor_screen/factor_screen_round1_plan.md)：
   - **中期动量 —— 部分通过(3/4)，进入组合观察名单**（超额 +3.6pp、换手 2.6、三段全正；IC 弱但右尾有效）
   - BP —— 未通过(0/4)，价值源改等 EP 数据
   - 低波动 —— 未通过(1/4)，IC 显著但组合端背离
   - 距52周高点 —— 未通过(0/4)，无信号
-- **Round 2 批量筛选（2026-09-03，9 因子全量数据）** → [factor_screen_round2_plan.md](factor_screen_round2_plan.md)：
+- **Round 2 批量筛选（2026-09-03，9 因子全量数据）** → [factor_screen_round2_plan.md](../archive/experiments/screen02_factor_screen/factor_screen_round2_plan.md)：
   - **Amihud —— ✅ 通过(4/4)，项目首个全通过因子，进入组合候选池**（超额 +7.3pp、换手 2.5、三段全正、35bp 仍 +6.1pp）
   - 反转 / 中期动量 —— 部分通过(3/4)（复现，观察名单不变）
   - 低换手率 / EP / 股息连续性 / 两融变化 / 北向 / ROE —— 未通过（淘汰）
@@ -76,44 +76,44 @@
 
 ## 4. 检验进度（预注册顺序）
 
-1. ✅ **Round 1（梯队一批量筛选）已完成** → [factor_screen_round1_plan.md](factor_screen_round1_plan.md)：
+1. ✅ **Round 1（梯队一批量筛选）已完成** → [factor_screen_round1_plan.md](../archive/experiments/screen01_factor_screen/factor_screen_round1_plan.md)：
    中期动量 部分通过进观察名单；BP/低波动/距52周高点 淘汰。相关性矩阵已产出
-2. ✅ **Round 2（9 因子全量）已完成** → [factor_screen_round2_plan.md](factor_screen_round2_plan.md)：
+2. ✅ **Round 2（9 因子全量）已完成** → [factor_screen_round2_plan.md](../archive/experiments/screen02_factor_screen/factor_screen_round2_plan.md)：
    **Amihud 通过(4/4) 进组合候选池**；低换手/EP/股息连续性/两融/北向/ROE 淘汰；
    小市值 暂缓（数据源被阻断）。数据已入库 data/round2/
-3. ✅ **Round 3（组合）已完成** → [factor_round3_combination_plan.md](factor_round3_combination_plan.md)：
+3. ✅ **Round 3（组合）已完成** → [factor_round3_combination_plan.md](../archive/experiments/round03_combination/factor_round3_combination_plan.md)：
    **Amihud + 中期动量 等权打分组合 通过(4/4)，确立为策略主体**（超额 +9.8pp、
    夏普 0.91、换手 2.9、三段全正；IC 序列相关 −0.43 兑现动态互补）；
    +反转三臂未救活反转 → 反转降级为存档
-4. ✅ **Round 4（风险加固·选股层）已完成** → [factor_round4_plan.md](factor_round4_plan.md)：
+4. ✅ **Round 4（风险加固·选股层）已完成** → [factor_round4_plan.md](../archive/experiments/round04_risk_breakers/factor_round4_plan.md)：
    R4a（剔除合成分最极端 5%）**未通过(2/4)**——回撤仅改善 1.4pp（两臂最大回撤区间同为
    2015 股灾）、超额反损 2.2pp。结论：−54% 回撤是**市场级 beta**，选股层改不动，
    须用风控层手段
-5. ✅ **Round 4b（风险加固·风控层）已完成** → [factor_round4b_drawdown_breaker_plan.md](factor_round4b_drawdown_breaker_plan.md)：
+5. ✅ **Round 4b（风险加固·风控层）已完成** → [factor_round4b_drawdown_breaker_plan.md](../archive/experiments/round04_risk_breakers/factor_round4b_drawdown_breaker_plan.md)：
    R4b（C 持仓+回撤熔断 20/30 阈值）**部分通过(3/4)**——2015 急跌回撤从 −53.9% 压到
    −27.3%、夏普升 0.98，但 2018 阴跌从不触发（满仓扛单边）反成新低 −41.4%；超额代价
    −4.1pp。结论：固定阈值回撤熔断躲急跌不躲阴跌，**策略主体仍为满仓 C**
-6. ✅ **Round 4c（风险加固·均线择时）已完成** → [factor_round4c_trend_breaker_plan.md](factor_round4c_trend_breaker_plan.md)：
+6. ✅ **Round 4c（风险加固·均线择时）已完成** → [factor_round4c_trend_breaker_plan.md](../archive/experiments/round04_risk_breakers/factor_round4c_trend_breaker_plan.md)：
    R4c（C 持仓 + 沪深300<MA200 半仓，2%迟滞）**部分通过(3/4)**——2018 阴跌 −22.3%
    （4b 反为 −41.1%）、2022/2024 大幅改善，但 2015 顶部急跌滞后（−51.5%）。
    **核心发现：4b 回撤熔断治急跌、4c 均线择时治阴跌，两者正交互补**
-7. ✅ **Round 4d（双熔断叠加）已完成** → [factor_round4d_dual_breaker_plan.md](factor_round4d_dual_breaker_plan.md)：
+7. ✅ **Round 4d（双熔断叠加）已完成** → [factor_round4d_dual_breaker_plan.md](../archive/experiments/round04_risk_breakers/factor_round4d_dual_breaker_plan.md)：
    R4d（f=min(回撤熔断,均线择时)）**未通过(2/4)**——2015 急跌治到 −27%、2022/2024 阴跌
    治到 −14%/−12%，但 2015-2016 恢复期两信号互相钳制（净值未回前高 + 指数在均线下方）
    长期半仓、踏空 2017 大涨，2018/2019 反成新低 −37%；超额 −6.1pp 是防守过度。
    **风控层四轮实验收束：任何风控都无法把回撤压进 −30% 内还保住 ≥4pp 超额**
-8. ✅ **Round 5（行业中性化）已完成** → [factor_round5_industry_neutral_plan.md](factor_round5_industry_neutral_plan.md)：
+8. ✅ **Round 5（行业中性化）已完成** → [factor_round5_industry_neutral_plan.md](../archive/experiments/round05_industry_neutral/factor_round5_industry_neutral_plan.md)：
    R5（行业内排名 vs 全局排名，同一中性化池）**通过(4/4)**——行业内 alpha 真实存在
    （+5.7pp、三段全正、35bp +4.1pp），行业 beta 贡献 4.0pp 恰压 N4 边界（C 超额约 40%
    来自行业暴露）。**默认策略升级为 R5 行业中性化版**：行业内百分位打分 → 前 20% 等权
-9. ✅ **Round 6（R5+均线择时叠加）已完成** → [factor_round6_r5_ma_plan.md](factor_round6_r5_ma_plan.md)：
+9. ✅ **Round 6（R5+均线择时叠加）已完成** → [factor_round6_r5_ma_plan.md](../archive/experiments/round06_r5_ma/factor_round6_r5_ma_plan.md)：
    R5+4c **未通过(2/4)**——R5 超额 +5.7pp 已被行业中性化削薄，再付 −2.8pp 买均线择时
    占比过高，回撤仅改善 4.4pp、夏普持平 → **当前池最终默认 = R5（不叠加）**
-10. ✅ **Round 7（全市场幸存者偏差验证）已完成** → [factor_round7_fullmarket_validate_plan.md](factor_round7_fullmarket_validate_plan.md)：
+10. ✅ **Round 7（全市场幸存者偏差验证）已完成** → [factor_round7_fullmarket_validate_plan.md](../archive/experiments/round07_fullmarket/factor_round7_fullmarket_validate_plan.md)：
     下载全市场 3194 只（主连+中小板，data/fundamental/full_daily.parquet 8.8M 行）→
     扩池重跑 R5 **通过(4/4)**：超额 +4.6pp（35bp +2.9pp）、幸存者偏差贡献仅 1.1pp、
     三段全正（+8.0/+2.7/+3.9）→ **策略泛化成立、超额真实，全市场 R5 定为最终策略**
-11. ✅ **Round 8（实盘化验证）已完成** → [factor_round8_live_validation_plan.md](factor_round8_live_validation_plan.md)：
+11. ✅ **Round 8（实盘化验证）已完成** → [factor_round8_live_validation_plan.md](../archive/experiments/round08_live_validation/factor_round8_live_validation_plan.md)：
     **通过(4/4)**——流动性依赖成本（平均≈35bp）下超额 +2.56pp、flat70bp 贴线 +0.09pp、
     可交易性极佳（AUM5000万 时 pos_frac p95<1%，资金容量远超）、涨跌停阻塞损失 0.18pp；
     自检抓出并修正了成本口径 bug（固定金额→比例成本）；**策略可执行**，

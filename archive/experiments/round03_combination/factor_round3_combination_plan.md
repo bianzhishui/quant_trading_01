@@ -56,7 +56,7 @@
   ▶ **Round 4 已实施（2026-09-03）**：建议 1 的 R4a **未通过(2/4)**——剔除最极端 5%
   仅改善回撤 1.4pp 且损超额 2.2pp，最大回撤区间与 C 相同（2015 股灾），证明回撤主因是
   市场级 beta。→ 已转向 Round 4b = **回撤熔断/仓位管理**（风控层），详见
-  [factor_round4_plan.md](factor_round4_plan.md)
+  [factor_round4_plan.md](../round04_risk_breakers/factor_round4_plan.md)
 - 诚实边界：本池=当前 HS300+ZZ500 成分（幸存者偏差），真实盘需扩池复测；
   C 臂回撤 −54% 是当前最大未解决问题，不得在报告中弱化
 
