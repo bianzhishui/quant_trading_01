@@ -1,2 +1,0 @@
-# factor_round5_industry_neutral_plan
-
