@@ -43,7 +43,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 **所有可配置项集中在 YAML 文件，代码不 hardcode 配置值**：
 
-- **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；段结构：paths / strategy（冻结）/ costs（冻结）/ accounts / **fetch**（5 个抓取脚本的参数、数据窗口与路径，fetch 路径键同 paths 一样相对仓库根解析为绝对）/ **monitor**（factor_health 基准与运营期窗口）；
+- **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；段结构：paths / strategy（冻结：含 `r5` 子段 = R5 生产公式窗口）/ costs（冻结）/ accounts / **fetch**（5 个抓取脚本的参数、数据窗口与路径，fetch 路径键同 paths 一样相对仓库根解析为绝对）/ **monitor**（factor_health 基准与运营期窗口）；
 - **自定义配置**：`--config config/custom.yaml`（CLI）或 `QUANT_CONFIG` 环境变量 → **深合并覆盖 default.yaml**（同 key 覆盖，缺失项继承 default）；指定文件不存在 → 报错；
 - **代码读取**：函数内 `research.config.get_config()` 惰性单例（方案二）；**全仓无模块级配置读取**（二次审计后，7 处模块级全部下沉函数内）；各脚本 `main()` 里 `load_config(args.config)` 建立单例，之后函数内生效；被 import 的脚本用默认配置；
 - **冻结参数校验**：配置值 ≠ default.yaml 冻结基准 → 打印醒目警告（不阻止），提示需预注册；
@@ -75,6 +75,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 佣金 万1.5(单笔最低5元, COMM_MIN=5.0) · 印花税 万5(仅卖出) · 过户费 万0.1(双边)
 红利税 10%(DIV_TAX, 保守) · 现金无息
 MIN_N=50(池<50跳过月) · MIN_IND=5(行业<5剔除) · LIMIT_THR=0.098(涨停阈值)
+R5 公式窗口(strategy.r5, 冻结): Amihud 21/15/×1e6 · 动量 21/250 · seasoning 375 · 5分位取前1/5
 START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1手=100股
 Amihud:动量 打分权重 = 0.85:0.15 (AMIHUD_W=0.85, Round 28/29 样本外验证采纳)
 ```

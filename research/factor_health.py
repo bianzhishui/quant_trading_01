@@ -62,9 +62,9 @@ COLS = ["amihud_full", "amihud_ind", "mom_full", "mom_ind", "score"]
 def compute_rankic_panel() -> pd.DataFrame:
     """逐月末 T 计算 RankIC 面板。
 
-    口径(与 paper_trade.r5_rebalances 完全一致):
-      Amihud = (|ret|/amount×1e6) 21日滚动(min_periods=15)
-      动量   = close.shift(21)/close.shift(250)-1 (T-250~T-21)
+    口径(与 paper_trade.r5_rebalances 完全一致, 窗口取 config strategy.r5):
+      Amihud = (|ret|/amount×amihud_scale) amihud_lookback 日滚动(min_periods=amihud_min_periods)
+      动量   = close.shift(mom_short)/close.shift(mom_long)-1 (T-mom_long~T-mom_short)
       合成分 = 行业内 pct rank(Amihud) 与 pct rank(动量) 平均
       未来收益 = close[T2]/close[T]-1 (T2=下月信号日)
     全池口径用原始因子值; 行业内口径用行业内 pct rank 值。
@@ -75,9 +75,14 @@ def compute_rankic_panel() -> pd.DataFrame:
     min_ind = cfg.strategy.min_ind
     min_n = cfg.strategy.min_n
     amihud_w = cfg.strategy.amihud_w
+    r5 = cfg.strategy.r5
     ret = close.pct_change()
-    amihud = ((ret.abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
-    mom = close.shift(21) / close.shift(250) - 1.0
+    amihud = (
+        ((ret.abs() / amount) * r5.amihud_scale)
+        .rolling(r5.amihud_lookback, min_periods=r5.amihud_min_periods)
+        .mean()
+    )
+    mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
 

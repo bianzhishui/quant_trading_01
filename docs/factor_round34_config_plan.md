@@ -35,6 +35,7 @@
 | ⑧ 运营链回归修复（本提交） | 修复 Round 34 引入的 `aum` 双重前缀 bug（daily_update/plot_daily_gains tag 语义）+ plot_daily_gains OUT 未包 Path；`--table` / `--live` / `--prefix 20250101` 冒烟全通 | ✅ |
 | ⑨ 二次配置化审计（本提交） | 硬编码清零：fetch 数据窗口（corporate_actions/full_market/round2_data 各 start/end）、fetch.live.fac_end、monitor 段、export_holdings stock_basic、factor_health OUT、dividend_factor png、fetch_round2_data universe、paper_live live 因子限流参数全部入 config；ruff/pytest/17模块 import/冒烟全通 | ✅ |
 | ⑩ 惰性读取全覆盖（本提交） | 7 处模块级 get_config()（data_io/daily_update/plot_daily_gains/factor_health/dividend_factor/scenario_ytd/fetch_round2_data）全部下沉函数内；扫描确认 0 处模块级读取；QUANT_CONFIG 覆盖端到端生效（aum_list=999999 / live_start=2030-01-01 实测）；ruff/pytest/import/冒烟全通 | ✅ |
+| ⑪ R5 公式窗口配置化（本提交） | strategy.r5 段（amihud_lookback/min_periods/scale、mom_short/long、seasoning、quantile）入 config 并纳入冻结校验（config.py 支持嵌套路径警告，覆盖触发）；4 个信号文件（paper_trade.r5_rebalances / reversal_factor.build_pool / factor_health / export_holdings）改读 config；对拍快照逐字节不变（signal 2026-08-31 / target_n=575 / sha1 一致 / pool_n=2954） | ✅ |
 
 ### 0.3 遗留 / 已知边界（诚实记录）
 
@@ -46,7 +47,8 @@
 6. **fetch 脚本无 `--config` CLI**（本提交）：corporate_actions / full_industry / full_market 为独立入口脚本，未加 argparse `--config`——覆盖走 `QUANT_CONFIG` 环境变量（load_config 支持）或改 default.yaml；`fetch_daily_incremental` 被 daily_update 导入，函数内读取使其响应父进程已加载配置；
 7. **回归修复记录**（本提交，检查"执行正常"时发现）：b62138b/b197fb4 把 tag 从 `"60w"` 改为 `"aum60w"`，与 `daily_nav_aum{tag}` 模板叠加 → `daily_nav_aumaum60w.csv`（daily_update `--table`、plot_daily_gains `--live/--prefix` 均受影响），且 plot_daily_gains 的 OUT 未包 `Path()`（config 解析后为 str，`OUT / "x.png"` 崩溃）——均已修复并验证（§0.2 ⑧）；
 8. **二次配置化审计补全**（本提交，§0.2 ⑨）：新增 `fetch.*.start/end` 数据窗口、`fetch.live.fac_end`、`monitor` 段；清 export_holdings / factor_health / dividend_factor / fetch_round2_data 硬编码路径。**已知边界**：① R5 生产公式窗口（21/250/375 回看、5 分位）为冻结常量、刻意 hardcode 于信号路径（改需预注册），config 的 `lookback`/`n_q` 仅供 reversal_factor 探索用；② archive_experiment 工具按设计硬编码 `output/`（仓库布局约定）；③ fetch_daily_incremental 无参默认日期是每次运行的 CLI 入参（非配置值）；
-9. **惰性读取全覆盖**（本提交，§0.2 ⑩）：二次审计确认 7 处模块级 `get_config()` 读取全部下沉为函数内惰性读取（§2.6 方案二完全落地）；`fetch_round2_data` 的 import 时 `mkdir` 副作用移入 `_out_dir()`；实测 `QUANT_CONFIG` 覆盖后函数级读取正确响应。
+9. **惰性读取全覆盖**（本提交，§0.2 ⑩）：二次审计确认 7 处模块级 `get_config()` 读取全部下沉为函数内惰性读取（§2.6 方案二完全落地）；`fetch_round2_data` 的 import 时 `mkdir` 副作用移入 `_out_dir()`；实测 `QUANT_CONFIG` 覆盖后函数级读取正确响应；
+10. **R5 公式窗口配置化**（本提交，§0.2 ⑪）：`strategy.r5` 段承载 R5 生产公式窗口（21/15/1e6/21/250/375/5），全部纳入 FROZEN_PARAMS（config.py 冻结校验升级为嵌套路径）；4 个信号文件改读 config（**值不变**，对拍快照逐字节一致）。**纪律不变**：r5 段任一改动=改选股逻辑，须预注册+批准（现由冻结警告强制提示）。**遗留**：dividend_factor.pick_sets 的 375 属旧红利策略（爱我中华），非 R5，未纳入。**坑记录**：PyYAML 6.0（YAML 1.2 core schema）将 `1e6`（无小数点）解析为**字符串**，YAML 指数须带小数点（`1.0e6`）或写整数——本轮用 `1000000`。
 
 ### 0.4 补全轮与 fetch 波记录（2026-09-14）
 
@@ -56,6 +58,7 @@
 - **回归修复**：`aum` 双重前缀（daily_update / plot_daily_gains tag）+ plot_daily_gains OUT 未包 Path（详见 §0.3 7）；
 - **二次配置化审计**：硬编码值清零——fetch 数据窗口（corporate_actions/full_market/round2_data 各 start/end）、fetch.live.fac_end、monitor 段（factor_health 基准/运营期）、export_holdings stock_basic、factor_health OUT、dividend_factor png、fetch_round2_data universe、paper_live live 因子限流参数全部入 config（详见 §0.3 8）；
 - **惰性读取全覆盖**：data_io/daily_update/plot_daily_gains/factor_health/dividend_factor/scenario_ytd/fetch_round2_data 的模块级配置读取全部下沉函数内（§2.6 方案二完全落地），fetch_round2_data import 时 mkdir 副作用移入 `_out_dir()`（§0.3 9）；
+- **R5 公式窗口配置化**：`strategy.r5` 段（7 个窗口键）入 config + 冻结校验（config.py 支持嵌套路径警告）；paper_trade / reversal_factor / factor_health / export_holdings 改读 config；对拍快照（signal 2026-08-31 / target_n=575 / sha1 / pool_n=2954）逐字节一致；PyYAML `1e6`→字符串坑已规避（写 `1000000`）（§0.3 10）；
 - **诚实边界**：R5 公式窗口（21/250/375/5）为冻结常量刻意 hardcode（§0.3 8①）；`--config` CLI 仅 paper_trade/paper_live 有，其余脚本覆盖走 `QUANT_CONFIG` 环境变量（`get_config()` 惰性加载默认即读 env）；
 - **验证**：ruff 全仓 0 错 + pytest 4 passed + 17 个 research 模块 import 全过 + `daily_update --table` / `paper_live report` / `plot_daily_gains --live` / `--prefix 20250101` 冒烟全通（§0.2 ⑦⑧⑨）。
 

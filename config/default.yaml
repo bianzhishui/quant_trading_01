@@ -25,8 +25,16 @@ strategy:
   min_ind: 5                 # 行业 < 5 剔除（冻结）
   amihud_w: 0.85             # Amihud 打分权重（冻结，0.85:0.15，Round 28/29 批准）
   limit_thr: 0.098           # 涨停近似阈值（冻结）
-  lookback: 21               # reversal_factor 探索用回看期（R5 生产公式窗口为冻结常量, 不经预注册不改）
-  n_q: 5                     # reversal_factor 探索用分组数（qcut quintile, 同上）
+  r5:                        # R5 生产公式窗口（冻结：改动=改选股逻辑, 须预注册）
+    amihud_lookback: 21      # Amihud 回看期(交易日)
+    amihud_min_periods: 15   # Amihud 滚动最小期数
+    amihud_scale: 1000000    # Amihud 放缩系数 ×1e6（单调变换, 不影响截面排序）
+    mom_short: 21            # 中期动量短窗 T-21
+    mom_long: 250            # 中期动量长窗 T-250
+    seasoning: 375           # 上市天数下限(seasoning)
+    quantile: 5              # 行业内百分位分组数, 取最高组 = 前 1/5 = 前20%
+  lookback: 21               # reversal_factor 探索用回看期（非 R5 生产, 可调）
+  n_q: 5                     # reversal_factor 探索用分组数（非 R5 生产, 可调）
   eras:                      # 分段检验窗口
     "2014-2017": ["2014-01-01", "2017-12-31"]
     "2018-2021": ["2018-01-01", "2021-12-31"]

@@ -28,13 +28,20 @@ DEFAULT_CONFIG = ROOT / "config" / "default.yaml"
 ENV_VAR = "QUANT_CONFIG"
 
 # 冻结参数路径（default.yaml 中这些 key 的值为冻结基准，偏离 → 警告）
-# 格式: (段, 键, 中文名)
+# 格式: (*路径键, 中文名) —— 支持多级路径(如 strategy.r5.seasoning)
 FROZEN_PARAMS = [
     ("strategy", "start", "数据起点"),
     ("strategy", "min_n", "池最小数"),
     ("strategy", "min_ind", "行业最小数"),
     ("strategy", "amihud_w", "Amihud 权重"),
     ("strategy", "limit_thr", "涨停阈值"),
+    ("strategy", "r5", "amihud_lookback", "Amihud 回看期"),
+    ("strategy", "r5", "amihud_min_periods", "Amihud 最小期数"),
+    ("strategy", "r5", "amihud_scale", "Amihud 放缩系数"),
+    ("strategy", "r5", "mom_short", "动量短窗"),
+    ("strategy", "r5", "mom_long", "动量长窗"),
+    ("strategy", "r5", "seasoning", "上市天数下限"),
+    ("strategy", "r5", "quantile", "分组数"),
     ("costs", "comm_rate", "佣金率"),
     ("costs", "comm_min", "单笔最低佣金"),
     ("costs", "stamp_rate", "印花税率"),
@@ -114,14 +121,23 @@ class Config:
         return f"Config({self._data!r})"
 
 
+def _deep_get(node: dict, keys: list[str]):
+    """按路径取嵌套 dict 值；缺路径返回 None。"""
+    for k in keys:
+        if not isinstance(node, dict) or k not in node:
+            return None
+        node = node[k]
+    return node
+
+
 def _check_frozen(cfg: Config, default_data: dict, custom_path: str | None) -> None:
     """冻结参数偏离校验：覆盖后值 ≠ default.yaml 冻结基准 → 打印醒目警告。"""
     warns = []
-    for section, key, cname in FROZEN_PARAMS:
-        base_val = default_data.get(section, {}).get(key)
-        cur_val = cfg.get(section, key)
+    for *keys, cname in FROZEN_PARAMS:
+        base_val = _deep_get(default_data, keys)
+        cur_val = _deep_get(cfg.to_dict(), keys)
         if cur_val != base_val:
-            warns.append(f"    {cname}({section}.{key}): {base_val} → {cur_val}")
+            warns.append(f"    {cname}({'.'.join(keys)}): {base_val} → {cur_val}")
     if warns:
         src = custom_path or "default.yaml"
         print(

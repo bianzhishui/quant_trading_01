@@ -39,10 +39,13 @@ def main(csv: str | None = None):
     target = last["target"]
 
     # 因子分(全池计算, 与 r5_rebalances 同一口径, 供百分位列使用)
+    r5 = cfg.strategy.r5
     amihud = (
-        ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+        ((close.pct_change().abs() / amount) * r5.amihud_scale)
+        .rolling(r5.amihud_lookback, min_periods=r5.amihud_min_periods)
+        .mean()
     )
-    mom = close.shift(21) / close.shift(250) - 1.0
+    mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
     T = last["T"]
     e = build_pool(close, tst, isst).loc[T]
     a = amihud.loc[T][e].dropna()

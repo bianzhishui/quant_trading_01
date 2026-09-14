@@ -87,17 +87,20 @@ def _load_corp(close: pd.DataFrame):
 
 
 def r5_rebalances(close, amount, tst, isst, ind):
-    """R5 信号: 行业内百分位(Amihud+中期动量), 前20%。返回 rebs+bench(同池等权)。"""
+    """R5 信号: 行业内百分位(Amihud+中期动量), 前 1/quantile。返回 rebs+bench(同池等权)。"""
     cfg = _cfg()
     min_ind = cfg.strategy.min_ind
     min_n = cfg.strategy.min_n
     amihud_w = cfg.strategy.amihud_w
+    r5 = cfg.strategy.r5
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
     amihud = (
-        ((close.pct_change().abs() / amount) * 1e6).rolling(21, min_periods=15).mean()
+        ((close.pct_change().abs() / amount) * r5.amihud_scale)
+        .rolling(r5.amihud_lookback, min_periods=r5.amihud_min_periods)
+        .mean()
     )
-    mom = close.shift(21) / close.shift(250) - 1.0
+    mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
     rebs, bench = [], {}
@@ -117,8 +120,10 @@ def r5_rebalances(close, amount, tst, isst, ind):
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         sc = amihud_w * pa + (1 - amihud_w) * pm  # Round 29: Amihud 0.85 : 动量 0.15
-        q = pd.qcut(sc.rank(method="first"), 5, labels=False)
-        rebs.append({"T": T, "exec": exec_day, "target": set(codes[q == 4])})
+        q = pd.qcut(sc.rank(method="first"), r5.quantile, labels=False)
+        rebs.append(
+            {"T": T, "exec": exec_day, "target": set(codes[q == r5.quantile - 1])}
+        )
     return rebs, bench, ret
 
 

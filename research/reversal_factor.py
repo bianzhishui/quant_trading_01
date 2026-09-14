@@ -64,8 +64,10 @@ def ew_nav(ret: pd.DataFrame, sets: dict, cost: float) -> tuple[pd.Series, float
 def build_pool(
     close: pd.DataFrame, tst: pd.DataFrame, isst: pd.DataFrame
 ) -> pd.DataFrame:
-    """逐日可交易池(布尔宽表): 375日 seasoning + 非ST + 非创业/科创/北交 + 未涨停。"""
-    limit_thr = _cfg().strategy.limit_thr
+    """逐日可交易池(布尔宽表): seasoning 日 + 非ST + 非创业/科创/北交 + 未涨停。"""
+    cfg = _cfg()
+    limit_thr = cfg.strategy.limit_thr
+    seasoning = cfg.strategy.r5.seasoning
     days_count = close.notna().cumsum()
     board_ok = pd.Series(
         {
@@ -77,7 +79,7 @@ def build_pool(
     isst_ok = isst.apply(pd.to_numeric, errors="coerce") == 0
     limit_up = close.pct_change() >= limit_thr
     pool = (
-        (days_count >= 375)
+        (days_count >= seasoning)
         & tst_ok
         & isst_ok
         & board_ok
