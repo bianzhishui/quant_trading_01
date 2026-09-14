@@ -54,10 +54,29 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return out
 
 
+# fetch 段中值为路径的键（相对仓库根解析为绝对；其余键如 pause/print_every 为数值不动）
+FETCH_PATH_KEYS = {
+    ("corporate_actions", "out_factor"),
+    ("corporate_actions", "out_dividends"),
+    ("full_industry", "out"),
+    ("round2_data", "out_dir"),
+}
+
+
 def _resolve_paths(cfg: dict) -> dict:
-    """把 paths 段相对路径解析为绝对路径（相对仓库根）。"""
+    """把配置中相对仓库根的路径统一解析为绝对路径（CWD 无关）。
+
+    - paths 段: 全部键
+    - fetch 段: 仅 FETCH_PATH_KEYS 标注的路径键（数值/布尔键不处理）
+    """
     paths = cfg.get("paths", {})
     resolved = {k: str(ROOT / v) if isinstance(v, str) else v for k, v in paths.items()}
+    fetch = cfg.get("fetch")
+    if fetch:
+        for sec, key in FETCH_PATH_KEYS:
+            val = fetch.get(sec, {}).get(key)
+            if isinstance(val, str):
+                fetch[sec][key] = str(ROOT / val)
     return resolved
 
 

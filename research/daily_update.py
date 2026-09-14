@@ -31,7 +31,7 @@ from research.plot_daily_gains import plot_live  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = Path(get_config().paths.output)
-AUM_LIST = [(aum, f"aum{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
+AUM_LIST = [(aum, f"{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
 WD = "一二三四五六日"
 
 

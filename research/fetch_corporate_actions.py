@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """公司行为数据抓取 v2 (弹性限流版): 复权因子 + 分红/送转。断点续传。
 
-应对 baostock 高频查询限流: 每只间隔 PAUSE, 每 RELOGIN 只重连,
-连续 EMPTY_STREAK 只无数据时判定被限流 → 长休眠后重连继续。
+应对 baostock 高频查询限流(参数见 config/default.yaml 的 fetch.corporate_actions 段):
+每只间隔 pause, 每 relogin 只重连, 连续 empty_streak 只无数据时判定被限流 → 长休眠后重连继续。
 产出: data/round2/adjust_factor.parquet / dividends.parquet
 """
 
@@ -17,16 +17,8 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from research.config import get_config  # noqa: E402
 from research.data_io import universe_codes  # noqa: E402
-
-ROOT = Path(__file__).resolve().parent.parent
-OUTF = ROOT / "data" / "round2" / "adjust_factor.parquet"
-OUTD = ROOT / "data" / "round2" / "dividends.parquet"
-SRC = ROOT / "data" / "fundamental" / "full_daily.parquet"
-PAUSE = 0.15
-RELOGIN = 200
-EMPTY_STREAK = 50
-BACKOFF = 90
 
 
 def all_codes():
@@ -50,9 +42,19 @@ def save(path, buf):
 def main() -> None:
     import baostock as bs
 
+    fc = get_config().fetch.corporate_actions
+    outf = Path(fc.out_factor)
+    outd = Path(fc.out_dividends)
+    pause, relogin, empty_streak, backoff = (
+        fc.pause,
+        fc.relogin,
+        fc.empty_streak,
+        fc.backoff,
+    )
+
     codes = all_codes()
-    have_f = set(pd.read_parquet(OUTF)["code"].unique()) if OUTF.exists() else set()
-    have_d = set(pd.read_parquet(OUTD)["code"].unique()) if OUTD.exists() else set()
+    have_f = set(pd.read_parquet(outf)["code"].unique()) if outf.exists() else set()
+    have_d = set(pd.read_parquet(outd)["code"].unique()) if outd.exists() else set()
     todo = [c for c in codes if c not in have_f or c not in have_d]
     print(
         f"公司行为: 共 {len(codes)}, 因子已有 {len(have_f)}, 分红已有 {len(have_d)}, "
@@ -94,30 +96,30 @@ def main() -> None:
                 time.sleep(2.0)
         done += 1
         streak = streak + 1 if not got else 0
-        if done % RELOGIN == 0:
+        if done % relogin == 0:
             bs.logout()
             bs.login()
             print(f"  重连 [{len(todo)} 待抓]", flush=True)
-        if streak >= EMPTY_STREAK:
+        if streak >= empty_streak:
             print(
-                f"  疑似限流(连续{streak}只无数据), 休眠 {BACKOFF}s 后重连", flush=True
+                f"  疑似限流(连续{streak}只无数据), 休眠 {backoff}s 后重连", flush=True
             )
             bs.logout()
-            time.sleep(BACKOFF)
+            time.sleep(backoff)
             bs.login()
             streak = 0
         if done % 200 == 0:
-            save(OUTF, buf_f)
-            save(OUTD, buf_d)
+            save(outf, buf_f)
+            save(outd, buf_d)
             print(
                 f"  [{done}/{len(codes) - len(todo)}] 因子+{len(buf_f)} 分红+{len(buf_d)}"
                 f" 待抓 {len(todo)}",
                 flush=True,
             )
             buf_f, buf_d = [], []
-        time.sleep(PAUSE)
-    save(OUTF, buf_f)
-    save(OUTD, buf_d)
+        time.sleep(pause)
+    save(outf, buf_f)
+    save(outd, buf_d)
     bs.logout()
     print("公司行为抓取完成", flush=True)
 

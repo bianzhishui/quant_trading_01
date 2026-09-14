@@ -17,7 +17,9 @@
 - **8 个脚本改造**（reversal_factor / paper_trade / paper_live / factor_health / export_holdings / plot_daily_gains / scenario_ytd / config）：模块级配置常量 → 函数内 `get_config()` 读取；main() 加 `--config`；
 - **`config/custom.yaml.example`**：自定义配置示例（注释掉，不入库 custom）；
 - **AGENTS.md**：新增 §2.5 配置系统说明 + §4 冻结参数迁移说明；
-- **launch.json**：加自定义配置运行示例（17 个配置）。
+- **launch.json**：加自定义配置运行示例（17 个配置）；
+- **补全轮（09-14，提交 b197fb4）**：data_io（paths 段）/ dividend_factor / daily_update 接入 config（原 §6"不改 data_io"边界解除）；
+- **fetch 波（09-14，本提交）**：新增 `fetch:` 配置段（corporate_actions / daily_incremental / full_industry / full_market / round2_data）+ 5 个抓取脚本（含 fetch_round2_data）接入 config，全部改**函数内 `get_config()` 读取**（对齐 §2.6 模式）；config.py `_resolve_paths` 扩展为 paths 全键 + fetch 路径键统一相对仓库根解析为绝对（CWD 无关）。
 
 ### 0.2 验证（方案 §3 判定自查）
 
@@ -29,6 +31,8 @@
 | ④ 冻结警告 | `--config` 改 amihud_w=0.5 → 醒目警告"偏离冻结参数" | ✅ |
 | ⑤ 指定文件不存在 → 报错 | `load_config('config/nonexist.yaml')` → FileNotFoundError | ✅ |
 | ⑥ 运营链冒烟 | report + mark 300万 正常（NAV 291.81万、mark 到 09-11） | ✅ |
+| ⑦ 抓取链回归（本提交） | 5 个 fetch 脚本 ruff 0 错 + import 通过；fetch 路径键全部解析为绝对且值与原硬编码一致 | ✅ |
+| ⑧ 运营链回归修复（本提交） | 修复 Round 34 引入的 `aum` 双重前缀 bug（daily_update/plot_daily_gains tag 语义）+ plot_daily_gains OUT 未包 Path；`--table` / `--live` / `--prefix 20250101` 冒烟全通 | ✅ |
 
 ### 0.3 遗留 / 已知边界（诚实记录）
 
@@ -36,7 +40,17 @@
 2. **被 import 的脚本用默认配置**：paper_live import paper_trade 时，paper_trade 的配置为默认（default.yaml），只有入口脚本 main() 的 --config 生效——符合"各模块自负责配置"的设计；
 3. **缺失报错无兜底**：default.yaml 缺失或字段缺失 → 报错（用户拍板 Q2，便于查 bug）。副作用：配置项拼错会直接报错而非静默；
 4. **仅支持 YAML**（用户拍板先只支持 yaml + pyyaml）；JSON/TOML 为扩展预留（loader 结构可扩展，本轮不做）；
-5. **费率等冻结参数在 default.yaml 中即冻结基准**，自定义覆盖触发警告（A1 折中：灵活 + 纪律）。
+5. **费率等冻结参数在 default.yaml 中即冻结基准**，自定义覆盖触发警告（A1 折中：灵活 + 纪律）；
+6. **fetch 脚本无 `--config` CLI**（本提交）：corporate_actions / full_industry / full_market 为独立入口脚本，未加 argparse `--config`——覆盖走 `QUANT_CONFIG` 环境变量（load_config 支持）或改 default.yaml；`fetch_daily_incremental` 被 daily_update 导入，函数内读取使其响应父进程已加载配置；
+7. **回归修复记录**（本提交，检查"执行正常"时发现）：b62138b/b197fb4 把 tag 从 `"60w"` 改为 `"aum60w"`，与 `daily_nav_aum{tag}` 模板叠加 → `daily_nav_aumaum60w.csv`（daily_update `--table`、plot_daily_gains `--live/--prefix` 均受影响），且 plot_daily_gains 的 OUT 未包 `Path()`（config 解析后为 str，`OUT / "x.png"` 崩溃）——均已修复并验证（§0.2 ⑧）。
+
+### 0.4 补全轮与 fetch 波记录（2026-09-14）
+
+- **补全轮（提交 b197fb4）**：data_io（paths 段）/ dividend_factor / daily_update 接入 config；
+- **fetch 波（本提交）**：`fetch:` 配置段 + 5 个抓取脚本（corporate_actions / daily_incremental / full_industry / full_market / fetch_round2_data）接入；脚本全部**函数内 `get_config()` 读取**；`round2_data.out_dir` 确认保留并接入 fetch_round2_data（其在 archive 白名单，留位生产）；删除了无脚本读取的死配置键（corporate_actions.src / full_industry.src）；
+- **路径绝对化**：config.py `_resolve_paths` 现解析 paths 全键 + fetch 路径键，统一相对仓库根 → 绝对，CWD 无关；
+- **回归修复**：`aum` 双重前缀（daily_update / plot_daily_gains tag）+ plot_daily_gains OUT 未包 Path（详见 §0.3 7）；
+- **验证**：ruff 全仓 0 错 + pytest 4 passed + 17 个 research 模块 import 全过 + `daily_update --table` / `paper_live report` / `plot_daily_gains --live` / `--prefix 20250101` 冒烟全通（§0.2 ⑦⑧）。
 
 ## 1. 背景与动机
 
@@ -120,4 +134,4 @@ CLI --config > QUANT_CONFIG 环境变量 > 无（用 default.yaml）
 - ❌ 不改 R5 选股/打分/参数（默认配置=冻结值）；不改冻结参数语义（改仍需预注册）；
 - ❌ 本轮不做 JSON/TOML 支持（仅 YAML，扩展预留）；
 - ❌ 不做配置热加载/多环境（单文件 + 覆盖，够用）；
-- ❌ 不改 data_io 的路径来源（paths 段入配置，data_io 仍通过自身常量，本轮未改 data_io——遗留项，见 §0.3）。
+- ⚠️ data_io 原计划"不改路径来源"（遗留项）→ **补全轮（09-14，b197fb4）已接入 config paths 段**，该边界解除，见 §0.4。

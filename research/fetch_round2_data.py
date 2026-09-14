@@ -25,9 +25,10 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from research.config import get_config
 from research.dividend_factor import load_all
 
-OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "round2"
+OUT_DIR = Path(get_config().fetch.round2_data.out_dir)
 ROOT_DIR = OUT_DIR.parent.parent
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

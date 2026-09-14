@@ -46,3 +46,22 @@ costs:
 # ---------- 账户（运营/场景） ----------
 accounts:
   aum_list: [600000, 1000000, 3000000, 6000000]  # 四账户规模
+
+# ---------- 数据抓取（fetch 脚本） ----------
+fetch:
+  corporate_actions:
+    out_factor: "data/round2/adjust_factor.parquet"
+    out_dividends: "data/round2/dividends.parquet"
+    pause: 0.15          # 请求间停顿(秒)
+    relogin: 200         # 每 N 次重登
+    empty_streak: 50     # 连续空结果次数阈值
+    backoff: 90          # 退避秒数
+  daily_incremental:
+    print_every: 500     # 进度打印间隔
+  full_industry:
+    out: "data/round2/industry_full.parquet"
+  full_market:
+    flush_every: 100     # 每 N 只刷盘
+    stall_limit_s: 480   # 看门狗: 无进展超时秒数
+  round2_data:
+    out_dir: "data/round2"

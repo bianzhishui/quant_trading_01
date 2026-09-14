@@ -25,6 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from research.config import get_config  # noqa: E402
 from research.data_io import full_daily_codes, load_full_daily, write_full_daily  # noqa: E402
 
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
@@ -39,7 +40,6 @@ KEEP = [
     "tradestatus",
     "isST",
 ]
-PRINT_EVERY = 500
 
 
 def update_date(date_s: str) -> int:
@@ -48,6 +48,8 @@ def update_date(date_s: str) -> int:
 
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
+
+    print_every = get_config().fetch.daily_incremental.print_every
 
     codes = sorted(full_daily_codes())
     have = set(
@@ -109,7 +111,7 @@ def update_date(date_s: str) -> int:
             fail += 1
             if fail <= 10:
                 print(f"  {c} 失败: {e}", flush=True)
-        if i % PRINT_EVERY == 0:
+        if i % print_every == 0:
             print(f"  [{i}/{len(todo)}] 已抓 {i - fail} 只 | 失败 {fail}", flush=True)
         time.sleep(0.1)
     bs.logout()

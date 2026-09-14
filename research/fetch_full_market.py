@@ -31,6 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from research.config import get_config  # noqa: E402
 from research.data_io import (
     full_daily_codes,
     stock_basic,
@@ -38,21 +39,20 @@ from research.data_io import (
     write_full_daily,
 )
 
-FLUSH_EVERY = 100
-STALL_LIMIT_S = 480  # 看门狗: 连续无进展(rs.next挂起)超过8分钟 → 强制退出由续传接管
-
 _wd_last = time.time()
 
 
 def _watchdog_start():
-    """后台线程: 若主循环超过 STALL_LIMIT_S 无进展(baostock rs.next 挂起), os._exit 让续传接管。"""
+    """后台线程: 若主循环超过 stall_limit_s 无进展(baostock rs.next 挂起), os._exit 让续传接管。"""
+
+    stall_limit_s = get_config().fetch.full_market.stall_limit_s
 
     def _mon():
         while True:
             time.sleep(30)
-            if time.time() - _wd_last > STALL_LIMIT_S:
+            if time.time() - _wd_last > stall_limit_s:
                 print(
-                    "⚠️ 看门狗: 8分钟无进展(疑似挂起), 强制退出, 请重跑续传",
+                    f"⚠️ 看门狗: {stall_limit_s // 60}分钟无进展(疑似挂起), 强制退出, 请重跑续传",
                     flush=True,
                 )
                 os._exit(5)
@@ -88,6 +88,8 @@ def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
 
 def main() -> None:
     import baostock as bs
+
+    flush_every = get_config().fetch.full_market.flush_every
 
     lg = bs.login()
     assert lg.error_code == "0", lg.error_msg
@@ -149,7 +151,7 @@ def main() -> None:
                     time.sleep(2.0)
         done += 1
         _watchdog_tick()
-        if done % FLUSH_EVERY == 0 or done == len(todo):
+        if done % flush_every == 0 or done == len(todo):
             if buf:
                 new = pd.concat(buf, ignore_index=True)
                 buf = []
