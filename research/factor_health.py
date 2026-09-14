@@ -20,6 +20,14 @@ import json
 import sys
 from pathlib import Path
 
+import os
+
+# matplotlib 配置/缓存目录 → 项目内可写位置(默认 ~/.matplotlib 在本环境不可写,
+# 否则每次进程重建字体缓存 30-90s); setdefault: 用户已设 MPLCONFIGDIR 时不覆盖。
+os.environ.setdefault(
+    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplconfig")
+)
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
