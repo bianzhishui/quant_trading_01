@@ -20,10 +20,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from research.config import get_config
+
+# 路径从配置读取（Round 34 配置化；config.default.yaml 的 paths 段为权威）
 ROOT = Path(__file__).resolve().parent.parent
-FULL_DIR = ROOT / "data" / "fundamental" / "full_daily"
-FULL_FILE = ROOT / "data" / "fundamental" / "full_daily.parquet"
-STOCK_BASIC = ROOT / "data" / "fundamental" / "stock_basic.parquet"
+cfg_paths = get_config().paths
+FULL_DIR = Path(cfg_paths.full_dir)
+FULL_FILE = Path(cfg_paths.full_file)
+STOCK_BASIC = Path(cfg_paths.stock_basic)
 NUMERIC = ["close", "pbMRQ", "turn", "amount", "peTTM"]
 
 # 数据版本计数器: 每次写盘 +1。进程内缓存(paper_live._load_all 等)以它为键,

@@ -10,6 +10,7 @@
 # ---------- 路径 ----------
 paths:
   # 相对仓库根的路径
+  fundamental: "data/fundamental"             # 基本面数据根目录
   full_dir: "data/fundamental/full_daily"      # 年分区行情目录
   full_file: "data/fundamental/full_daily.parquet"  # 全量行情文件
   stock_basic: "data/fundamental/stock_basic.parquet"  # 股票宇宙清单

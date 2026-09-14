@@ -23,18 +23,15 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from research.config import get_config  # noqa: E402
 from research.data_io import data_max_date_fast, load_full_daily  # noqa: E402
 from research.fetch_daily_incremental import update_date  # noqa: E402
 from research.paper_live import mark as live_mark  # noqa: E402
 from research.plot_daily_gains import plot_live  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
-AUM_LIST = [
-    (600_000, "60w"),
-    (1_000_000, "100w"),
-    (3_000_000, "300w"),
-    (6_000_000, "600w"),
-]
+OUT_DIR = Path(get_config().paths.output)
+AUM_LIST = [(aum, f"aum{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
 WD = "一二三四五六日"
 
 
@@ -86,14 +83,12 @@ def print_table():
         f"{'盈亏率':<9}{'闲置现金':<12}{'持仓市值':<12}{'闲置率':<9}{'建仓日NAV'}"
     )
     for aum, tag in AUM_LIST:
-        df = pd.read_csv(ROOT / "output" / f"daily_nav_aum{tag}.csv")
+        df = pd.read_csv(OUT_DIR / f"daily_nav_aum{tag}.csv")
         last = df.iloc[-1]
         first = df.iloc[0]
         nav, ret, first_nav = last["nav"], last.get("涨幅%", float("nan")), first["nav"]
         ret_s = f"{ret:+.2f}%" if pd.notna(ret) else "-"
-        cash = json.loads((ROOT / "output" / f"ledger_aum{tag}.json").read_text())[
-            "cash"
-        ]
+        cash = json.loads((OUT_DIR / f"ledger_aum{tag}.json").read_text())["cash"]
         pos = nav - cash
         print(
             f"{tag:<7}{aum:>11,}{nav:>12,.0f}{ret_s:>9}{nav - aum:>+13,.0f}"

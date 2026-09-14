@@ -33,34 +33,29 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.data_loader import load_index_daily
+from research.config import get_config  # noqa: E402
+from src.data_loader import load_index_daily  # noqa: E402
 
-FDIR = Path(__file__).resolve().parent.parent / "data" / "fundamental"
+# 配置化（Round 34）：路径/成本/分段从 config 读取；LOAD_BASE 等历史常量保留兼容
+FDIR = Path(get_config().paths.fundamental)
 LOVE = "爱我中华"
-BASE_COST = 15e-4  # 基础全成本 15bp/单边
-C_SWEEP = [15e-4, 25e-4, 35e-4, 45e-4]
-ERAS = {
-    "2014-2017": ("2014-01-01", "2017-12-31"),
-    "2018-2021": ("2018-01-01", "2021-12-31"),
-    "2022-2026": ("2022-01-01", None),
-}
-START = "2013-06-01"  # 数据起点(2014-01首调仓, 375日计数用全历史)
 
 
 def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    start = get_config().strategy.start
     d = pd.read_parquet(FDIR / "daily.parquet")
 
     def _pivot(col: str) -> pd.DataFrame:
         x = d.pivot(index="date", columns="code", values=col).sort_index()
         x.index = pd.to_datetime(x.index)
-        return x.loc[START:]
+        return x.loc[start:]
 
     close = _pivot("close")
     pb = _pivot("pbMRQ")
     tst = _pivot("tradestatus")
     isst = _pivot("isST")
-    close = close.loc[START:]
-    pb, tst, isst = pb.loc[START:], tst.loc[START:], isst.loc[START:]
+    close = close.loc[start:]
+    pb, tst, isst = pb.loc[start:], tst.loc[start:], isst.loc[start:]
 
     # 真实价 = 前复权价 / foreAdjustFactor(事件前向填充, 首事件前=1)
     f = pd.read_parquet(FDIR / "adjust_factor.parquet")
@@ -157,7 +152,7 @@ def equal_weight_nav(px_ret: pd.DataFrame, sets: dict) -> tuple[pd.Series, float
         W.iloc[i] = w
     turn = W.diff().abs().sum(axis=1).fillna(0.0)
     gross = (W.shift(1).fillna(0.0) * px_ret.fillna(0.0)).sum(axis=1)
-    nav = (1 + gross - turn * BASE_COST).cumprod()
+    nav = (1 + gross - turn * get_config().costs.cost_base).cumprod()
     years = len(nav) / 244
     return nav, float(turn.sum() / 2 / years)
 
@@ -246,7 +241,7 @@ def main() -> None:
 
     navB, turnB = equal_weight_nav(ret_qfq, B_sets)
     navA, turnA = equal_weight_nav(ret_qfq, A_sets)
-    navD, dstats = drift_nav(ret_qfq, B_sets, BASE_COST)
+    navD, dstats = drift_nav(ret_qfq, B_sets, get_config().costs.cost_base)
 
     bench = load_index_daily("000300", start="20140101", refresh=False)["close"]
     bench = bench.reindex(close.index).ffill()
@@ -269,9 +264,10 @@ def main() -> None:
     )
 
     # ---- ③ 稳定性 ----
+    eras = get_config().strategy.eras
     print("B组分年代稳定性(第③层):")
     stable = True
-    for name, (s, e) in ERAS.items():
+    for name, (s, e) in eras.items():
         a = navB[s:e] / navB[s:e].dropna().iloc[0]
         h = bench[s:e] / bench[s:e].dropna().iloc[0]
         ma, mh = metrics(a), metrics(h)
