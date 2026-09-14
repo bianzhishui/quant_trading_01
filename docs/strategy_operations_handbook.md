@@ -346,7 +346,7 @@ python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 
 - 公司行为（分红/送转）用复权因子事件驱动，**静态因子抓取截止日 2026-09-03**；超过该日后 `step` 会自动通过 baostock 增量查询持仓股因子（限流有 60s 退避），失败会提示"用静态因子继续"——**应尽快重抓静态因子**；
 - 停牌股按最后价计值（价格延续），与回测口径一致；
-- **宇宙清单（stock_basic）刷新**：`fetch_full_market` 从 `stock_basic` 收编新股——若长期不跑，新上市股票会缺席宇宙，调仓不会报错但会**永久错过该股**（R5 有 375 日上市期 = 1.5 年缓冲窗口）。`stock_basic` 本身由 `src/fundamental.py` 生成，刷新**低频（季度/半年）**即可，且注意 baostock `query_stock_basic` 全量查询在本环境可能挂起——**不要连续重试**，用已有清单 + 定期温和刷新。
+- **宇宙清单（stock_basic）刷新**：`fetch_full_market` 从 `stock_basic` 收编新股——若长期不跑，新上市股票会缺席宇宙，调仓不会报错但会**永久错过该股**（R5 有 375 日上市期 = 1.5 年缓冲窗口）。`stock_basic` 本身由 `research/fetch_stock_basic.py` 生成（由 `src/fundamental.py` 迁移，Round 34 收尾），刷新**低频（季度/半年）**即可，且注意 baostock `query_stock_basic` 全量查询在本环境可能挂起——**不要连续重试**，用已有清单 + 定期温和刷新。
 
 ### 8.7 调仓执行 SOP · 涨跌停处理（Round 23/24，生产引擎已内置阻塞）
 

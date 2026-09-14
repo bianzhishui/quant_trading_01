@@ -32,7 +32,7 @@ plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.data_loader import load_index_daily
+from research.data_loader import load_index_daily
 
 WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五"]
 # 提前写死的判定标准（防事后找补）：Bonferroni 校正 alpha = 0.05/5

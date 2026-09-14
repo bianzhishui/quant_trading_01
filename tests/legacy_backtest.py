@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from .costs import (
+from legacy_costs import (
     COMMISSION_RATE,
     INIT_CASH,
     LOT_SIZE,

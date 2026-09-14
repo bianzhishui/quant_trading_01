@@ -1,8 +1,16 @@
+#!/usr/bin/env -S uv run --no-sync
 # -*- coding: utf-8 -*-
-"""数据获取与本地缓存。首选 baostock（稳定免费），akshare 兜底。
+"""数据获取工具（共享基座）—— 由 src/data_loader.py 迁移（Round 34 收尾）。
 
-复权说明：baostock adjustflag 中 ``"2"`` 为前复权（回测推荐）、
-``"3"`` 为不复权；本模块对外统一用 ``adjust="qfq"/"hfq"/""`` 表达。
+服务对象：
+  - dividend_factor.main() 沪深300 基准（lazy import，不进入生产 import 链）
+  - tests/test_backtest.py 合成行情（make_synthetic_daily）
+  - archive/experiments/ 归档实验复现（load_index_daily / load_stock_daily / _fetch_fund_sina）
+
+约定：
+  - 缓存 CSV 写入 config paths.data 目录（默认 data/），命中缓存不走网络；
+  - baostock 首选、akshare 兜底；复权 adjust="qfq"/"hfq"/""；
+  - 配置读取全部惰性（函数内 get_config()，遵守"全仓无模块级读取"）。
 """
 
 from __future__ import annotations
@@ -12,12 +20,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+from research.config import get_config
 
 _COLS = ["open", "high", "low", "close", "volume", "amount"]
-
 _ADJUST_FLAG = {"qfq": "2", "hfq": "1", "": "3"}
+
+
+def _data_dir() -> Path:
+    """数据缓存根目录（惰性取 config paths.data）。"""
+    return Path(get_config().paths.data)
 
 
 def _bs_symbol(symbol: str) -> str:
@@ -72,11 +83,7 @@ def _fetch_baostock(
     try:
         if lg.error_code != "0":
             raise RuntimeError(f"baostock 登录失败: {lg.error_msg}")
-        fields = (
-            "date,open,high,low,close,volume,amount"
-            if not is_index
-            else "date,open,high,low,close,volume,amount"
-        )
+        fields = "date,open,high,low,close,volume,amount"
         rs = bs.query_history_k_data_plus(
             bs_code,
             fields,
@@ -113,25 +120,17 @@ def load_stock_daily(
 ) -> pd.DataFrame:
     """拉取 A 股个股日线并缓存到 data/ 目录（CSV）。
 
-    Parameters
-    ----------
-    symbol : 6 位股票代码，如 ``600519``、``000001``、``300750``
-    start, end : 形如 ``YYYYMMDD`` 的日期字符串；end 为 None 表示到今天
-    adjust :
-        - ``"qfq"`` 前复权（**回测推荐**，保证价格序列连续可比）
-        - ``"hfq"`` 后复权
-        - ``""``   不复权（仅用于看真实成交价，勿直接用于回测）
-    refresh : True 时强制重新下载，忽略缓存
-
-    Returns
-    -------
-    pd.DataFrame，列为 open/high/low/close/volume/amount，索引为 DatetimeIndex
+    symbol : 6 位股票代码，如 600519/000001/300750；start/end 形如 YYYYMMDD；
+    adjust : "qfq" 前复权(回测推荐) / "hfq" 后复权 / "" 不复权；
+    refresh : True 强制重新下载忽略缓存。
+    返回列为 open/high/low/close/volume/amount，索引 DatetimeIndex。
     """
-    DATA_DIR.mkdir(exist_ok=True)
+    data_dir = _data_dir()
+    data_dir.mkdir(exist_ok=True)
     _s = f"{start[:4]}-{start[4:6]}-{start[6:]}"
     e = end or pd.Timestamp.today().strftime("%Y%m%d")
     _e = f"{e[:4]}-{e[4:6]}-{e[6:]}"
-    cache = DATA_DIR / f"{symbol}_daily_{adjust}_{start}_{e}.csv"
+    cache = data_dir / f"{symbol}_daily_{adjust}_{start}_{e}.csv"
 
     if cache.exists() and not refresh:
         df = pd.read_csv(cache, parse_dates=["date"], index_col="date")
@@ -179,11 +178,12 @@ def load_index_daily(
     refresh: bool = False,
 ) -> pd.DataFrame:
     """拉取指数日线（沪深300 ``000300``），用作业绩基准。列结构同上。"""
-    DATA_DIR.mkdir(exist_ok=True)
+    data_dir = _data_dir()
+    data_dir.mkdir(exist_ok=True)
     _s = f"{start[:4]}-{start[4:6]}-{start[6:]}"
     e = end or pd.Timestamp.today().strftime("%Y%m%d")
     _e = f"{e[:4]}-{e[4:6]}-{e[6:]}"
-    cache = DATA_DIR / f"idx{symbol}_daily_{start}_{e}.csv"
+    cache = data_dir / f"idx{symbol}_daily_{start}_{e}.csv"
 
     if cache.exists() and not refresh:
         df = pd.read_csv(cache, parse_dates=["date"], index_col="date")

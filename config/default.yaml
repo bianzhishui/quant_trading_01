@@ -10,6 +10,7 @@
 # ---------- 路径 ----------
 paths:
   # 相对仓库根的路径
+  data: "data"                              # 数据根目录(含 data_loader 的 CSV 缓存)
   fundamental: "data/fundamental"             # 基本面数据根目录
   full_dir: "data/fundamental/full_daily"      # 年分区行情目录
   full_file: "data/fundamental/full_daily.parquet"  # 全量行情文件

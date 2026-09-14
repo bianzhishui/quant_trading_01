@@ -25,7 +25,7 @@ plt.rcParams["axes.unicode_minus"] = False
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.dividend_factor import load_all, month_last_days, metrics
 from research.reversal_factor import ERAS, build_pool
-from src.data_loader import load_index_daily
+from research.data_loader import load_index_daily
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output"

@@ -79,6 +79,18 @@
 
 **复检发现的非设计问题**：`~/.matplotlib` 不可写 → 每次进程重建字体缓存（曾致 `--table` 冒烟 60s 超时）；属环境问题，`MPLCONFIGDIR` 指向可写目录即可，非代码缺陷。
 
+### 0.6 src/ 能力迁移与清理（2026-09-14，Round 34 收尾）
+
+将 `src/` 三块能力迁入生产/测试链后**删除 src/ 目录**，全仓归位：
+
+| 原 src/ | 新位置 | 说明 |
+|---|---|---|
+| `fundamental.py`（stock_basic/universe 刷新） | `research/fetch_stock_basic.py` | 生产宇宙清单刷新脚本（config 化 paths.stock_basic/fundamental；会话验证+退避重试保留；运营手册 §349 已更新） |
+| `data_loader.py`（load_index_daily/load_stock_daily/_fetch_fund_sina/make_synthetic_daily） | `research/data_loader.py` | 共享基座，config paths.data 缓存目录 + 全惰性读取；`dividend_factor` 改为 main() 内 lazy 导入（生产 import 链不再触碰）；10 个归档实验 import 改指 `research.data_loader` |
+| `backtest.py` + `costs.py`（旧测试引擎） | `tests/legacy_backtest.py` + `tests/legacy_costs.py` | 仅测试使用，git mv 保留历史；`test_backtest.py` 改指 |
+
+**验证**：ruff 0 错 + pytest 16 passed（4 旧 + 12 新）+ research/ 19 模块 import 全过 + `daily_update --table` 冒烟正常 + 生产 import 链零 `src`/零 `data_loader`（惰性生效）+ `load_index_daily` 缓存/网络双路径可用 + 归档 10 文件编译通过。AGENTS.md §8 / 运营手册 §349 / archive_design_plan 同步。
+
 ## 1. 背景与动机
 
 参数散落各脚本 + 重复定义：

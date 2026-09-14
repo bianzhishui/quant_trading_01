@@ -26,7 +26,7 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.data_loader import load_index_daily
+from research.data_loader import load_index_daily
 from research.dividend_factor import metrics, monthly
 
 CDIR = Path(__file__).resolve().parent.parent / "data" / "convertible"

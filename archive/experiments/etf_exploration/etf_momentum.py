@@ -36,7 +36,7 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.data_loader import _fetch_fund_sina
+from research.data_loader import _fetch_fund_sina
 
 POOL = {
     "510300": "沪深300",

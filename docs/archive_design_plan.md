@@ -242,7 +242,7 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 
 - 运营产物（ledger/daily_nav/monthly_funds）不归档不移动；
 - `data/` 任何文件不归档不移动；
-- `src/`、`tests/` 不移动（`src/fundamental.py` 生成生产宇宙清单 stock_basic.parquet、`src/data_loader.py` 被生产基座依赖、`src/backtest.py`+`costs.py` 被单元测试保护）；
+- `src/`、`tests/` 不移动（`src/fundamental.py` 生成生产宇宙清单 stock_basic.parquet、`src/data_loader.py` 被生产基座依赖、`src/backtest.py`+`costs.py` 被单元测试保护）；——**注（Round 34 收尾）**：src/ 能力已迁移——`stock_basic` 刷新 → `research/fetch_stock_basic.py`；`data_loader` → `research/data_loader.py`（归档复现 import 已改指）；`backtest/costs` → `tests/legacy_*`。src/ 目录已删除。
 - 不删除任何历史文件，只做 git mv（历史归档），不做物理删除。
 - **后续变更**：`strategies/` 与 `run_backtest.py`（根目录演示入口）已于 2026-09-09 演示层清理时
   **直接删除**（非归档；不影响生产链/研究链/pytest，README 快速开始与 .vscode/launch.json 已同步改为

@@ -42,7 +42,6 @@ plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from research.config import get_config  # noqa: E402
-from src.data_loader import load_index_daily  # noqa: E402
 
 # 配置化（Round 34）：路径/成本/分段从 config 读取（惰性, 不设模块级常量）
 LOVE = "爱我中华"
@@ -250,6 +249,10 @@ def main() -> None:
     navB, turnB = equal_weight_nav(ret_qfq, B_sets)
     navA, turnA = equal_weight_nav(ret_qfq, A_sets)
     navD, dstats = drift_nav(ret_qfq, B_sets, get_config().costs.cost_base)
+
+    from research.data_loader import (
+        load_index_daily,
+    )  # 惰性导入(基准仅 main 用, 不进生产链)
 
     bench = load_index_daily("000300", start="20140101", refresh=False)["close"]
     bench = bench.reindex(close.index).ffill()

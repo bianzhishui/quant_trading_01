@@ -173,7 +173,7 @@ Amihud:动量 打分权重 = 0.85:0.15 (AMIHUD_W=0.85, Round 28/29 样本外验�
   一次性对照实验、临时验证时写 `tmp/xxx.py` 并 `python tmp/xxx.py` 执行，**不要丢系统
   /tmp 或散落仓库根目录**（避免跨会话丢失/污染工作区/误提交）；`tmp/` 已在 .gitignore；
   数据副本/备份仍可放系统 /tmp（与脚本分开）。
-- ❌ **不删/不移 `src/`**：它不是死目录，职责三分——`src/backtest.py`+`src/costs.py`（相对导入）被 `tests/test_backtest.py` 单元测试保护；`src/data_loader.py` 被 `dividend_factor` 的沪深300基准与 10+ 归档实验复现依赖；`src/fundamental.py` 是**生产 `stock_basic` 宇宙清单的唯一刷新脚本**（`python -m src.fundamental download/merge` 运行、非 import，季度低频，见运营手册 §349）；
+- ✅ **src/ 已迁移删除（Round 34 收尾）**：`stock_basic` 宇宙刷新 → `research/fetch_stock_basic.py`（季度低频，运营手册 §349）；数据加载工具 → `research/data_loader.py`（`dividend_factor` 基准 lazy 导入、归档实验复现 `from research.data_loader import ...`）；旧测试引擎 → `tests/legacy_backtest.py`+`tests/legacy_costs.py`。`research/data_loader.py` 与 `tests/legacy_*` 勿删；
 - ⚠️ **baostock 服务不稳定时不要连续重试**（全历史大结果集 `rs.next()` 会挂起、
   持续连接会被拒"用户未登录"）——停止猛打、等待恢复再跑；代码优先用本地代码清单
   （`query_stock_basic` 在本环境会挂起）。

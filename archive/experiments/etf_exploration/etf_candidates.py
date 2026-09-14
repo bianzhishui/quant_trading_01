@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.data_loader import load_index_daily, load_stock_daily
+from research.data_loader import load_index_daily, load_stock_daily
 
 POOL = {
     "510500": "中证500ETF(南方)",

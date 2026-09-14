@@ -10,9 +10,10 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # legacy_backtest 同级导入
 
-from src.backtest import run_backtest
-from src.data_loader import make_synthetic_daily
+from legacy_backtest import run_backtest  # noqa: E402
+from research.data_loader import make_synthetic_daily  # noqa: E402
 
 
 def _make_df() -> pd.DataFrame:
