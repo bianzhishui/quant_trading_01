@@ -59,8 +59,25 @@
 - **二次配置化审计**：硬编码值清零——fetch 数据窗口（corporate_actions/full_market/round2_data 各 start/end）、fetch.live.fac_end、monitor 段（factor_health 基准/运营期）、export_holdings stock_basic、factor_health OUT、dividend_factor png、fetch_round2_data universe、paper_live live 因子限流参数全部入 config（详见 §0.3 8）；
 - **惰性读取全覆盖**：data_io/daily_update/plot_daily_gains/factor_health/dividend_factor/scenario_ytd/fetch_round2_data 的模块级配置读取全部下沉函数内（§2.6 方案二完全落地），fetch_round2_data import 时 mkdir 副作用移入 `_out_dir()`（§0.3 9）；
 - **R5 公式窗口配置化**：`strategy.r5` 段（7 个窗口键）入 config + 冻结校验（config.py 支持嵌套路径警告）；paper_trade / reversal_factor / factor_health / export_holdings 改读 config；对拍快照（signal 2026-08-31 / target_n=575 / sha1 / pool_n=2954）逐字节一致；PyYAML `1e6`→字符串坑已规避（写 `1000000`）（§0.3 10）；
-- **诚实边界**：R5 公式窗口（21/250/375/5）为冻结常量刻意 hardcode（§0.3 8①）；`--config` CLI 仅 paper_trade/paper_live 有，其余脚本覆盖走 `QUANT_CONFIG` 环境变量（`get_config()` 惰性加载默认即读 env）；
+- **诚实边界**：`--config` CLI 仅 paper_trade/paper_live 有，其余脚本覆盖走 `QUANT_CONFIG` 环境变量（`get_config()` 惰性加载默认即读 env）；R5 公式窗口已入 config（见上行），仅 dividend_factor 旧红利策略的 375 属遗留（非 R5）；
 - **验证**：ruff 全仓 0 错 + pytest 4 passed + 17 个 research 模块 import 全过 + `daily_update --table` / `paper_live report` / `plot_daily_gains --live` / `--prefix 20250101` 冒烟全通（§0.2 ⑦⑧⑨）。
+
+### 0.5 复检记录（2026-09-14，§3 判定全过 6/6）
+
+按 plan §3 判定与 §2 规则逐条复检，全部符合设计：
+
+| 判定 | 复检结果 | 实据 |
+|---|---|---|
+| ① 默认行为不变 | ✅ | 重跑 replay_w 300万 = **+7.63% / 总费用 144.6万 = 3.64%/年**（与 §0.2① 及 Round 33 逐字一致）；另 r5_rebalances 快照对拍 target_n=575 sha1 一致 |
+| ② 代码质量 | ✅ | ruff 全仓 0 错；pytest **16 passed**（4 旧 + 12 新增黄金测试，超设计）；17 模块 import 全过 |
+| ③ --config 生效 | ✅ | custom slip=35bp → cfg.slip_default=0.0035 |
+| ④ 冻结警告 | ✅ | amihud_w=0.5 → "Amihud 权重(strategy.amihud_w): 0.85 → 0.5"，C1 警告后继续跑 |
+| ⑤ 报错语义 | ✅ | default 缺失 / 指定文件不存在 → 均 FileNotFoundError |
+| ⑥ 运营链 | ✅ | paper_live report 四账户 + daily_update --table 四账户总表正常 |
+
+设计条款复核：加载规则 4 条 ✅、优先级 CLI>env>default ✅（实测 0.0035>0.0099>0.0015）、缺失报错无兜底 ✅、拍板决策 A1/B2/B3/C1/Q1/Q2 全部落实 ✅、方案二函数内惰性读取（全仓 0 处模块级读取）✅、仅 YAML ✅、§6 边界外（除 data_io 已按补全轮解除、R5 窗口按用户批准扩展外）无违规 ✅。
+
+**复检发现的非设计问题**：`~/.matplotlib` 不可写 → 每次进程重建字体缓存（曾致 `--table` 冒烟 60s 超时）；属环境问题，`MPLCONFIGDIR` 指向可写目录即可，非代码缺陷。
 
 ## 1. 背景与动机
 
