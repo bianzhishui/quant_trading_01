@@ -135,10 +135,33 @@ def fees(amount: float, side: str, slip: float = 0.0) -> dict:
     return {"佣金": comm, "印花税": stamp, "过户费": transfer, "滑点": amount * slip}
 
 
+def slip_for_amount(amount_val: float) -> float:
+    """流动性依赖滑点（Round 35 口径 B）：按成交额分档，金额越大滑点越低。
+
+    分档表来自 config costs.slip_bounds/slip_tiers（全样本 amount 分位数, 冻结）：
+    <Q20→40bp, Q20-40→25bp, Q40-60→15bp, Q60-80→10bp, ≥Q80→5bp。
+    """
+    cfg = _cfg()
+    bounds = cfg.costs.slip_bounds
+    tiers = cfg.costs.slip_tiers
+    for b, t in zip(bounds, tiers):
+        if amount_val < b:
+            return float(t)
+    return float(tiers[-1])
+
+
+def amount_slip_series(amount_row: pd.Series) -> pd.Series:
+    """exec 日成交额行 → 每只股票的差异化滑点 Series（口径 B）。"""
+    return amount_row.map(slip_for_amount)
+
+
 class PaperPortfolio:
     def __init__(self, aum: float, slip: float = 0.0):
         self.aum0 = aum
         self.slip = slip
+        self.slip_series: pd.Series | None = (
+            None  # Round35 B: 按股滑点(有则优先于 self.slip)
+        )
         self.shares: dict[str, int] = {}
         self.cash = aum
         self.trades: list[dict] = []
@@ -162,24 +185,28 @@ class PaperPortfolio:
         if qty == 0 or pd.isna(price):
             return
         comm_min = _cfg().costs.comm_min
+        # Round35 B: 有 slip_series 时按股差异化滑点, 否则用全局 self.slip
+        slip = (
+            float(self.slip_series.get(code, self.slip))
+            if self.slip_series is not None
+            else self.slip
+        )
         amt = qty * price
-        f = fees(amt, side, self.slip)
-        px = price * (1 - self.slip) if side == "sell" else price * (1 + self.slip)
+        f = fees(amt, side, slip)
+        px = price * (1 - slip) if side == "sell" else price * (1 + slip)
         if side == "buy":
-            need = amt * (1 + self.slip) + f["佣金"] + f["过户费"]
+            need = amt * (1 + slip) + f["佣金"] + f["过户费"]
             if need > self.cash + 1e-6:
-                qty = (
-                    int((self.cash - comm_min) / (price * (1 + self.slip)) // 100) * 100
-                )
+                qty = int((self.cash - comm_min) / (price * (1 + slip)) // 100) * 100
                 if qty <= 0:
                     return
-                amt, px = qty * price, price * (1 + self.slip)
-                f = fees(amt, side, self.slip)
-                need = amt * (1 + self.slip) + f["佣金"] + f["过户费"]
+                amt, px = qty * price, price * (1 + slip)
+                f = fees(amt, side, slip)
+                need = amt * (1 + slip) + f["佣金"] + f["过户费"]
             self.cash -= need
             self.shares[code] = self.shares.get(code, 0) + qty
         else:
-            self.cash += amt * (1 - self.slip) - f["佣金"] - f["印花税"] - f["过户费"]
+            self.cash += amt * (1 - slip) - f["佣金"] - f["印花税"] - f["过户费"]
             self.shares[code] = self.shares.get(code, 0) - qty
             if self.shares[code] <= 0:
                 self.shares.pop(code, None)
@@ -263,7 +290,12 @@ class PaperPortfolio:
                 self._order(c, "buy", tgt_sh - held, p)
 
 
-def replay_w(aum: float, slip: float = 0.0, min_notional: float = 3000.0):
+def replay_w(
+    aum: float,
+    slip: float = 0.0,
+    min_notional: float = 3000.0,
+    slip_by_amount: bool = False,
+):
     """权重口径 + 精确费率(佣金5元最低/印花/过户按每笔计) 的历史回放。
 
     权重/调仓与已验证明细一致(ew_nav 口径, 15bp 模型 = +4.61pp 可复现);
@@ -300,7 +332,8 @@ def replay_w(aum: float, slip: float = 0.0, min_notional: float = 3000.0):
                 if nn < min_notional or nn < 1e-9:
                     continue
                 side = "sell" if dw < 0 else "buy"
-                f = fees(nn, side, slip)
+                sl = slip_for_amount(amount.loc[dt, c]) if slip_by_amount else slip
+                f = fees(nn, side, sl)
                 cost_yuan += f["佣金"] + f["印花税"] + f["过户费"] + f["滑点"]
                 n_o += 1
             nav *= 1 - cost_yuan / nav_yuan  # 费用以占净值比例计入(复利口径)
@@ -349,7 +382,7 @@ def force_liquidate_delisted(
             pf.shares.pop(c, None)  # 无价可依: 该持仓归零
 
 
-def replay(aum: float, slip: float = 0.0):
+def replay(aum: float, slip: float = 0.0, slip_by_amount: bool = False):
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
     rebs, bench, ret = r5_rebalances(close, amount, tst, isst, ind)
@@ -388,6 +421,9 @@ def replay(aum: float, slip: float = 0.0):
         force_liquidate_delisted(pf, delist, dt, raw)  # Round 17 退市强制清仓
         rb = next((r for r in rebs if r["exec"] == dt), None)
         if rb is not None:
+            pf.slip_series = (
+                amount_slip_series(amount.loc[dt]) if slip_by_amount else None
+            )
             pf.rebalance(rb["target"], prices, trad.loc[dt], ret.loc[dt])
         navs.append(pf.value(prices))
     nav = pd.Series(navs, index=idx) / aum  # 归一化到 1.0 起点(元→单位净值)
@@ -412,13 +448,15 @@ def replay(aum: float, slip: float = 0.0):
     return exc
 
 
-def init_portfolio(aum: float, slip: float = 0.0):
+def init_portfolio(aum: float, slip: float = 0.0, slip_by_amount: bool = False):
     close, amount, tst, isst, ind = _load()
     raw, F = _load_corp(close)
     rebs, _, ret = r5_rebalances(close, amount, tst, isst, ind)
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     pf = PaperPortfolio(aum, slip)
+    if slip_by_amount:  # Round35 B
+        pf.slip_series = amount_slip_series(amount.loc[last["exec"]])
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
     total_fee = sum(
@@ -457,6 +495,11 @@ def main():
         default=None,
         help="滑点比例(默认取配置 costs.slip_default=15bp; 0=纯因子口径)",
     )
+    ap.add_argument(
+        "--slip-by-amount",
+        action="store_true",
+        help="Round35 B: 按执行日成交额分档差异化滑点(流动性依赖, 覆盖 --slip)",
+    )
     add_config_arg(ap)
     args = ap.parse_args()
     load_config(
@@ -464,11 +507,11 @@ def main():
     )  # 方案二: 入口处加载配置(含 --config), 之后函数内 get_config() 生效
     slip = args.slip if args.slip is not None else get_config().costs.slip_default
     if args.mode == "replay":
-        replay(args.aum, slip)
+        replay(args.aum, slip, slip_by_amount=args.slip_by_amount)
     elif args.mode == "replay_w":
-        replay_w(args.aum, slip)
+        replay_w(args.aum, slip, slip_by_amount=args.slip_by_amount)
     else:
-        init_portfolio(args.aum, slip)
+        init_portfolio(args.aum, slip, slip_by_amount=args.slip_by_amount)
 
 
 if __name__ == "__main__":

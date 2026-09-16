@@ -47,6 +47,8 @@ FROZEN_PARAMS = [
     ("costs", "stamp_rate", "印花税率"),
     ("costs", "transfer_rate", "过户费率"),
     ("costs", "div_tax", "红利税率"),
+    ("costs", "slip_bounds", "流动性滑点分档边界"),
+    ("costs", "slip_tiers", "流动性滑点档位表"),
 ]
 
 

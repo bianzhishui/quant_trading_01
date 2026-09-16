@@ -35,6 +35,7 @@ from research.paper_trade import (  # noqa: E402
     PaperPortfolio,
     _load,
     _load_corp,
+    amount_slip_series,
     r5_rebalances,
 )
 from research.reversal_factor import ew_nav  # noqa: E402
@@ -281,12 +282,14 @@ def _apply_corp_period(
                 pf.corp_action_f(c, prices.get(c, np.nan), fp[c], fn[c])
 
 
-def init_ledger(aum: float, slip: float | None = None):
+def init_ledger(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     slip = slip if slip is not None else _cfg().costs.slip_default
     close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
     last = rebs[-1]
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     pf = PaperPortfolio(aum, slip)
+    if slip_by_amount:  # Round35 B: 按股流动性滑点
+        pf.slip_series = amount_slip_series(amount.loc[last["exec"]])
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
     nav = pf.value(prices)
@@ -329,7 +332,7 @@ def init_ledger(aum: float, slip: float | None = None):
     print(f"  建仓费用 {led['total_fees']:.0f} 元 | 账本 {path.name}")
 
 
-def step(aum: float, slip: float | None = None):
+def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     slip = slip if slip is not None else _cfg().costs.slip_default
     path = ledger_path(aum)
     if not path.exists():
@@ -382,6 +385,9 @@ def step(aum: float, slip: float | None = None):
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
         pre_nav = pf.value(raw.loc[rb["exec"]])
         div_before = pf.div_cash
+        pf.slip_series = (
+            amount_slip_series(amount.loc[rb["exec"]]) if slip_by_amount else None
+        )
         pf.rebalance(
             rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
         )
@@ -598,6 +604,11 @@ def main():
         default=None,
         help="滑点比例(默认取配置 costs.slip_default=15bp; 0=纯因子口径)",
     )
+    ap.add_argument(
+        "--slip-by-amount",
+        action="store_true",
+        help="Round35 B: 按执行日成交额分档差异化滑点(流动性依赖, 覆盖 --slip)",
+    )
     add_config_arg(ap)
     args = ap.parse_args()
     load_config(
@@ -609,9 +620,9 @@ def main():
     step_done = False
     for a in aums:
         if args.mode == "init":
-            init_ledger(a, slip)
+            init_ledger(a, slip, slip_by_amount=args.slip_by_amount)
         elif args.mode == "step":
-            step(a, slip)
+            step(a, slip, slip_by_amount=args.slip_by_amount)
             step_done = True
         elif args.mode == "mark":
             mark(a, slip)

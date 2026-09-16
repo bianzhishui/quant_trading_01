@@ -201,3 +201,33 @@ def test_corp_action_dividend_credit():
     # 因子下降(分红除权方向)不产生现金入账(credit 需 > 0)
     pf.corp_action_f("A", raw_price=10.0, f_prev=1.2, f_now=1.0)
     assert pf.cash == pytest.approx(1800.0)
+
+
+# ---------------- Round35 流动性依赖滑点（口径 B） ----------------
+
+
+def test_slip_for_amount_tiers():
+    """冻结分档表: 金额越大滑点越低 (<Q20→40bp ... ≥Q80→5bp)。"""
+    from research.paper_trade import slip_for_amount
+
+    assert slip_for_amount(10_000_000) == 0.004  # < Q20
+    assert slip_for_amount(30_000_000) == 0.0025  # Q20-40
+    assert slip_for_amount(80_000_000) == 0.0015  # Q40-60
+    assert slip_for_amount(200_000_000) == 0.001  # Q60-80
+    assert slip_for_amount(500_000_000) == 0.0005  # ≥ Q80
+
+
+def test_paper_portfolio_slip_by_amount():
+    """slip_series 生效: 按股差异化滑点覆盖全局 slip(口径 B); 无 slip_series 用全局。"""
+    pf = PaperPortfolio(100_000.0, slip=0.0015)
+    pf.slip_series = pd.Series({"A": 0.004})  # A 档 40bp
+    pf._order("A", "buy", 1000, 10.0)
+    ta = pf.trades[-1]
+    assert ta["price"] == pytest.approx(10 * 1.004, abs=1e-3)
+    assert ta["滑点"] == pytest.approx(ta["amount"] * 0.004)
+
+    pf2 = PaperPortfolio(100_000.0, slip=0.0015)  # 无 slip_series → 全局 15bp
+    pf2._order("A", "buy", 1000, 10.0)
+    t2 = pf2.trades[-1]
+    assert t2["price"] == pytest.approx(10 * 1.0015, abs=1e-3)
+    assert t2["滑点"] == pytest.approx(t2["amount"] * 0.0015)
