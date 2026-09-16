@@ -11,7 +11,6 @@ docs/ 只保留**现行/权威文档**与已闭环的基建记录。
 | [strategy_operations_handbook.md](strategy_operations_handbook.md) | **运营手册（权威，⭐）** | 现行——R5 四账户运营全流程（每日/每月/对账/监控） |
 | [strategy_final_spec.md](strategy_final_spec.md) | 最终策略规格（权威） | 定稿 2026-09-04——全市场 R5 完整可执行规格 |
 | [strategy_investment_plan.md](strategy_investment_plan.md) | 实盘投资方案（参考） | 定稿 2026-09-04——本金/建仓/费率权威（现行运营为模拟盘） |
-| [factor_round35_execution_cost_plan.md](factor_round35_execution_cost_plan.md) | 执行成本模型评估（预注册） | 已实施（§0）——A固定15bp +7.57% vs B流动性依赖 +7.02%（−0.55pp，真实成本暴露）；推荐保持A、B作监控、C不立项；**待用户决策** |
 | [factor_candidates.md](factor_candidates.md) | 因子候选池索引 | 现行——三梯队候选 + 检验顺序 + 避坑 |
 | [factor_top10.md](factor_top10.md) | 因子精选清单 | 现行——10 个可用因子 + 数据补全 |
 | [data_sources_integrity.md](data_sources_integrity.md) | 数据完整性档案 | 现行——R5 数据源/窗口/完整性口径 |

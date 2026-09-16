@@ -427,6 +427,18 @@ UNITS = [
             "60/100/300/600万超额+2.83/+4.92/+6.08/+6.28%, 费用4.48/4.35/3.62/3.36%/年"
         ),
     },
+    {
+        "name": "round35_execution_cost",
+        "scripts": [],  # 基建轮: 改动在生产代码(paper_trade/paper_live 按股滑点), 脚本留位
+        "plans": ["factor_round35_execution_cost_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": (
+            "执行成本模型评估: A固定15bp +7.57%维持生产口径; B流动性依赖 +7.02%"
+            "(−0.55pp, 等权加权滑点21.1bp>15bp, flat低估小盘真实成本) 以 --slip-by-amount "
+            "监控并入; C VWAP否决(免费分钟源历史不足官方文档证实+第三方源不可低成本验证); 18测试通过"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -470,6 +482,7 @@ DIRECTIONS = {
     "round24_prod_limit_aware": "阻塞引擎内置",
     "round32_execution_cost": "模拟盘滑点真实化",
     "round33_backtest_slip": "回测滑点口径统一",
+    "round35_execution_cost": "执行成本模型评估",
 }
 
 
