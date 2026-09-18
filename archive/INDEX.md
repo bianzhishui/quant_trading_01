@@ -47,6 +47,7 @@
 | round33_backtest_slip | 回测滑点口径统一 | ✅ 通过并入 | 回测默认滑点0→15bp, 回测=运营=基准三口径统一; replay四账户重跑: 60/100/300/600万超额+2.83/+4.92/+6.08/+6.28%, 费用4.48/4.35/3.62/3.36%/年 | archive/experiments/round33_backtest_slip/ | 2026-09-13 |
 | round34_config | 全量配置化 | ✅ 通过并入 | 全量配置化(R34): YAML+惰性读取+冻结校验, 判定6/6+复检全过; 扩展含fetch波/惰性全覆盖/R5窗口配置化/src迁移; config.py+default.yaml 留位 research/ | archive/experiments/round34_config/ | 2026-09-14 |
 | round35_execution_cost | 执行成本模型评估 | ✅ 通过并入 | 执行成本模型评估: A固定15bp +7.57%维持生产口径; B流动性依赖 +7.02%(−0.55pp, 等权加权滑点21.1bp>15bp, flat低估小盘真实成本) 以 --slip-by-amount 监控并入; C VWAP否决(免费分钟源历史不足官方文档证实+第三方源不可低成本验证); 18测试通过 | archive/experiments/round35_execution_cost/ | 2026-09-16 |
+| round36_shortterm_screen | 周频短线因子筛选 | 🟡 部分通过 | 周频短线因子筛选(5日持有,全市场非ST池,639期): F4低成交额5 通过(4/4)(IC−0.077 t=−10.8, 超额15bp+11.9pp/35bp+7.1pp, 三段全正, 换手10.3) 但与生产Amihud截面相关−0.85强同源, 正交残差IC−0.075显著, 控制市值后仍−0.060,B口径31.7bp成本存活+7.9pp→非成本/市值假象, 需组合验证守门(R22/R30协议); F3低换手5 部分通过(3/4,超额仅+1.3pp量级不足); 短反转/低波动/换手突变/短动量 否决(周频反转Q1接飞刀−12.6pp, 与月频对照更不可交易) | archive/experiments/round36_shortterm_screen/ | 2026-09-18 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |

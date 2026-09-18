@@ -27,6 +27,7 @@ ARCHIVE = "archive/experiments"
 
 # 永不归档白名单：生产链 + 共享基座（被生产链依赖，脚本留位 research/）
 KEEP = {
+    "config",  # 配置系统(Round 34, 全仓共享基座)
     "data_io",
     "fetch_corporate_actions",
     "fetch_daily_incremental",
@@ -439,6 +440,25 @@ UNITS = [
             "监控并入; C VWAP否决(免费分钟源历史不足官方文档证实+第三方源不可低成本验证); 18测试通过"
         ),
     },
+    {
+        "name": "round36_shortterm_screen",
+        "scripts": ["factor_screen_round36_shortterm.py"],
+        "plans": ["factor_round36_shortterm_screen_plan.md"],
+        "outputs": [
+            "round36_shortterm_summary",
+            "round36_F4低成交额5",
+            "round36_F3低换手5_ic",
+        ],
+        "status": "🟡 部分通过",
+        "conclusion": (
+            "周频短线因子筛选(5日持有,全市场非ST池,639期): F4低成交额5 通过(4/4)"
+            "(IC−0.077 t=−10.8, 超额15bp+11.9pp/35bp+7.1pp, 三段全正, 换手10.3) 但"
+            "与生产Amihud截面相关−0.85强同源, 正交残差IC−0.075显著, 控制市值后仍−0.060,"
+            "B口径31.7bp成本存活+7.9pp→非成本/市值假象, 需组合验证守门(R22/R30协议); "
+            "F3低换手5 部分通过(3/4,超额仅+1.3pp量级不足); 短反转/低波动/换手突变/短动量 否决"
+            "(周频反转Q1接飞刀−12.6pp, 与月频对照更不可交易)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -483,6 +503,7 @@ DIRECTIONS = {
     "round32_execution_cost": "模拟盘滑点真实化",
     "round33_backtest_slip": "回测滑点口径统一",
     "round35_execution_cost": "执行成本模型评估",
+    "round36_shortterm_screen": "周频短线因子筛选",
 }
 
 
