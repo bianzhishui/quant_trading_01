@@ -459,6 +459,21 @@ UNITS = [
             "(周频反转Q1接飞刀−12.6pp, 与月频对照更不可交易)"
         ),
     },
+    {
+        "name": "round37_f4_combo",
+        "scripts": ["factor_round37_f4_combo.py"],
+        "plans": ["factor_round37_f4_combo_plan.md"],
+        "outputs": ["round37_f4_combo_summary"],
+        "status": "⏸ 搁置",
+        "conclusion": (
+            "F4低成交额5组合验证(140期,300万share级,15bp): B等权三因子未通过(核心门禁①"
+            "超额仅+0.57pp<+1pp, 未崩塌但无增量, 与R30正交崩塌对照: 同源稀释无害/正交破坏互补); "
+            "C(0.85Amihud+0.15F4) 4/5组合升级候选(+8.30%, 超额+1.10pp, 三段全正, 回撤/换手更优) "
+            "唯一失败⑤Jaccard 78.6%(同源高重叠属设计使然); 解释验证: C>纯Amihud1.0(+7.10%)→"
+            "F4有真实短频增量非权重复现, 但本质是Amihud短频精化非新信息源; 维持R5生产, "
+            "C为决策点(替换动量=改冻结选股逻辑须另预注册; 建议0.85A+0.10动量+0.05F4微调路径)"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -504,6 +519,7 @@ DIRECTIONS = {
     "round33_backtest_slip": "回测滑点口径统一",
     "round35_execution_cost": "执行成本模型评估",
     "round36_shortterm_screen": "周频短线因子筛选",
+    "round37_f4_combo": "F4组合验证",
 }
 
 
