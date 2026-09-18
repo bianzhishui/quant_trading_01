@@ -10,7 +10,7 @@
   from research import config
   cfg = config.load_config()              # 默认 default.yaml
   cfg = config.load_config("config/x.yaml")  # 指定文件覆盖
-  cfg.strategy.amihud_w                   # 嵌套访问（类型化）
+  cfg.strategy.w_amihud                 # 嵌套访问（类型化）
   cfg["costs"]["slip_default"]            # dict 访问亦可
 """
 
@@ -33,7 +33,9 @@ FROZEN_PARAMS = [
     ("strategy", "start", "数据起点"),
     ("strategy", "min_n", "池最小数"),
     ("strategy", "min_ind", "行业最小数"),
-    ("strategy", "amihud_w", "Amihud 权重"),
+    ("strategy", "w_amihud", "Amihud 权重"),
+    ("strategy", "w_mom", "动量权重"),
+    ("strategy", "w_f4", "F4 权重"),
     ("strategy", "limit_thr", "涨停阈值"),
     ("strategy", "r5", "amihud_lookback", "Amihud 回看期"),
     ("strategy", "r5", "amihud_min_periods", "Amihud 最小期数"),
@@ -42,6 +44,7 @@ FROZEN_PARAMS = [
     ("strategy", "r5", "mom_long", "动量长窗"),
     ("strategy", "r5", "seasoning", "上市天数下限"),
     ("strategy", "r5", "quantile", "分组数"),
+    ("strategy", "r5", "f4_window", "F4 窗口"),
     ("costs", "comm_rate", "佣金率"),
     ("costs", "comm_min", "单笔最低佣金"),
     ("costs", "stamp_rate", "印花税率"),
@@ -227,7 +230,10 @@ if __name__ == "__main__":
     # 快速自检: python research/config.py
     c = load_config(sys.argv[1] if len(sys.argv) > 1 else None)
     print("配置加载成功:")
-    print(f"  strategy.amihud_w = {c.strategy.amihud_w}")
+    print(
+        f"  strategy 三因子权重 = Amihud {c.strategy.w_amihud} : 动量 {c.strategy.w_mom} : "
+        f"F4 {c.strategy.w_f4}"
+    )
     print(f"  costs.slip_default = {c.costs.slip_default}")
     print(f"  accounts.aum_list = {c.accounts.aum_list}")
     print(f"  paths.output = {c.paths.output}")

@@ -30,7 +30,9 @@ from research.paper_trade import (  # noqa: E402
 def main(csv: str | None = None):
     cfg = get_config()
     out = Path(cfg.paths.output)
-    amihud_w = cfg.strategy.amihud_w
+    w_amihud = cfg.strategy.w_amihud
+    w_mom = cfg.strategy.w_mom
+    w_f4 = cfg.strategy.w_f4
     min_ind = cfg.strategy.min_ind
     close, amount, tst, isst, ind = _load()
     raw, _ = _load_corp(close)
@@ -46,17 +48,20 @@ def main(csv: str | None = None):
         .mean()
     )
     mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
+    f4 = amount.rolling(r5.f4_window).mean()  # F4: 5 日均成交额, 低→高分
     T = last["T"]
     e = build_pool(close, tst, isst).loc[T]
     a = amihud.loc[T][e].dropna()
     m = mom.loc[T][e].dropna()
-    common = a.index.intersection(m.index).intersection(ind.index)
+    f = f4.loc[T][e].dropna()
+    common = a.index.intersection(m.index).intersection(f.index).intersection(ind.index)
     ind_s = ind.reindex(common)
     keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
     codes_pool = common[ind_s.isin(keep)]
     pa = a.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
     pm = m.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
-    sc = amihud_w * pa + (1 - amihud_w) * pm
+    pf4 = -f.reindex(codes_pool).groupby(ind_s[codes_pool]).rank(pct=True)
+    sc = w_amihud * pa + w_mom * pm + w_f4 * pf4  # Round 38: 0.40/0.10/0.50
 
     # 名称/行业
     sb = pd.read_parquet(cfg.paths.stock_basic)
@@ -82,8 +87,10 @@ def main(csv: str | None = None):
             "code": codes,
             "amihud": a.reindex(codes).round(6),
             "mom": m.reindex(codes).round(4),
+            "f4": f.reindex(codes).round(4),
             "pa": pa.reindex(codes).round(4),
             "pm": pm.reindex(codes).round(4),
+            "pf4": pf4.reindex(codes).round(4),
             "score": sc.reindex(codes).round(4),
         }
     )
@@ -100,8 +107,10 @@ def main(csv: str | None = None):
         "industry",
         "amihud",
         "mom",
+        "f4",
         "pa",
         "pm",
+        "pf4",
         "score",
         "price",
         "qty300",

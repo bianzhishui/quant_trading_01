@@ -29,7 +29,8 @@ def _make_universe(n_ind: int = 10, per_ind: int = 10) -> tuple:
     """确定性合成宇宙（零噪声几何漂移 → 强度严格单调 → 前 1/5 可精确预测）。
 
     100 只主板股 = 10 行业 × 10 只，行业按强度连续分块（行业 k 持有强度
-    k*10+1..k*10+10），使行业内百分位 rank == 全局强度序 → 前 20% = 强度 81..100。
+    k*10+1..k*10+10），使行业内百分位 rank == 全局强度序 → 前 20% = 每行业
+    强度最高 2 只（行业内 top2）→ 全局 {9,10,19,20,...,99,100}。
     返回 (close, amount, tst, isst, ind)。
     """
     idx = pd.bdate_range("2018-01-02", "2021-12-30")  # 末交易日非月末(避免 exec 越界)
@@ -41,8 +42,9 @@ def _make_universe(n_ind: int = 10, per_ind: int = 10) -> tuple:
     amounts: dict[str, np.ndarray] = {}
     for i, c in enumerate(codes, start=1):  # i = 强度 1..n
         g = 0.0003 * (i - 1)  # 强者日漂移更大 → 动量更高
-        amount_i = 1e8 / (1 + 0.05 * (i - 1))  # 强者成交额更低 → Amihud 更高
-        closes[c] = 100.0 * np.cumprod(1 + g)  # 纯几何(零噪声) → 完全确定
+        amount_i = 1e8 / (1 + 0.05 * (i - 1))  # 强者成交额更低 → Amihud/F4 更高
+        # 注意 np.cumprod 需数组（标量返回单元素）→ 价格真正几何增长
+        closes[c] = 100.0 * np.cumprod(np.full(len(idx), 1.0 + g))
         amounts[c] = np.full(len(idx), amount_i)
 
     close = pd.DataFrame(closes, index=idx)
@@ -57,14 +59,22 @@ def _make_universe(n_ind: int = 10, per_ind: int = 10) -> tuple:
 
 
 def test_r5_golden_top_quintile():
-    """黄金断言: 默认配置下末次信号 target = 强度 81..100（前 1/5, 恰好 20 只）。"""
+    """黄金断言: 默认配置下末次信号 target = 每行业强度最高 2 只（行业内前 20%）。
+
+    行业 k 持有强度 k*10+1..k*10+10 → 行业内 top2 = 强度 {9,10}×10 行业 = 20 只。
+    三因子（Amihud×动量×F4）强度单调一致，行业内百分位排序等价于强度序。
+    """
     close, amount, tst, isst, ind = _make_universe()
     rebs, bench, _ = r5_rebalances(close, amount, tst, isst, ind)
     assert len(rebs) >= 20  # 2019-08 起 pool 满 100, 到 2021-11 约 28 个月
     last = rebs[-1]
     assert last["exec"] == pd.Timestamp("2021-12-01")  # 信号 T=2021-11-30 → 次日执行
     codes = list(close.columns)
-    assert last["target"] == set(codes[80:])  # 强度 81..100
+    # 每行业 10 只, 行业内 pct rank 前 20% = 每行业强度 {9,10} (强度序 = 列序)
+    expected = set()
+    for k in range(10):
+        expected |= set(codes[k * 10 + 8 : k * 10 + 10])  # 行业 k 的强度 9,10
+    assert last["target"] == expected
     assert len(last["target"]) == 20
 
 

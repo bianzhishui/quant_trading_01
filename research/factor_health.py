@@ -64,7 +64,15 @@ def _csv_file() -> Path:
 
 
 # 监控因子×口径 (与 r5_rebalances 逐公式一致)
-COLS = ["amihud_full", "amihud_ind", "mom_full", "mom_ind", "score"]
+COLS = [
+    "amihud_full",
+    "amihud_ind",
+    "mom_full",
+    "mom_ind",
+    "f4_full",
+    "f4_ind",
+    "score",
+]
 
 
 def compute_rankic_panel() -> pd.DataFrame:
@@ -73,7 +81,9 @@ def compute_rankic_panel() -> pd.DataFrame:
     口径(与 paper_trade.r5_rebalances 完全一致, 窗口取 config strategy.r5):
       Amihud = (|ret|/amount×amihud_scale) amihud_lookback 日滚动(min_periods=amihud_min_periods)
       动量   = close.shift(mom_short)/close.shift(mom_long)-1 (T-mom_long~T-mom_short)
-      合成分 = 行业内 pct rank(Amihud) 与 pct rank(动量) 平均
+      F4     = amount.rolling(f4_window).mean() (5 日均成交额, 低→高分)
+      合成分 = w_amihud×行业内pct rank(Amihud) + w_mom×行业内pct rank(动量)
+             + w_f4×(−行业内pct rank(F4))   [Round 38 三因子, 原二因子被取代]
       未来收益 = close[T2]/close[T]-1 (T2=下月信号日)
     全池口径用原始因子值; 行业内口径用行业内 pct rank 值。
     """
@@ -82,7 +92,9 @@ def compute_rankic_panel() -> pd.DataFrame:
     cfg = get_config()
     min_ind = cfg.strategy.min_ind
     min_n = cfg.strategy.min_n
-    amihud_w = cfg.strategy.amihud_w
+    w_amihud = cfg.strategy.w_amihud
+    w_mom = cfg.strategy.w_mom
+    w_f4 = cfg.strategy.w_f4
     r5 = cfg.strategy.r5
     ret = close.pct_change()
     amihud = (
@@ -91,6 +103,7 @@ def compute_rankic_panel() -> pd.DataFrame:
         .mean()
     )
     mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
+    f4 = amount.rolling(r5.f4_window).mean()
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
 
@@ -99,7 +112,10 @@ def compute_rankic_panel() -> pd.DataFrame:
         e = pool.loc[T]
         a = amihud.loc[T][e].dropna()
         m = mom.loc[T][e].dropna()
-        common = a.index.intersection(m.index).intersection(ind.index)
+        f = f4.loc[T][e].dropna()
+        common = (
+            a.index.intersection(m.index).intersection(f.index).intersection(ind.index)
+        )
         ind_s = ind.reindex(common)
         keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
         codes = common[ind_s.isin(keep)]
@@ -115,12 +131,17 @@ def compute_rankic_panel() -> pd.DataFrame:
         # 行业内 pct rank (与 R5 打分同口径)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = amihud_w * pa + (1 - amihud_w) * pm  # 合成分, 与 R5 打分同权重(0.85)
+        pf4 = -f.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
+        sc = (
+            w_amihud * pa + w_mom * pm + w_f4 * pf4
+        )  # 合成分, Round 38 三因子 0.40/0.10/0.50
         row = {"date": T.date().isoformat()}
         row["amihud_full"] = sps.spearmanr(a[m2], fwd[m2])[0]
         row["amihud_ind"] = sps.spearmanr(pa[m2], fwd[m2])[0]
         row["mom_full"] = sps.spearmanr(m[m2], fwd[m2])[0]
         row["mom_ind"] = sps.spearmanr(pm[m2], fwd[m2])[0]
+        row["f4_full"] = sps.spearmanr(f[m2], fwd[m2])[0]
+        row["f4_ind"] = sps.spearmanr(-pf4[m2], fwd[m2])[0]
         row["score"] = sps.spearmanr(sc[m2], fwd[m2])[0]
         rows.append(row)
 

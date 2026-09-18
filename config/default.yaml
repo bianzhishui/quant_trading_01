@@ -24,7 +24,10 @@ strategy:
   start: "2013-06-01"        # 数据起点（因子预热窗口）
   min_n: 50                  # 池 < 50 跳过该月（冻结）
   min_ind: 5                 # 行业 < 5 剔除（冻结）
-  amihud_w: 0.85             # Amihud 打分权重（冻结，0.85:0.15，Round 28/29 批准）
+  # 三因子打分权重（冻结，和=1.0，Round 38 样本外验证采纳；原 0.85/0.15 二因子被取代）
+  w_amihud: 0.40             # Amihud 权重（Round 38: 0.40）
+  w_mom: 0.10                # 中期动量权重（Round 38: 0.10）
+  w_f4: 0.50                 # F4 低成交额5 权重（Round 38: 0.50）
   limit_thr: 0.098           # 涨停近似阈值（冻结）
   r5:                        # R5 生产公式窗口（冻结：改动=改选股逻辑, 须预注册）
     amihud_lookback: 21      # Amihud 回看期(交易日)
@@ -34,6 +37,7 @@ strategy:
     mom_long: 250            # 中期动量长窗 T-250
     seasoning: 375           # 上市天数下限(seasoning)
     quantile: 5              # 行业内百分位分组数, 取最高组 = 前 1/5 = 前20%
+    f4_window: 5             # F4 低成交额 5 日均窗口（Round 38, 冻结）
   lookback: 21               # reversal_factor 探索用回看期（非 R5 生产, 可调）
   n_q: 5                     # reversal_factor 探索用分组数（非 R5 生产, 可调）
   eras:                      # 分段检验窗口

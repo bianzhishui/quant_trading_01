@@ -87,11 +87,18 @@ def _load_corp(close: pd.DataFrame):
 
 
 def r5_rebalances(close, amount, tst, isst, ind):
-    """R5 信号: 行业内百分位(Amihud+中期动量), 前 1/quantile。返回 rebs+bench(同池等权)。"""
+    """R5 信号: 行业内百分位(Amihud×动量×F4低成交额5), 前 1/quantile。返回 rebs+bench(同池等权)。
+
+    Round 38 起三因子打分（原 0.85/0.15 二因子被取代，用户批准）:
+      sc = w_amihud×rank(Amihud) + w_mom×rank(动量) + w_f4×(−rank(F4))
+      F4 = mean(amount, 5d)（低成交额→高分）
+    """
     cfg = _cfg()
     min_ind = cfg.strategy.min_ind
     min_n = cfg.strategy.min_n
-    amihud_w = cfg.strategy.amihud_w
+    w_amihud = cfg.strategy.w_amihud
+    w_mom = cfg.strategy.w_mom
+    w_f4 = cfg.strategy.w_f4
     r5 = cfg.strategy.r5
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
@@ -101,6 +108,7 @@ def r5_rebalances(close, amount, tst, isst, ind):
         .mean()
     )
     mom = close.shift(r5.mom_short) / close.shift(r5.mom_long) - 1.0
+    f4 = amount.rolling(r5.f4_window).mean()  # F4: 5 日均成交额, 低→高分
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
     rebs, bench = [], {}
@@ -109,7 +117,10 @@ def r5_rebalances(close, amount, tst, isst, ind):
         exec_day = idx[idx.get_loc(T) + 1]
         a = amihud.loc[T][e].dropna()
         m = mom.loc[T][e].dropna()
-        common = a.index.intersection(m.index).intersection(ind.index)
+        f = f4.loc[T][e].dropna()
+        common = (
+            a.index.intersection(m.index).intersection(f.index).intersection(ind.index)
+        )
         ind_s = ind.reindex(common)
         keep = ind_s.value_counts()[ind_s.value_counts() >= min_ind].index
         codes = common[ind_s.isin(keep)]
@@ -119,7 +130,10 @@ def r5_rebalances(close, amount, tst, isst, ind):
             bench[exec_day] = set(codes)
         pa = a.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
         pm = m.reindex(codes).groupby(ind_s[codes]).rank(pct=True)
-        sc = amihud_w * pa + (1 - amihud_w) * pm  # Round 29: Amihud 0.85 : 动量 0.15
+        pf4 = -f.reindex(codes).groupby(ind_s[codes]).rank(pct=True)  # 低成交额→高分
+        sc = (
+            w_amihud * pa + w_mom * pm + w_f4 * pf4
+        )  # Round 38: Amihud 0.40 : 动量 0.10 : F4 0.50
         q = pd.qcut(sc.rank(method="first"), r5.quantile, labels=False)
         rebs.append(
             {"T": T, "exec": exec_day, "target": set(codes[q == r5.quantile - 1])}
