@@ -474,6 +474,22 @@ UNITS = [
             "C为决策点(替换动量=改冻结选股逻辑须另预注册; 建议0.85A+0.10动量+0.05F4微调路径)"
         ),
     },
+    {
+        "name": "round38_weight_scan",
+        "scripts": ["factor_round38_weight_scan.py"],
+        "plans": ["factor_round38_weight_scan_plan.md"],
+        "outputs": ["round38_weight_scan_summary"],
+        "status": "🟡 部分通过",
+        "conclusion": (
+            "三因子权重最优配比扫描(35点ew_nav+share级复核+样本外R28协议): 样本外四项判据全过"
+            "(w_train*=A0.40/M0.10/F40.50: 训练+9.80%→验证+12.62% vs A+10.32% 差+2.30pp, "
+            "网格内部, 全区间+10.40%≥A, 双侧高原0.49pp<0.5pp); 候选区间 "
+            "[Amihud0.40~0.50×动量0.05~0.10×F4 0.40~0.50], share级最优点W1(0.50/0.05/0.45)"
+            "超额+9.27%(三段全正/高原0.15pp最稳); F4增量三重独立证据确认(R36正交IC→R37解释"
+            "验证→R38样本外); 本质=调整Amihud测量窗口(21日→5日)非新信息源, 代价=动量缓冲"
+            "15%→5~10%风格年更脆弱; R5生产未动, 呈用户决策"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -520,6 +536,7 @@ DIRECTIONS = {
     "round35_execution_cost": "执行成本模型评估",
     "round36_shortterm_screen": "周频短线因子筛选",
     "round37_f4_combo": "F4组合验证",
+    "round38_weight_scan": "三因子权重扫描",
 }
 
 
