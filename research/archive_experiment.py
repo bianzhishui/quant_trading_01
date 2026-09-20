@@ -490,6 +490,21 @@ UNITS = [
             "15%→5~10%风格年更脆弱; R5生产未动, 呈用户决策"
         ),
     },
+    {
+        "name": "round39_candidates",
+        "scripts": ["factor_round39_candidates.py"],
+        "plans": ["factor_round39_candidates_plan.md"],
+        "outputs": ["round39_candidates_summary"],
+        "status": "❌ 已否决",
+        "conclusion": (
+            "'同向但异法'候选因子验证(4因子月频筛+组合验证): C1低换手21/C2换手波动21std "
+            "部分通过(3/4, IC显著−0.084/−0.092 t≤−5.6, 单调完美, Jaccard 16.9%极异法, "
+            "但超额仅+1.7/+2.0%<3pp不进组合验证); C3市值代理 通过(4/4,+9.4%)但10%并入w* "
+            "组合验证3/5不并入(超额+0.24pp<+1pp, Jaccard 90.6%同法重复暴露→R22教训重演); "
+            "C4短动量5/21 未通过(月频方向=反转, 高动量组−10.5%); 框架结论: 异法度是必要不充分"
+            "条件, 最终裁判=组合增量门禁; 无新因子并入, R5/w*生产不变"
+        ),
+    },
 ]
 
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
@@ -537,6 +552,7 @@ DIRECTIONS = {
     "round36_shortterm_screen": "周频短线因子筛选",
     "round37_f4_combo": "F4组合验证",
     "round38_weight_scan": "三因子权重扫描",
+    "round39_candidates": "同向但异法候选因子",
 }
 
 
