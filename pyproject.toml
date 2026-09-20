@@ -1,5 +1,5 @@
 [project]
-name = "quant-trading-01"
+name = "quant_trading_01"
 version = "0.1.0"
 description = "A股量化交易学习项目：数据获取 + 回测引擎 + 策略示例"
 readme = "README.md"
