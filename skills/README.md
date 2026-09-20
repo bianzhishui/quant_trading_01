@@ -13,4 +13,9 @@
 
 | skill | 内容 | 来源 |
 |---|---|---|
-| `a-share-quant-research/` | A 股量化研究通用纪律与工作流（预注册/判定/回测验证/归档/用数据说话/A股执行规则） | quant_trading_01 项目（R5 等权575 + 四账户模拟盘长期运营） |
+| `exploration-project/` | **探索型研究项目启动与纪律**：通用探索方法论（预注册/判定/防数据挖掘/归档/对账）+ Python 工程规范（uv/虚拟环境、配置化、代码风格、测试、临时脚本）+ git 仓库初始化 + **通用配置框架脚手架**（`bootstrap.py` + `templates/`，可快速初始化新探索项目） | 沉淀自 quant_trading_01（A 股量化：R5 等权575 + 四账户模拟盘），已泛化去领域绑定 |
+
+## 历史
+
+- `a-share-quant-research/`（A 股专属版，2026-09）已泛化为 `exploration-project/`
+  （`git mv` 保留历史；A 股执行规则 T+1/涨跌停/费率已移出 skill，属领域专属，落各仓库 AGENTS.md）。
