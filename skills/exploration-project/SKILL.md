@@ -124,7 +124,7 @@ uv run pytest                            # 测试全过
 | .gitignore | 数据/输出/缓存/venv/tmp 忽略（含例外注释） |
 | config/default.yaml | 全量配置基底（权威；缺失报错无兜底） |
 | config/custom.yaml.example | 覆盖示例（同 key 覆盖，缺项继承） |
-| src/{pkg}/config.py | **通用配置框架**：YAML 深合并 + 惰性单例 + 属性访问 + 冻结校验（提炼自 quant_trading_01 的 research/config.py） |
+| src/{pkg}/config.py | **通用配置框架**：YAML 深合并 + 惰性单例 + 属性访问 + 冻结校验（提炼自 quant_trading_01 的 src/quant_trading_01/config.py） |
 | src/{pkg}/__init__.py | 包入口 |
 | scripts/example.py | 配置框架用法示例（sys.path 引导 + main() 壳） |
 | tests/test_config.py | 配置框架测试（不碰真实数据文件） |

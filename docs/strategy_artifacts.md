@@ -113,8 +113,8 @@ date,nav,涨幅%,较本金盈亏
 
 再生成（数据恢复后）：
 ```bash
-python research/scenario_ytd.py --start 2026-01-01   # 刷新 daily_nav/monthly_funds
-python research/plot_daily_gains.py --prefix 20260101 --title "2026年至今(至09-07)"
+python scripts/scenario_ytd.py --start 2026-01-01   # 刷新 daily_nav/monthly_funds
+python scripts/plot_daily_gains.py --prefix 20260101 --title "2026年至今(至09-07)"
 ```
 
 ---
@@ -173,14 +173,14 @@ python research/plot_daily_gains.py --prefix 20260101 --title "2026年至今(至
 
 | 想干什么 | 命令 | 产物 |
 |---|---|---|
-| 每日看四账户涨幅+盈亏 | `python research/daily_update.py` | 控制台总表 + daily_nav CSV |
-| 只看表不重算 | `python research/daily_update.py --table` | 控制台总表 |
-| 月调仓 | `python research/paper_live.py step` | ledger + monthly_funds |
-| 月报告 | `python research/paper_live.py report` | 控制台 + monthly_funds tail |
-| 年度回放 | `python research/scenario_ytd.py --start YYYY-01-01` | daily_nav/monthly_funds_{prefix} |
-| 年度图 | `python research/plot_daily_gains.py --prefix YYYY0101` | daily_gains_{prefix}.png |
-| 历史全口径回测 | `python research/paper_trade.py replay --aum 3000000` | 控制台指标 |
-| 建仓明细 | `python research/paper_trade.py init --aum 3000000` | paper_init CSV |
+| 每日看四账户涨幅+盈亏 | `python scripts/daily_update.py` | 控制台总表 + daily_nav CSV |
+| 只看表不重算 | `python scripts/daily_update.py --table` | 控制台总表 |
+| 月调仓 | `python scripts/paper_live.py step` | ledger + monthly_funds |
+| 月报告 | `python scripts/paper_live.py report` | 控制台 + monthly_funds tail |
+| 年度回放 | `python scripts/scenario_ytd.py --start YYYY-01-01` | daily_nav/monthly_funds_{prefix} |
+| 年度图 | `python scripts/plot_daily_gains.py --prefix YYYY0101` | daily_gains_{prefix}.png |
+| 历史全口径回测 | `python scripts/paper_trade.py replay --aum 3000000` | 控制台指标 |
+| 建仓明细 | `python scripts/paper_trade.py init --aum 3000000` | paper_init CSV |
 
 ---
 

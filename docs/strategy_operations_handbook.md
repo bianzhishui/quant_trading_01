@@ -209,7 +209,7 @@ Amihud = |当日收益率| ÷ 当日成交额 × 1e6
 ### 5.4 关键结论（回测纪律）
 
 1. **回测含全部费用税**（佣金/印花/过户/红利税/1手取整/停牌跳过），非"15bp 简化口径"；
-2. **可复现**：`python research/paper_trade.py` 主程序可重跑，结果与本文一致；
+2. **可复现**：`python scripts/paper_trade.py` 主程序可重跑，结果与本文一致；
 3. **未做参数搜索**：所有参数 2013 年起冻结，无过拟合（多轮实验按预注册文档逐一验证）。
 
 ---
@@ -288,7 +288,7 @@ Amihud = |当日收益率| ÷ 当日成交额 × 1e6
 ```
 工作目录: ~/Desktop/quant_trading_01
 Python  : .venv/bin/python
-数据    : data/fundamental/full_daily/（行情·按年分区，3409只含退市股；统一经 research/data_io.py 读取）
+数据    : data/fundamental/full_daily/（行情·按年分区，3409只含退市股；统一经 src/quant_trading_01/data_io.py 读取）
         data/fundamental/stock_basic.parquet（证券元数据，含退市日期）
         data/round2/adjust_factor.parquet（复权因子/公司行为）
         data/round2/industry_full.parquet（行业）
@@ -298,9 +298,9 @@ Python  : .venv/bin/python
 ### 8.2 每日例行（一键，收盘后跑）
 
 ```bash
-python research/daily_update.py             # 一键: 判断最新交易日 → 补当日行情(如需)
+python scripts/daily_update.py             # 一键: 判断最新交易日 → 补当日行情(如需)
                                            #       → 四账户 mark → 输出盈亏总表
-python research/daily_update.py --table     # 只读现有CSV, 随时查看当天总表(秒级)
+python scripts/daily_update.py --table     # 只读现有CSV, 随时查看当天总表(秒级)
 ```
 
 自动输出"账户 / 本金 / 最新NAV / 当日涨幅 / 盈亏(元) / 盈亏率 / 建仓日NAV"总表；
@@ -312,11 +312,11 @@ python research/daily_update.py --table     # 只读现有CSV, 随时查看当�
 ```bash
 # ① 更新行情 + 收编新股（宇宙刷新）：从 stock_basic 对比 full_daily，抓缺失 code 全历史，
 #    当月新上市股票在此被收编（R5 有 375 日上市期，收编后 1.5 年才会入池，时间充裕）
-python research/fetch_full_market.py
+python scripts/fetch_full_market.py
 
 # ② 宇宙完整性自查（在市缺失应为 0；>0 说明有新股未收编，先补 ①）
 python - <<'PY'
-from research.data_io import full_daily_codes, stock_basic
+from quant_trading_01.data_io import full_daily_codes, stock_basic
 sb = stock_basic()
 alive = set(a for a in sb[(sb["type"]=="1") & ((sb["outDate"].isna())|(sb["outDate"]==""))]["code"]
             if a.startswith(("sh.60","sz.00")))
@@ -324,45 +324,45 @@ print("在市但 full_daily 缺失:", len(alive - full_daily_codes()))
 PY
 
 # ③ 月度调仓 + 记账（四账户自动一起推进）
-python research/paper_live.py step
+python scripts/paper_live.py step
 
 # ④ 每日涨幅（当天收盘 vs 前一天收盘 NAV）
-python research/paper_live.py mark
+python scripts/paper_live.py mark
 
 # ⑤ 月频报告（净值/年化/超额/月度资金变动）
-python research/paper_live.py report
+python scripts/paper_live.py report
 
 # ⑥ 因子健康监控（R5 RankIC 状态灯，对比历史基准）
-python research/factor_health.py
+python scripts/factor_health.py
 ```
 
 ### 8.4 账户管理
 
 ```bash
 # 新建账户（默认 60/100/300/600万 四账户）
-python research/paper_live.py init --aum 3000000     # 单账户建账
-python research/paper_live.py init                   # 四账户一起
+python scripts/paper_live.py init --aum 3000000     # 单账户建账
+python scripts/paper_live.py init                   # 四账户一起
 
 # 单账户操作
-python research/paper_live.py step --aum 3000000
-python research/paper_live.py report --aum 3000000
+python scripts/paper_live.py step --aum 3000000
+python scripts/paper_live.py report --aum 3000000
 ```
 
 ### 8.5 年度复盘 / 场景分析
 
 ```bash
 # 年度每日涨幅 + 月度资金变动（如 2025 全年）
-python research/scenario_ytd.py --start 2025-01-01 --end 2025-12-31
+python scripts/scenario_ytd.py --start 2025-01-01 --end 2025-12-31
 
 # 年度图（累计净值 + 每日涨幅）
-python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
+python scripts/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 ```
 
 ### 8.6 数据更新注意事项
 
 - 公司行为（分红/送转）用复权因子事件驱动，**静态因子抓取截止日 2026-09-03**；超过该日后 `step` 会自动通过 baostock 增量查询持仓股因子（限流有 60s 退避），失败会提示"用静态因子继续"——**应尽快重抓静态因子**；
 - 停牌股按最后价计值（价格延续），与回测口径一致；
-- **宇宙清单（stock_basic）刷新**：`fetch_full_market` 从 `stock_basic` 收编新股——若长期不跑，新上市股票会缺席宇宙，调仓不会报错但会**永久错过该股**（R5 有 375 日上市期 = 1.5 年缓冲窗口）。`stock_basic` 本身由 `research/fetch_stock_basic.py` 生成（由 `src/fundamental.py` 迁移，Round 34 收尾），刷新**低频（季度/半年）**即可，且注意 baostock `query_stock_basic` 全量查询在本环境可能挂起——**不要连续重试**，用已有清单 + 定期温和刷新。
+- **宇宙清单（stock_basic）刷新**：`fetch_full_market` 从 `stock_basic` 收编新股——若长期不跑，新上市股票会缺席宇宙，调仓不会报错但会**永久错过该股**（R5 有 375 日上市期 = 1.5 年缓冲窗口）。`stock_basic` 本身由 `scripts/fetch_stock_basic.py` 生成（由 `src/fundamental.py` 迁移，Round 34 收尾），刷新**低频（季度/半年）**即可，且注意 baostock `query_stock_basic` 全量查询在本环境可能挂起——**不要连续重试**，用已有清单 + 定期温和刷新。
 
 ### 8.7 调仓执行 SOP · 涨跌停处理（Round 23/24，生产引擎已内置阻塞）
 
@@ -487,7 +487,7 @@ python research/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-09-05 | v1.0 | 首版沉淀：策略定义、验证结果、运营流程、规模指南、风险画像 |
-| 2026-09-07 | v1.0.1 | **更正 §7.2**：大盘蓝筹独涨年已出现（2017，超额 −1.6pp）；补充系统性熊市年（2018，−26.4%）。依据 `research/yearly_breakdown.py` 全期分年分解（对账 +4.61pp 通过）。策略定义与参数未动 |
+| 2026-09-07 | v1.0.1 | **更正 §7.2**：大盘蓝筹独涨年已出现（2017，超额 −1.6pp）；补充系统性熊市年（2018，−26.4%）。依据 `scripts/yearly_breakdown.py` 全期分年分解（对账 +4.61pp 通过）。策略定义与参数未动 |
 | 2026-09-12 | v1.0.2 | **Round 33 口径统一**：回测引擎默认滑点 15bp（与基准/账本三口径一致），§5.1/§1/§6 数字更新为含滑点真实口径（300万 超额 +7.29→+6.08pp、费用 1.27%→3.62%）；策略选股/打分/参数零改动 |
 | — | — | （后续所有策略/运营变更在此追加，先改文档再动代码） |
 

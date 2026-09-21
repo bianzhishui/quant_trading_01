@@ -16,9 +16,10 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from research.config import get_config  # noqa: E402
-from research.data_io import universe_codes  # noqa: E402
+from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.data_io import universe_codes  # noqa: E402
 
 
 def all_codes():

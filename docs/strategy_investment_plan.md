@@ -89,8 +89,8 @@
 - **折中：同花顺篮子/批量委托 或 券商 PC 端 Excel 导入**——比手动快，适合首日一次性建仓；无自动拆单/成交回报，月度调仓仍建议程序化
 
 ### 3.3 数据管线（每月更新，已有资产）
-- 全市场行情/行业：`research/fetch_full_market.py`、`fetch_full_industry.py`（baostock，断点续传）
-- 月度信号：按 `research/factor_round7_fullmarket_validate.py` 的 R5 逻辑生成目标持仓
+- 全市场行情/行业：`scripts/fetch_full_market.py`、`fetch_full_industry.py`（baostock，断点续传）
+- 月度信号：按 `scripts/factor_round7_fullmarket_validate.py` 的 R5 逻辑生成目标持仓
 - 持仓/成交记录：自建本地 CSV 账本（§9 checklist）
 
 ### 3.4 程序化交易监管合规（重要，2026 核实）
@@ -235,4 +235,4 @@
 - 策略为什么这么做 → docs/strategy_final_spec.md
 - 各轮验证证据 → docs/factor_round5~9_*_plan.md
 - 模拟盘起点持仓 → output/factor_round8_holdings_2026-09-03.csv
-- 数据/信号脚本 → research/fetch_full_market.py、fetch_full_industry.py、factor_round7_fullmarket_validate.py
+- 数据/信号脚本 → scripts/fetch_full_market.py、fetch_full_industry.py、factor_round7_fullmarket_validate.py

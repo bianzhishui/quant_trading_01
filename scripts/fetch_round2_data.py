@@ -10,9 +10,9 @@
 
 每源独立进度文件，中断重跑自动跳过已完成代码/日期。
 用法:
-  uv run python research/fetch_round2_data.py --all
-  uv run python research/fetch_round2_data.py --baostock   # 只跑某源
-  uv run python research/fetch_round2_data.py --roe --limit 20   # 试跑限数
+  uv run python scripts/fetch_round2_data.py --all
+  uv run python scripts/fetch_round2_data.py --baostock   # 只跑某源
+  uv run python scripts/fetch_round2_data.py --roe --limit 20   # 试跑限数
 """
 
 from __future__ import annotations
@@ -25,8 +25,9 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config
-from research.dividend_factor import load_all
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config
+from quant_trading_01.dividend_factor import load_all
 
 
 def _out_dir() -> Path:

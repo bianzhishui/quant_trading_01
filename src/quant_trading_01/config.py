@@ -7,7 +7,7 @@
   4. 代码不 hardcode 配置值；冻结参数偏离校验以 default.yaml 为基准（偏离 → 警告）
 
 用法：
-  from research import config
+  from quant_trading_01 import config
   cfg = config.load_config()              # 默认 default.yaml
   cfg = config.load_config("config/x.yaml")  # 指定文件覆盖
   cfg.strategy.w_amihud                 # 嵌套访问（类型化）
@@ -22,8 +22,8 @@ from pathlib import Path
 
 import yaml
 
-# 仓库根（本文件在 research/ 下）
-ROOT = Path(__file__).resolve().parent.parent
+# 仓库根（本文件在 src/quant_trading_01/ 下，向上三级）
+ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_CONFIG = ROOT / "config" / "default.yaml"
 ENV_VAR = "QUANT_CONFIG"
 
@@ -227,7 +227,7 @@ def add_config_arg(parser) -> None:
 
 
 if __name__ == "__main__":
-    # 快速自检: python research/config.py
+    # 快速自检: python src/quant_trading_01/config.py
     c = load_config(sys.argv[1] if len(sys.argv) > 1 else None)
     print("配置加载成功:")
     print(

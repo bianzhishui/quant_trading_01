@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """全市场行业映射抓取（~3194 只，baostock 单连接，断点续传）。
 产出 data/round2/industry_full.parquet: code, industry
-用法: uv run python research/fetch_full_industry.py
+用法: uv run python scripts/fetch_full_industry.py
 """
 
 from __future__ import annotations
@@ -13,10 +13,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from research.data_io import universe_codes  # noqa: E402
+from quant_trading_01.data_io import universe_codes  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
 
 
 def main() -> None:

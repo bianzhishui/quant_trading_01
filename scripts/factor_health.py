@@ -5,8 +5,8 @@
 预注册方案: docs/factor_round18_factor_health_plan.md
 
 用法:
-  python research/factor_health.py            # 全量: 历史基准 + 运营期状态灯
-  python research/factor_health.py --chart    # 额外画出 RankIC 时序 + μ±2σ 带
+  python scripts/factor_health.py            # 全量: 历史基准 + 运营期状态灯
+  python scripts/factor_health.py --chart    # 额外画出 RankIC 时序 + μ±2σ 带
 
 输出:
   output/factor_health_rankic.csv    每期(月末T) × 因子 × 口径 的 RankIC 时间序列
@@ -33,10 +33,11 @@ import pandas as pd
 from scipy import stats as sps
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
-from research.dividend_factor import month_last_days  # noqa: E402
-from research.paper_trade import _load  # noqa: E402
-from research.reversal_factor import build_pool  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.dividend_factor import month_last_days  # noqa: E402
+from scripts.paper_trade import _load  # noqa: E402
+from quant_trading_01.reversal_factor import build_pool  # noqa: E402
 
 
 def _out() -> Path:

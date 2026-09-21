@@ -15,7 +15,7 @@ date, code, close(qfq), pbMRQ, turn, amount, peTTM, tradestatus, isST。
 - 看门狗: rs.next() 挂起 8 分钟无进展强制退出(码5)
 - 重试: 每只 3 次(网络错误退避 2s)
 
-用法: python research/fetch_full_market.py
+用法: python scripts/fetch_full_market.py
 """
 
 from __future__ import annotations
@@ -30,9 +30,10 @@ import pandas as pd
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from research.config import get_config  # noqa: E402
-from research.data_io import (
+from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.data_io import (
     full_daily_codes,
     stock_basic,
     universe_codes,

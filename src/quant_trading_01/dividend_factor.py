@@ -12,7 +12,7 @@
 判定标准(预注册): ② B组月超额p<0.05  ③ B组三段每段夏普>0.3且跑赢沪深300
                   ④ C组45bp档年超额>=3%   (失败则如实归档, 禁止调参重跑)
 
-用法: uv run python research/dividend_factor.py
+用法: uv run python src/quant_trading_01/dividend_factor.py
 """
 
 from __future__ import annotations
@@ -41,7 +41,8 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
 
 # 配置化（Round 34）：路径/成本/分段从 config 读取（惰性, 不设模块级常量）
 LOVE = "爱我中华"
@@ -250,7 +251,7 @@ def main() -> None:
     navA, turnA = equal_weight_nav(ret_qfq, A_sets)
     navD, dstats = drift_nav(ret_qfq, B_sets, get_config().costs.cost_base)
 
-    from research.data_loader import (
+    from quant_trading_01.data_loader import (
         load_index_daily,
     )  # 惰性导入(基准仅 main 用, 不进生产链)
 

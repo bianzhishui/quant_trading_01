@@ -34,7 +34,7 @@
 
 ## 📊 模拟盘运营每日图（建仓 2026-09-01 起）
 
-> 每日 `python research/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
+> 每日 `python scripts/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
 > 数据到 **2026-09-08**，最新行情发布后自动续上）。
 
 **每日 NAV（元）——每账户一张（灰色虚线=建仓资金水平线，数据点=当日 NAV）**：
@@ -69,8 +69,8 @@ uv sync
 uv run pytest                                       # 回测引擎正确性单元测试 (4项)
 
 # 研究/运营入口（常用，详见 AGENTS.md §3 核心脚本一览）
-.venv/bin/python research/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
-.venv/bin/python research/paper_live.py report      # 四账户报告
+.venv/bin/python scripts/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
+.venv/bin/python scripts/paper_live.py report      # 四账户报告
 ```
 
 > 数据源：首选 **baostock**（稳定、免费、含前复权），失败时自动兜底 **akshare**(东方财富源)。
@@ -80,14 +80,11 @@ uv run pytest                                       # 回测引擎正确性单�
 ```
 pyproject.toml         项目与依赖声明
 uv.lock                依赖锁文件（保证环境可复现）
-src/
-  data_loader.py       baostock(首选)+akshare(兜底) 取数 + CSV 本地缓存 (+ 合成数据)
-  backtest.py          事件式回测引擎（入门版，含单元测试保护）
-  costs.py             A股费用与规则常量（佣金/印花税/T+1/一手100股）
-  fundamental.py       基本面/宇宙清单管线（stock_basic.parquet 生产权威清单）
+src/quant_trading_01/  共享框架包（config 配置加载器 / data_io / data_loader / 因子基座）
+scripts/               可执行脚本（策略引擎/模拟盘运营/数据抓取/研究，含模拟盘运营链）
 tests/
-  test_backtest.py     引擎正确性单元测试 (uv run pytest)
-research/              市场规律与策略研究脚本（可执行，含模拟盘运营链）
+  test_paper_trade.py  生产引擎黄金测试（R5 信号 + PaperPortfolio 撮合）
+  test_backtest.py     旧引擎正确性单元测试 (uv run pytest)
 docs/                  设计文档与研究方案（入口见 docs/README.md）
 archive/               已结束探索归档（代码+plan+结论输出，索引见 archive/INDEX.md）
 data/                  行情缓存（自动生成）
@@ -113,11 +110,11 @@ output/                回测图表与成交明细（自动生成）
 - 分钟级回测需换数据源与撮合逻辑
 - ETF 回测被多扣了卖出印花税（现实中 ETF 免印花税），结果略保守
 
-## research/ — 市场规律研究
+## scripts/ — 市场规律研究
 
 ```bash
-uv run python research/weekday_effect.py               # 沪深300 星期效应
-uv run python research/weekday_effect.py --symbol 000905   # 中证500 交叉验证
+uv run python scripts/weekday_effect.py               # 沪深300 星期效应
+uv run python scripts/weekday_effect.py --symbol 000905   # 中证500 交叉验证
 ```
 
 四层验证框架：描述统计 → 显著性检验(Welch t + 置换检验, Bonferroni 校正) →

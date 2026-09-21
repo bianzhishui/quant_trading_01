@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""research/ 生产引擎黄金测试（R5 信号 + PaperPortfolio 撮合）。
+"""scripts/ 生产引擎黄金测试（R5 信号 + PaperPortfolio 撮合）。
 
 与 tests/test_backtest.py（测 src/ 旧引擎）互补：本文件覆盖现行生产引擎
   - r5_rebalances: 行业内百分位打分 + 前 1/quantile 选股（窗口/分组走 config strategy.r5）
@@ -19,10 +19,11 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from research.config import load_config  # noqa: E402
-from research.paper_trade import PaperPortfolio, fees, r5_rebalances  # noqa: E402
-from research.reversal_factor import build_pool  # noqa: E402
+from quant_trading_01.config import load_config  # noqa: E402
+from scripts.paper_trade import PaperPortfolio, fees, r5_rebalances  # noqa: E402
+from quant_trading_01.reversal_factor import build_pool  # noqa: E402
 
 
 def _make_universe(n_ind: int = 10, per_ind: int = 10) -> tuple:
@@ -218,7 +219,7 @@ def test_corp_action_dividend_credit():
 
 def test_slip_for_amount_tiers():
     """冻结分档表: 金额越大滑点越低 (<Q20→40bp ... ≥Q80→5bp)。"""
-    from research.paper_trade import slip_for_amount
+    from scripts.paper_trade import slip_for_amount
 
     assert slip_for_amount(10_000_000) == 0.004  # < Q20
     assert slip_for_amount(30_000_000) == 0.0025  # Q20-40

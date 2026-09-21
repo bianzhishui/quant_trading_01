@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""探索归档工具：把已结束探索从 research/ 移入 archive/experiments/。
+"""探索归档工具：把已结束探索从 scripts/ 移入 archive/experiments/。
 
 用法:
-    .venv/bin/python research/archive_experiment.py <脚本名或单元名> [--dry-run]
-    .venv/bin/python research/archive_experiment.py round16_crowding_timing --dry-run
+    .venv/bin/python scripts/archive_experiment.py <脚本名或单元名> [--dry-run]
+    .venv/bin/python scripts/archive_experiment.py round16_crowding_timing --dry-run
 
 流程（设计见 docs/archive_design_plan.md §8）:
-    1. 解析依赖闭包（research.X import 递归展开，命中白名单即停）
+    1. 解析依赖闭包（scripts./quant_trading_01. import 递归展开，命中白名单即停）
     2. git mv 脚本 + plan 文档 → archive/experiments/<unit>/
-    3. 改写闭包内互 import（research.X → X，同目录可导入）
+    3. 改写闭包内互 import（scripts.X → X，同目录可导入；quant_trading_01.* 基座留位不变）
     4. 搬结论输出（output/ 前缀匹配 csv/png）并 git add 入库
     5. 生成单元 README.md + 更新 archive/INDEX.md
     6. 校验：py_compile + 静态 import 目标检查；失败自动回滚
@@ -25,7 +25,7 @@ from datetime import date
 
 ARCHIVE = "archive/experiments"
 
-# 永不归档白名单：生产链 + 共享基座（被生产链依赖，脚本留位 research/）
+# 永不归档白名单：生产链 + 共享基座（被生产链依赖；脚本在 scripts/，基座在 src/quant_trading_01/）
 KEEP = {
     "config",  # 配置系统(Round 34, 全仓共享基座)
     "data_io",
@@ -181,7 +181,7 @@ UNITS = [
     },
     {
         "name": "reversal_short_term",
-        "scripts": [],  # reversal_factor.py 是共享基座，脚本留位 research/
+        "scripts": [],  # reversal_factor.py 是共享基座，留位 src/quant_trading_01/
         "plans": ["reversal_factor_plan.md"],
         "outputs": ["reversal_factor"],
         "status": "❌ 已否决",
@@ -189,7 +189,7 @@ UNITS = [
     },
     {
         "name": "dividend_factor",
-        "scripts": [],  # dividend_factor.py 是共享基座，脚本留位 research/
+        "scripts": [],  # dividend_factor.py 是共享基座，留位 src/quant_trading_01/
         "plans": ["dividend_factor_plan.md"],
         "outputs": ["dividend_factor"],
         "status": "⏸ 搁置",
@@ -507,8 +507,15 @@ UNITS = [
     },
 ]
 
+# 探索脚本在 scripts/；共享基座在 src/quant_trading_01/（KEEP 内）；闭包互 import 为 scripts.X
 SCRIPT_TO_UNIT = {s: u["name"] for u in UNITS for s in u["scripts"]}
-IMPORT_RE = re.compile(r"(?:from\s+research\.(\w+)\s+import|import\s+research\.(\w+))")
+IMPORT_RE = re.compile(
+    r"(?:from\s+(?:research|scripts|quant_trading_01)\.(\w+)\s+import"
+    r"|import\s+(?:research|scripts|quant_trading_01)\.(\w+))"
+)
+# 脚本位置与基座位置（闭包解析/存在性检查）
+SCRIPTS_DIR = "scripts"
+BASES_DIR = "src/quant_trading_01"
 
 # 索引"方向"列展示名
 DIRECTIONS = {
@@ -565,22 +572,25 @@ def is_tracked(path: str) -> bool:
 
 
 def parse_imports(script_path: str) -> set[str]:
-    """解析脚本对 research 其他模块的引用（模块名集合）。"""
+    """解析脚本对 scripts/quant_trading_01 其他模块的引用（模块名集合）。"""
     with open(script_path, encoding="utf-8") as f:
         text = f.read()
     return {m.group(1) or m.group(2) for m in IMPORT_RE.finditer(text)}
 
 
 def dependency_closure(scripts: list[str]) -> set[str]:
-    """递归展开 research.X 依赖，剔除白名单，返回闭包内的探索脚本（模块名，不带 .py）。"""
+    """递归展开 scripts./quant_trading_01. 依赖，剔除白名单，返回闭包内的探索脚本（模块名，不带 .py）。
+
+    基座（src/quant_trading_01 内）不在闭包内（留位）；scripts/ 内的探索脚本入闭包。
+    """
     closure = {s[:-3] if s.endswith(".py") else s for s in scripts}
     frontier = list(closure)
     while frontier:
         s = frontier.pop()
-        for dep in parse_imports(os.path.join("research", f"{s}.py")):
+        for dep in parse_imports(os.path.join(SCRIPTS_DIR, f"{s}.py")):
             if dep in KEEP or dep in closure:
                 continue
-            if os.path.exists(os.path.join("research", f"{dep}.py")):
+            if os.path.exists(os.path.join(SCRIPTS_DIR, f"{dep}.py")):
                 closure.add(dep)
                 frontier.append(dep)
     return closure
@@ -614,7 +624,7 @@ def find_unit(target: str) -> dict:
 
 
 def rewrite_closure_imports(unit_dir: str, scripts: set[str]) -> None:
-    """闭包内互 import 改写：research.X → X（同目录可导入）。scripts 为模块名。"""
+    """闭包内互 import 改写：scripts.X → X（同目录可导入）；quant_trading_01.* 基座不变。scripts 为模块名。"""
     for script in sorted(scripts):
         path = os.path.join(unit_dir, f"{script}.py")
         with open(path, encoding="utf-8") as f:
@@ -623,7 +633,7 @@ def rewrite_closure_imports(unit_dir: str, scripts: set[str]) -> None:
         def repl(m: re.Match) -> str:
             mod = m.group(1) or m.group(2)
             if mod in scripts:
-                return m.group(0).replace(f"research.{mod}", mod)
+                return m.group(0).replace(f"scripts.{mod}", mod)
             return m.group(0)
 
         new_text = IMPORT_RE.sub(repl, text)
@@ -668,12 +678,12 @@ def render_readme(
     run_cmd = (
         f".venv/bin/python archive/experiments/{unit['name']}/{main}   # cwd=仓库根"
         if main
-        else "（脚本留位 research/，无需复现命令）"
+        else "（脚本留位 scripts/，无需复现命令）"
     )
     lines = [
         f"# {unit['name']} — 已归档探索",
         "",
-        f"> 由 `research/archive_experiment.py` 于 {date.today().isoformat()} 归档。",
+        f"> 由 `scripts/archive_experiment.py` 于 {date.today().isoformat()} 归档。",
         "> 结论摘要与状态来自 plan §0 / README 探索表，以 plan 文档为准。",
         "",
         f"- **状态**：{unit['status']}",
@@ -684,8 +694,8 @@ def render_readme(
         f"- **结论输出**：{', '.join(os.path.basename(p) for p in outs) or '（无）'}",
         f"- **复现命令**：`{run_cmd}`",
         "- **数据依赖**：`data/fundamental/full_daily.parquet`、`data/round2/` 等；"
-        "依赖的共享基座 `research/reversal_factor.py` / `research/dividend_factor.py` "
-        "因被生产链依赖而留位，import 路径不变。",
+        "依赖的共享基座 `src/quant_trading_01/reversal_factor.py` / "
+        "`src/quant_trading_01/dividend_factor.py` 因被生产链依赖而留位，import 路径不变。",
     ]
     return "\n".join(lines) + "\n"
 
@@ -728,7 +738,7 @@ def verify(unit_dir: str, scripts: set[str]) -> None:
         )
         if r.returncode != 0:
             raise RuntimeError(f"py_compile 失败: {path}\n{r.stderr}")
-    # 静态 import 检查：research.X 目标须存在；闭包内裸模块须同目录存在
+    # 静态 import 检查：闭包外依赖（基座/KEEP）须在 src/quant_trading_01 或 scripts/ 存在；闭包内裸模块须同目录存在
     for script in sorted(scripts):
         path = os.path.join(unit_dir, f"{script}.py")
         for dep in parse_imports(path):
@@ -736,10 +746,13 @@ def verify(unit_dir: str, scripts: set[str]) -> None:
                 os.path.join(unit_dir, f"{dep}.py")
             ):
                 raise RuntimeError(f"闭包内依赖缺失: {path} -> {dep}")
-            if dep not in scripts and not os.path.exists(
-                os.path.join("research", f"{dep}.py")
+            if dep not in scripts and not (
+                os.path.exists(os.path.join(BASES_DIR, f"{dep}.py"))
+                or os.path.exists(os.path.join(SCRIPTS_DIR, f"{dep}.py"))
             ):
-                raise RuntimeError(f"留位依赖缺失: {path} -> research/{dep}.py")
+                raise RuntimeError(
+                    f"留位依赖缺失: {path} -> {dep}（须在 {BASES_DIR} 或 {SCRIPTS_DIR}）"
+                )
     print("  [校验通过] py_compile + 依赖存在性 OK")
 
 
@@ -786,7 +799,7 @@ def main() -> int:
         # 1. 移动脚本（git mv，保留历史）
         for script in sorted(closure):
             src, dst = (
-                os.path.join("research", f"{script}.py"),
+                os.path.join(SCRIPTS_DIR, f"{script}.py"),
                 os.path.join(unit_dir, f"{script}.py"),
             )
             if is_tracked(src):
@@ -825,7 +838,7 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001 — 回滚后重抛
         print(f"  [错误] {type(e).__name__}: {e}\n  回滚中…")
         git("reset", "-q")
-        git("restore", "-q", "--worktree", "--", "research/", "docs/")
+        git("restore", "-q", "--worktree", "--", "scripts/", "src/", "docs/")
         # archive 下副本删除；output 文件反向归位
         for src, dst in reversed(moved):
             if os.path.exists(dst):
@@ -841,7 +854,7 @@ def main() -> int:
                 f.write(index_backup)
         if os.path.isdir(unit_dir) and not os.listdir(unit_dir):
             os.rmdir(unit_dir)
-        print("  已回滚（research/docs 还原、output 归位、INDEX/README 清理）")
+        print("  已回滚（scripts/src/docs 还原、output 归位、INDEX/README 清理）")
         return 1
     print(f"== 完成: {unit_dir} ==")
     return 0

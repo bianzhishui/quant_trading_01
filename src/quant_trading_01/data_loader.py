@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from research.config import get_config
+from quant_trading_01.config import get_config
 
 _COLS = ["open", "high", "low", "close", "volume", "amount"]
 _ADJUST_FLAG = {"qfq": "2", "hfq": "1", "": "3"}

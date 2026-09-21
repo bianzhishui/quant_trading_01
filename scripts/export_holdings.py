@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """导出当前策略选股清单(可每月复用)。
 
-用法: python research/export_holdings.py [--csv output/strategy_holdings_YYYY-MM-DD.csv]
+用法: python scripts/export_holdings.py [--csv output/strategy_holdings_YYYY-MM-DD.csv]
 输出列: code 代码 | name 名称 | industry 行业(申万一级) | amihud 非流动性
         | mom 中期动量 | pa Amihud行业内百分位 | pm 动量行业内百分位
         | score 合成分 | price 执行日收盘(不复权) | qty300 300万股数(0=未买入)
@@ -18,8 +18,9 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
-from research.paper_trade import (  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
+from scripts.paper_trade import (  # noqa: E402
     build_pool,
     _load,
     _load_corp,

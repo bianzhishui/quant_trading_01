@@ -4,7 +4,7 @@
 # 注意：strategy/costs 段为冻结参数，覆盖会触发醒目警告（改动需预注册）。
 #
 # 示例：换一档滑点跑回测
-#   .venv/bin/python research/paper_trade.py replay --aum 3000000 --config config/custom.yaml
+#   .venv/bin/python scripts/paper_trade.py replay --aum 3000000 --config config/custom.yaml
 #
 # costs:
 #   slip_default: 0.0035   # 35bp（Round 8 真实平均口径压测）

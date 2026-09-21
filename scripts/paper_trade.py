@@ -10,9 +10,9 @@
 - 调仓: 每月向目标等权再平衡, |Δ|≥1手才交易; 停牌(tradestatus!=1)跳过
 
 用法:
-  python research/paper_trade.py replay --aum 3000000   # 历史回放(2013-2026, 真实费率)
-  python research/paper_trade.py init --aum 3000000     # 当前建仓快照(真实价格)
-  python research/paper_trade.py init --aum 100000      # 演示: 10万不可行性
+  python scripts/paper_trade.py replay --aum 3000000   # 历史回放(2013-2026, 真实费率)
+  python scripts/paper_trade.py init --aum 3000000     # 当前建仓快照(真实价格)
+  python scripts/paper_trade.py init --aum 100000      # 演示: 10万不可行性
 选项: --slip 0.001 (滑点比例, 默认0.0015=15bp, Round33 与基准/账本口径统一; 0=纯因子口径)
 """
 
@@ -26,15 +26,16 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
-from research.data_io import delist_map, load_full_daily  # noqa: E402
-from research.dividend_factor import month_last_days, metrics  # noqa: E402
-from research.reversal_factor import build_pool, ew_nav  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.data_io import delist_map, load_full_daily  # noqa: E402
+from quant_trading_01.dividend_factor import month_last_days, metrics  # noqa: E402
+from quant_trading_01.reversal_factor import build_pool, ew_nav  # noqa: E402
 
 
 # 注：paper_trade 不再定义模块级配置常量。所有配置值在函数内通过 get_config() 读取
 # （方案二：函数内惰性读取，main() 里 load_config(args.config) 后生效）。
-# 外部脚本如需要路径/账户等，请从 research.config 读取，不再 import paper_trade 的常量。
+# 外部脚本如需要路径/账户等，请从 quant_trading_01.config 读取，不再 import paper_trade 的常量。
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -498,7 +499,7 @@ def init_portfolio(aum: float, slip: float = 0.0, slip_by_amount: bool = False):
 
 
 def main():
-    from research.config import add_config_arg, get_config, load_config  # noqa: PLC0415
+    from quant_trading_01.config import add_config_arg, get_config, load_config  # noqa: PLC0415
 
     ap = argparse.ArgumentParser()
     ap.add_argument("mode", choices=["replay", "replay_w", "init"])

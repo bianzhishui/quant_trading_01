@@ -28,7 +28,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 - **uv 缓存已配置在项目内**（`uv.toml` 的 `cache-dir = ".uv-cache"`，已 gitignore）——
   `uv run`/`uv sync` 不依赖工作区外的 `~/.cache/uv`，沙箱默认权限即可，**不要改回全局缓存**。
-- 工作目录 = 仓库根目录；**脚本都在 `research/` 下**。
+- 工作目录 = 仓库根目录；**脚本都在 `scripts/` 下**。
 - 数据：`data/fundamental/full_daily.parquet`（全市场 879万+ 行，date/code/close/amount/tradestatus/isST…）、
   `data/round2/adjust_factor.parquet`（复权因子）、`data/round2/industry_full.parquet`（行业）。
 - 输出：`output/`（账本 JSON、每日/月度 CSV、图）。**`output/*.csv` 与 `output/*.png` 被 gitignore**，
@@ -45,7 +45,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 - **默认配置**：`config/default.yaml`（全量，含冻结参数基准；缺失/字段缺失 → 报错，无兜底便于查 bug）；段结构：paths / strategy（冻结：含 `r5` 子段 = R5 生产公式窗口）/ costs（冻结）/ accounts / **fetch**（5 个抓取脚本的参数、数据窗口与路径，fetch 路径键同 paths 一样相对仓库根解析为绝对）/ **monitor**（factor_health 基准与运营期窗口）；
 - **自定义配置**：`--config config/custom.yaml`（CLI）或 `QUANT_CONFIG` 环境变量 → **深合并覆盖 default.yaml**（同 key 覆盖，缺失项继承 default）；指定文件不存在 → 报错；
-- **代码读取**：函数内 `research.config.get_config()` 惰性单例（方案二）；**全仓无模块级配置读取**（二次审计后，7 处模块级全部下沉函数内）；各脚本 `main()` 里 `load_config(args.config)` 建立单例，之后函数内生效；被 import 的脚本用默认配置；
+- **代码读取**：函数内 `quant_trading_01.config.get_config()` 惰性单例（方案二）；**全仓无模块级配置读取**（二次审计后，7 处模块级全部下沉函数内）；各脚本 `main()` 里 `load_config(args.config)` 建立单例，之后函数内生效；被 import 的脚本用默认配置；
 - **冻结参数校验**：配置值 ≠ default.yaml 冻结基准 → 打印醒目警告（不阻止），提示需预注册；
 - **支持格式**：YAML（pyyaml）；
 - **代价**：CLI 参数（如 `--slip`）默认取配置值（`--slip` 显式指定时覆盖配置）；各脚本均可 `--config` 指定。
@@ -54,16 +54,16 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 | 脚本 | 用途 | 典型耗时 |
 |---|---|---|
-| `research/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号；`--slip` 默认 15bp（Round 33 三口径统一，0 回退纯因子口径） | 单个 share 级回放 ~8-15 分钟 |
-| `research/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
-| `research/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
-| `research/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
-| `research/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
-| `research/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
-| `research/fetch_stock_basic.py` | **宇宙清单（stock_basic+universe）低频刷新**（季度/半年，src/fundamental 迁移，config paths 段） | baostock 全表, 低频 |
-| `research/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
-| `research/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
-| `research/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |
+| `scripts/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号；`--slip` 默认 15bp（Round 33 三口径统一，0 回退纯因子口径） | 单个 share 级回放 ~8-15 分钟 |
+| `scripts/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
+| `scripts/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
+| `scripts/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
+| `scripts/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
+| `scripts/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
+| `scripts/fetch_stock_basic.py` | **宇宙清单（stock_basic+universe）低频刷新**（季度/半年，src/fundamental 迁移，config paths 段） | baostock 全表, 低频 |
+| `scripts/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
+| `scripts/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
+| `scripts/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |
 
 ---
 
@@ -101,17 +101,17 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 5. **预注册判定边界**：同一条件未达标持续 ≥3 轮才算 blocked（见工具纪律）；
 6. **同仓库 Python 脚本间调用用"导入模块"，不用 subprocess**：
    - 已重构范例：`daily_update.py` 直接
-     `from research.fetch_daily_incremental import update_date`、
-     `from research.paper_live import mark`（省 4 次进程冷启动 + 4 次字体缓存，治发热）；
+     `from scripts.fetch_daily_incremental import update_date`、
+     `from scripts.paper_live import mark`（省 4 次进程冷启动 + 4 次字体缓存，治发热）；
    - 被导入的脚本须满足：逻辑放函数、`main()` 只做 argparse 壳、**模块级不读 sys.argv**
      （否则 import 时读错调用方参数）；
    - subprocess 只留给：跨环境/跨语言、独立一次性工具、需超时强杀的场景；
    - 退出码语义用函数返回值（如 update_date 返回 0/3）+ try/except 保留，不靠进程码。
-7. **探索结束必须归档（不手删、不留在 research/）**：
-   - 流程：plan 写 §0 结论 → 跑 `python research/archive_experiment.py <脚本或单元>`
+7. **探索结束必须归档（不手删、不留在 scripts/）**：
+   - 流程：plan 写 §0 结论 → 跑 `python scripts/archive_experiment.py <脚本或单元>`
      （依赖闭包/import改写/git mv/输出入库/INDEX 更新/校验，`--dry-run` 先预览）
      → `archive/INDEX.md` 自动登记；
-   - `research/` 只留生产链 + 共享基座（`reversal_factor.py`/`dividend_factor.py` 被
+   - `scripts/` 只留生产链 + 共享基座（`reversal_factor.py`/`dividend_factor.py` 被
      `paper_live`/`paper_trade` 依赖，**脚本留位**，其 plan/输出照常归档）；
    - 归档单元自包含（脚本闭包 + plan + 结论输出 csv/png），结论输出随单元入库
      （`archive/**` 不受 `output/*.csv` gitignore 影响）；复现命令见单元 README；
@@ -125,7 +125,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 - **建仓 2026-09-01（信号 2026-08-31）**。注意：**生产账户跑的是"三因子 575 等权"**
   （Round 38 权重 Amihud 0.40/动量 0.10/F4 0.50，2026-09-18 落地重建账本），
   小账户因 1手 约束天然退化（60万 只持有 307 只、58% 现金）——**这是现状，不是 bug**。
-- 每日：**一键 `python research/daily_update.py`**（自动判断最新交易日 → 缺则补当日
+- 每日：**一键 `python scripts/daily_update.py`**（自动判断最新交易日 → 缺则补当日
   行情 → 四账户 mark → 输出"账户/本金/最新NAV/当日涨幅/盈亏(元)/盈亏率/建仓日NAV"总表；
   数据源未发布当天会自动探测跳过并以最新已有数据为准；`--table` 只读表不重跑；
   `--chart` mark 后自动出建仓以来每日图（NAV 单图 `daily_nav_aum{tag}.png` ×4 + 双面板 `daily_gains_live.png`）；
@@ -176,7 +176,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   一次性对照实验、临时验证时写 `tmp/xxx.py` 并 `python tmp/xxx.py` 执行，**不要丢系统
   /tmp 或散落仓库根目录**（避免跨会话丢失/污染工作区/误提交）；`tmp/` 已在 .gitignore；
   数据副本/备份仍可放系统 /tmp（与脚本分开）。
-- ✅ **src/ 已迁移删除（Round 34 收尾）**：`stock_basic` 宇宙刷新 → `research/fetch_stock_basic.py`（季度低频，运营手册 §349）；数据加载工具 → `research/data_loader.py`（`dividend_factor` 基准 lazy 导入、归档实验复现 `from research.data_loader import ...`）；旧测试引擎 → `tests/legacy_backtest.py`+`tests/legacy_costs.py`。`research/data_loader.py` 与 `tests/legacy_*` 勿删；
+- ✅ **目录布局（Round 40 对齐 exploration-project skill）**：`src/quant_trading_01/` = 共享框架包（`config`/`data_io`/`data_loader`/`dividend_factor`/`reversal_factor`，勿删）；`scripts/` = 可执行脚本；旧 `research/` 已由 `git mv` 拆分迁移。历史：Round 34 曾删除旧 `src/`（`stock_basic` 宇宙刷新 → `scripts/fetch_stock_basic.py`，季度低频，运营手册 §349；旧测试引擎 → `tests/legacy_backtest.py`+`tests/legacy_costs.py`，勿删）；`src/quant_trading_01/data_loader.py` 供 `dividend_factor` 基准 lazy 导入与归档实验复现（`from quant_trading_01.data_loader import ...`）。
 - ⚠️ **baostock 服务不稳定时不要连续重试**（全历史大结果集 `rs.next()` 会挂起、
   持续连接会被拒"用户未登录"）——停止猛打、等待恢复再跑；代码优先用本地代码清单
   （`query_stock_basic` 在本环境会挂起）。

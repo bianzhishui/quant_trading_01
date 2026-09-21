@@ -10,8 +10,8 @@
 - fail-fast: "用户未登录" 返回码 3(命令行退出码同值), 重跑即续
 
 用法:
-  命令行:  python research/fetch_daily_incremental.py [2026-09-04]
-  导入调用: from research.fetch_daily_incremental import update_date
+  命令行:  python scripts/fetch_daily_incremental.py [2026-09-04]
+  导入调用: from scripts.fetch_daily_incremental import update_date
             rc = update_date("2026-09-04")   # 0=完成/无需, 3=会话失效
 """
 
@@ -24,9 +24,10 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from research.config import get_config  # noqa: E402
-from research.data_io import full_daily_codes, load_full_daily, write_full_daily  # noqa: E402
+from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.data_io import full_daily_codes, load_full_daily, write_full_daily  # noqa: E402
 
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
 KEEP = [

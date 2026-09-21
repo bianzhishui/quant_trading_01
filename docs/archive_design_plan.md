@@ -1,12 +1,12 @@
 # 探索归档能力建设方案（预注册）
 
 > 状态：**已实施（2026-09-09），20 个单元全部归档，见 §0**。本文档是"怎么归档"的
-> 规则定死稿；归档动作由 `research/archive_experiment.py` 自动化执行（见 §8）。
+> 规则定死稿；归档动作由 `scripts/archive_experiment.py` 自动化执行（见 §8）。
 > 与 AGENTS.md 纪律一致：先预注册、后实施。
 
 ## 0. 实施结果归档（2026-09-09）
 
-**判定：通过。** 20/20 归档单元落地，`research/` 仅剩生产链 15 个白名单脚本 + 工具本身，
+**判定：通过。** 20/20 归档单元落地，`scripts/` 仅剩生产链 15 个白名单脚本 + 工具本身，
 `archive/INDEX.md` 覆盖全部单元，生产链 import 冒烟通过，git 历史经 `--follow` 验证保留。
 
 ### 0.1 归档批次（4 个 commit）
@@ -22,8 +22,8 @@
 
 1. **单元合并**：`round4/4b/4c/4d` 合并为 `round04_risk_breakers`（同一风控系列连续迭代，
    无 import 链但语义一体）；`round12~15` 由依赖闭包强制合并（`round13→12`、`round14→13`、
-   `round15→12/13`），且 3 处闭包内 import 改写为 `research.X → X`（同目录可导入，
-   已冒烟验证 `r5_topN_rebalances` 可用）。最终 **20 个单元**（方案预估 23，因合并减少）。
+   `round15→12/13`），且 3 处闭包内 import 改写为同目录可导入的裸模块名
+   （已冒烟验证 `r5_topN_rebalances` 可用）。最终 **20 个单元**（方案预估 23，因合并减少）。
 2. **输出归属**：初版按"单单元前缀"收集导致 `screen01` 抢走 `factor_corr_*_round2.csv`
    （属 screen02）——已改为**全局最长前缀**判定并归位（commit `743e6f9` 含修复）。
 3. **.gitignore 无需例外**：核实 `output/*.csv`/`output/*.png` 规则仅匹配 `output/` 下文件，
@@ -35,7 +35,7 @@
 
 - [x] `archive/INDEX.md` 覆盖 20 个单元，状态与结论齐全
 - [x] 抽样校验（round12_15 闭包改写、round16、生产链）：py_compile 通过、import 链完整
-- [x] 归档后 `research/` 仅剩白名单 15 + `archive_experiment.py`
+- [x] 归档后 `scripts/` 仅剩白名单 15 + `archive_experiment.py`
 - [x] 全程 git mv，`git log --follow` 历史保留（如 round16 脚本可追溯到 `864a224` 格式化 commit）
 - [x] AGENTS.md（§3 表格 + §5.7 归档纪律）/ README（目录结构 + 探索表指向 INDEX）已更新
 
@@ -50,7 +50,7 @@
 项目经 17+ 轮因子研究产生了大量**已结束的探索**，但探索的"结束"目前是隐式的：
 plan 文档写了 §0 结论、README 手工维护探索历史表，却没有"归档"这个动作本身。由此：
 
-1. **生产与探索混居**：`research/` 44 个脚本中约 26 个属于已结束探索，与
+1. **生产与探索混居**：`scripts/` 44 个脚本中约 26 个属于已结束探索，与
    `paper_live` / `daily_update` 等生产链无区分，新人/代理难以判断"哪些在服役"。
 2. **结论产物不入库**：`output/*.csv` 与 `*.png` 整体 gitignore，探索的 summary/图
    只存在于工作区，换机器即失。
@@ -62,13 +62,13 @@ plan 文档写了 §0 结论、README 手工维护探索历史表，却没有"�
 |---|---|
 | 可发现 | 总索引 `archive/INDEX.md` 一眼列出全部已归档探索：状态、结论、位置 |
 | 可复现 | 归档单元自包含（脚本+plan+结论输出），import 依赖完整，可重跑 |
-| 不污染生产 | 生产链与探索链物理分离（`research/` 只留生产 + 共享基座） |
+| 不污染生产 | 生产链与探索链物理分离（`scripts/` 只留生产 + 共享基座） |
 | 不毁历史 | 全程 `git mv`，保留文件 git 历史 |
 | 低成本 | 归档 = 一个命令（工具自动算依赖闭包、搬文件、更新索引、校验） |
 
 ## 3. 现状依赖图快照（2026-09-09 实测，归档规则的依据）
 
-### 3.1 共享基座（被生产链依赖，**必须留位 `research/`**）
+### 3.1 共享基座（被生产链依赖，**必须留位 `scripts/`**）
 
 | 模块 | 被谁依赖 | 生产链用途 |
 |---|---|---|
@@ -90,13 +90,13 @@ factor_round15 ← factor_round12 + factor_round13
 
 - 归档时**依赖闭包必须整体移动**：round13/14/15 与 round12 属于同一方向（集中度系列），
   工具按闭包自动合并为一个归档单元 `round12_15_concentrated/`。
-- 其余探索脚本对基座/生产模块的 import（`from research.reversal_factor import …` 等）
-  **移动后依然有效**：脚本以仓库根为 cwd 运行，`research/` 包路径不变。
+- 其余探索脚本对基座/生产模块的 import（`from quant_trading_01.reversal_factor import …` 等）
+  **移动后依然有效**：脚本以仓库根为 cwd 运行，`scripts/` 包路径不变。
 
 ## 4. 目录结构设计
 
 ```
-research/                                # 只留生产链 + 共享基座（白名单见 §6）
+scripts/                                # 只留生产链 + 共享基座（白名单见 §6）
 archive/
   INDEX.md                               # 总索引登记表（格式见 §8）
   experiments/
@@ -122,7 +122,7 @@ archive/
 **状态机**：
 
 ```
-探索中（research/ 原位，plan 无 §0）
+探索中（scripts/ 原位，plan 无 §0）
   → 已结束（plan 写入 §0 结论 + README 探索表登记）
   → 已归档（跑 archive_experiment.py：移入 archive/experiments/ + INDEX 登记）
 ```
@@ -169,7 +169,7 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 > 注：`factor_round10`（paper sim）与 `factor_round17`（基建）无独立脚本，不归档；
 > `factor_round10_paper_sim_plan.md` 与 `factor_round17_delisted_plan.md` 留 docs/ 原位
 > （前者是运营手册前身，后者是基建记录）。——**更新（2026-09-14）**：Round 10 方案已随
-> Round 34 收尾归档至 `archive/experiments/round10_paper_sim/`（脚本留位 research/）。
+> Round 34 收尾归档至 `archive/experiments/round10_paper_sim/`（脚本留位 scripts/）。
 
 ### 6.3 输出归属映射规则
 
@@ -192,15 +192,15 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 每个单元 `README.md` 含：结论摘要、判定、复现命令（原运行方式）、数据依赖
 （full_daily 等）、留位说明（基座时写"脚本留位原因：被生产链依赖"）。
 
-## 8. 自动化工具规格：`research/archive_experiment.py`
+## 8. 自动化工具规格：`scripts/archive_experiment.py`
 
 ```
-用法: .venv/bin/python research/archive_experiment.py <单元名或脚本名> [--dry-run]
+用法: .venv/bin/python scripts/archive_experiment.py <单元名或脚本名> [--dry-run]
 ```
 
 流程（全部原子、可 dry-run 预览）：
-1. **解析依赖闭包**：grep 目标脚本的 `from research.X import`，递归展开，命中白名单
-   （§6.2）即停；闭包内若有 round12~15 链 → 自动合并单元名并提示。
+1. **解析依赖闭包**：grep 目标脚本的 `from scripts.X import` / `from quant_trading_01.X import`，
+   递归展开，命中白名单（§6.2）即停；闭包内若有 round12~15 链 → 自动合并单元名并提示。
 2. **git mv**：脚本 + 对应 plan 文档 → `archive/experiments/<unit>/`。
 3. **搬结论输出**：按 §6.3 前缀匹配移动 csv/png，并 `git add`（依赖 `!archive/` 例外）。
 4. **生成 README.md**：读 plan §0 结论摘要 + 判定 + 提取复现命令。
@@ -225,7 +225,7 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 
 - [ ] `archive/INDEX.md` 覆盖 §6.1 全部 23 个单元，状态与结论齐全
 - [ ] 随机抽 3 个归档单元：`py_compile` 通过、import 链完整、可重跑（或记录明确的重跑命令）
-- [ ] 归档后 `research/` 仅剩白名单 15 个脚本 + 进行中探索
+- [ ] 归档后 `scripts/` 仅剩白名单 15 个脚本 + 进行中探索
 - [ ] 全程 git mv，抽查 `git log --follow` 历史保留
 - [ ] AGENTS.md / README 已更新，归档动作可被代理按文档执行
 
@@ -243,7 +243,7 @@ reversal_factor.py（基座） · dividend_factor.py（基座）
 
 - 运营产物（ledger/daily_nav/monthly_funds）不归档不移动；
 - `data/` 任何文件不归档不移动；
-- `src/`、`tests/` 不移动（`src/fundamental.py` 生成生产宇宙清单 stock_basic.parquet、`src/data_loader.py` 被生产基座依赖、`src/backtest.py`+`costs.py` 被单元测试保护）；——**注（Round 34 收尾）**：src/ 能力已迁移——`stock_basic` 刷新 → `research/fetch_stock_basic.py`；`data_loader` → `research/data_loader.py`（归档复现 import 已改指）；`backtest/costs` → `tests/legacy_*`。src/ 目录已删除。
+- `src/`、`tests/` 不移动（`src/fundamental.py` 生成生产宇宙清单 stock_basic.parquet、`src/data_loader.py` 被生产基座依赖、`src/backtest.py`+`costs.py` 被单元测试保护）；——**注（Round 34 收尾）**：src/ 能力已迁移——`stock_basic` 刷新 → `scripts/fetch_stock_basic.py`；`data_loader` → `src/quant_trading_01/data_loader.py`（归档复现 import 已改指）；`backtest/costs` → `tests/legacy_*`。src/ 目录已删除。
 - 不删除任何历史文件，只做 git mv（历史归档），不做物理删除。
 - **后续变更**：`strategies/` 与 `run_backtest.py`（根目录演示入口）已于 2026-09-09 演示层清理时
   **直接删除**（非归档；不影响生产链/研究链/pytest，README 快速开始与 .vscode/launch.json 已同步改为

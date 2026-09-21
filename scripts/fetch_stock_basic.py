@@ -7,8 +7,8 @@
   data/fundamental/universe.parquet      hs300+zz500 成分并集(legacy 路径仍读)
 
 用法:
-  uv run python research/fetch_stock_basic.py            # 全量刷新(baostock)
-  uv run python research/fetch_stock_basic.py --limit 3  # 试运行(仅 universe 限数无效, 见下)
+  uv run python scripts/fetch_stock_basic.py            # 全量刷新(baostock)
+  uv run python scripts/fetch_stock_basic.py --limit 3  # 试运行(仅 universe 限数无效, 见下)
 
 ⚠️ baostock 服务不稳定时不要连续重试(全历史大结果集 rs.next() 会挂起);
    query_stock_basic 全量查询在本环境可能挂起 —— 用已有清单 + 定期温和刷新,
@@ -25,8 +25,9 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from research.config import get_config  # noqa: E402
+from quant_trading_01.config import get_config  # noqa: E402
 
 
 def _out_paths() -> tuple[Path, Path]:

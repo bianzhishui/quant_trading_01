@@ -9,7 +9,7 @@
   判定: ①IC<=-0.05且t<=-2 ②Q1最高Q5最低 ③扣成本年化超额>=3pp ④三分段2段为正
   (失败协议: 如实归档, 禁止回头改参数重跑)
 
-用法: uv run python research/reversal_factor.py
+用法: uv run python src/quant_trading_01/reversal_factor.py
 """
 
 from __future__ import annotations
@@ -37,8 +37,9 @@ plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"
 plt.rcParams["axes.unicode_minus"] = False
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config
-from research.dividend_factor import load_all, month_last_days, metrics
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config
+from quant_trading_01.dividend_factor import load_all, month_last_days, metrics
 
 
 def _cfg():

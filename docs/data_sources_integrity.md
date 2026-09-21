@@ -57,7 +57,7 @@
 | 项 | 内容 |
 |---|---|
 | 结构 | `date, code, close(前复权), pbMRQ, turn, amount, peTTM, tradestatus, isST`；数值列 float64、snappy、index=False、原子写 |
-| 存储 | **`data/fundamental/full_daily/` 按年分区**（`2012.parquet`…`2026.parquet`）；统一读取层 `research/data_io.py`（全库唯一入口，旧单文件已废弃为 `.singlefile.bak` 回滚点） |
+| 存储 | **`data/fundamental/full_daily/` 按年分区**（`2012.parquet`…`2026.parquet`）；统一读取层 `src/quant_trading_01/data_io.py`（全库唯一入口，旧单文件已废弃为 `.singlefile.bak` 回滚点） |
 | 范围 | 2012-06-01 → 最新交易日；**3409 只**（主板 sh.60*/sz.00*，**含 215 只有数据的主板退市股**，Round 17 去幸存者偏差） |
 | 规模 | 9,269,410 行 |
 | 用途 | 选股池过滤（tradestatus/isST/涨停）、Amihud（close+amount）、动量（close）、调仓执行价（close） |
@@ -125,24 +125,24 @@
 2026-09-08 事故后已全量重下并升级为年分区 + 含退市股宇宙（3194 在市 + 215 退市）。
 如需重跑（数据再丢失/重建环境）：
 ```bash
-python research/fetch_full_market.py     # 全量重下(宇宙=stock_basic 含退市) → full_daily/ 年分区
-python research/daily_update.py          # 守卫放行 → 四账户重 mark → 修复 daily_nav CSV → 出表
+python scripts/fetch_full_market.py     # 全量重下(宇宙=stock_basic 含退市) → full_daily/ 年分区
+python scripts/daily_update.py          # 守卫放行 → 四账户重 mark → 修复 daily_nav CSV → 出表
 # 验证：close 非空率≈100%、最新日行数≈3187、在市缺失=0
 ```
 
 ### 5.2 日常更新（每日收盘后）
 
 ```bash
-python research/fetch_daily_incremental.py <日期>   # 单只探测：未发布秒退；发布则补全（原子写）
-python research/daily_update.py                     # 守卫(≥前5日90%) → 四账户 mark → 总表
+python scripts/fetch_daily_incremental.py <日期>   # 单只探测：未发布秒退；发布则补全（原子写）
+python scripts/daily_update.py                     # 守卫(≥前5日90%) → 四账户 mark → 总表
 ```
 
 ### 5.3 月度（每月末数据到手）
 
 ```bash
-python research/fetch_daily_incremental.py <月末日>   # 若有新交易日
-python research/paper_live.py step                    # 四账户月调仓
-python research/paper_live.py report
+python scripts/fetch_daily_incremental.py <月末日>   # 若有新交易日
+python scripts/paper_live.py step                    # 四账户月调仓
+python scripts/paper_live.py report
 ```
 
 ---
@@ -151,7 +151,7 @@ python research/paper_live.py report
 
 ```bash
 # ① 最新交易日行数守卫（daily_update 内置）
-python research/daily_update.py --table   # 正常时应显示四账户总表
+python scripts/daily_update.py --table   # 正常时应显示四账户总表
 
 # ② 手动核查关键文件
 python -c "

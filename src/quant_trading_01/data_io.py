@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from research.config import get_config
+from quant_trading_01.config import get_config
 
 # 路径不设模块级常量（惰性）：每次调用从当前配置单例取，响应 --config/QUANT_CONFIG
 ROOT = Path(__file__).resolve().parent.parent

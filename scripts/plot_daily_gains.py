@@ -9,8 +9,8 @@
 - 累计净值 + 每日涨幅%: 四账户合并一张双面板图 → output/daily_gains_live.png
   （年度场景 → output/daily_gains_{PREFIX}.png）
 
-用法: python research/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
-      python research/plot_daily_gains.py --live
+用法: python scripts/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
+      python scripts/plot_daily_gains.py --live
 """
 
 from __future__ import annotations
@@ -34,7 +34,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from research.config import get_config  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+from quant_trading_01.config import get_config  # noqa: E402
 
 plt.rcParams["font.sans-serif"] = [
     "PingFang SC",

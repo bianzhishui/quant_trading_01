@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/daily_update.py",
+            "program": "${workspaceFolder}/scripts/daily_update.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         },
@@ -18,7 +18,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/daily_update.py",
+            "program": "${workspaceFolder}/scripts/daily_update.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--table"]
@@ -29,7 +29,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_live.py",
+            "program": "${workspaceFolder}/scripts/paper_live.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["step"]
@@ -39,7 +39,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_live.py",
+            "program": "${workspaceFolder}/scripts/paper_live.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["mark"]
@@ -49,7 +49,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_live.py",
+            "program": "${workspaceFolder}/scripts/paper_live.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["report"]
@@ -60,7 +60,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/factor_health.py",
+            "program": "${workspaceFolder}/scripts/factor_health.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         },
@@ -69,7 +69,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/factor_health.py",
+            "program": "${workspaceFolder}/scripts/factor_health.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--chart"]
@@ -80,7 +80,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_trade.py",
+            "program": "${workspaceFolder}/scripts/paper_trade.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "600000"]
@@ -90,7 +90,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_trade.py",
+            "program": "${workspaceFolder}/scripts/paper_trade.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "1000000"]
@@ -100,7 +100,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_trade.py",
+            "program": "${workspaceFolder}/scripts/paper_trade.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "3000000"]
@@ -110,7 +110,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_trade.py",
+            "program": "${workspaceFolder}/scripts/paper_trade.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "6000000"]
@@ -120,7 +120,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/paper_trade.py",
+            "program": "${workspaceFolder}/scripts/paper_trade.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["replay", "--aum", "3000000", "--config", "config/custom.yaml"]
@@ -131,7 +131,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/scenario_ytd.py",
+            "program": "${workspaceFolder}/scripts/scenario_ytd.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--start", "2026-01-01"]
@@ -141,7 +141,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/scenario_ytd.py",
+            "program": "${workspaceFolder}/scripts/scenario_ytd.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--start", "2025-01-01", "--end", "2025-12-31"]
@@ -152,7 +152,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/plot_daily_gains.py",
+            "program": "${workspaceFolder}/scripts/plot_daily_gains.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--live"]
@@ -162,7 +162,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/plot_daily_gains.py",
+            "program": "${workspaceFolder}/scripts/plot_daily_gains.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--prefix", "20150101", "--title", "2015-01起全量回测"]
@@ -172,7 +172,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/plot_daily_gains.py",
+            "program": "${workspaceFolder}/scripts/plot_daily_gains.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "args": ["--prefix", "20260101", "--title", "2026全年"]
@@ -183,7 +183,7 @@
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/research/fetch_full_market.py",
+            "program": "${workspaceFolder}/scripts/fetch_full_market.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         }
