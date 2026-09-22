@@ -29,8 +29,12 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 - **uv 缓存已配置在项目内**（`uv.toml` 的 `cache-dir = ".uv-cache"`，已 gitignore）——
   `uv run`/`uv sync` 不依赖工作区外的 `~/.cache/uv`，沙箱默认权限即可，**不要改回全局缓存**。
 - 工作目录 = 仓库根目录；**脚本都在 `scripts/` 下**。
-- 数据：`data/fundamental/full_daily.parquet`（全市场 879万+ 行，date/code/close/amount/tradestatus/isST…）、
-  `data/round2/adjust_factor.parquet`（复权因子）、`data/round2/industry_full.parquet`（行业）。
+- 数据：`data/fundamental/full_daily/` 年分区（全市场主板行情 ~930万行，date/code/close/amount/tradestatus/isST…，经 data_io 统一读取）、
+  `data/round2/adjust_factor.parquet`（复权因子）、`data/round2/industry_full.parquet`（行业）；
+  **低价股研究补抓（Round 数据工程）**：`data/round2/financial_quality.parquet`（全市场主板 3485 只
+  全历史质量财务：扣非净利润/每股经营现金流/ROE/资产负债率，akshare 同花顺，含退市股）、
+  `data/round2/dividends.parquet`（全市场在市全历史分红，东财；退市股分红接口不可得如实记录）；
+  详见 `docs/data_backfill_low_price_report.md`。
 - 输出：`output/`（账本 JSON、每日/月度 CSV、图）。**`output/*.csv` 与 `output/*.png` 被 gitignore**，
   不入库；**例外：当前四账户运营产物全部入库跟踪**——5 张每日图（`daily_nav_aum*.png` ×4 +
   `daily_gains_live.png` ×1，`daily_update.py --chart` 刷新，README 靠上位置引用）+ 12 个运营 CSV

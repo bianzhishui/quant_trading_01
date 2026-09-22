@@ -41,6 +41,11 @@ data/round2/margin.parquet
 data/round2/roe.parquet
 data/round2/industry.parquet
 
+# 全市场质量财务(低价股研究补抓, 大体积可再生不入库)
+data/round2/financial_quality.parquet
+data/round2/financial_quality_progress.json
+data/round2/dividends_progress.json
+
 # 可转债数据本地保留(gitignore)；再生成管线 src/convertible.py 已于 2026-09-09 删除（方向已归档）
 data/convertible/
 data/round2/earnings_forecast.parquet

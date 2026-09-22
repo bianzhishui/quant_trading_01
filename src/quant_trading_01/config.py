@@ -72,6 +72,10 @@ FETCH_PATH_KEYS = {
     ("corporate_actions", "out_dividends"),
     ("full_industry", "out"),
     ("round2_data", "out_dir"),
+    ("financial_quality", "out"),
+    ("financial_quality", "progress"),
+    ("dividends_backfill", "out"),
+    ("dividends_backfill", "progress"),
 }
 
 

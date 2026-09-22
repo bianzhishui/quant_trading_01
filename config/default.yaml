@@ -88,6 +88,24 @@ fetch:
     out_dir: "data/round2"
     start: "2013-01-01"      # fetch_round2_data baostock 起点
     end: "2026-09-03"
+  delisted_daily:            # 退市股历史日线补抓(fetch_delisted_daily.py, akshare 东财)
+    start: "2012-06-01"      # 与 full_daily 窗口对齐
+    pause: 0.5               # 请求间停顿(秒, 东财限频)
+    retry: 2                 # 失败重试次数
+    print_every: 20          # 每 N 只打印进度
+    tail_gap_days: 120       # 最后数据日距退市日超过该值视为尾部缺口(停牌股除外)
+  financial_quality:         # 全市场质量财务(fetch_financial_quality.py, akshare 同花顺)
+    out: "data/round2/financial_quality.parquet"
+    progress: "data/round2/financial_quality_progress.json"
+    pause: 0.4
+    retry: 2
+    print_every: 50
+  dividends_backfill:        # 全市场分红全历史(fetch_dividends_backfill.py, akshare 东财)
+    out: "data/round2/dividends.parquet"
+    progress: "data/round2/dividends_progress.json"
+    pause: 0.4
+    retry: 2
+    print_every: 50
   live:
     fac_end: "2026-12-31"    # paper_live 实时公司行为查询上界(年末哨兵)
 
