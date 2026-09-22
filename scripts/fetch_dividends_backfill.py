@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.config import get_config, load_config
 from quant_trading_01.data_io import stock_basic, universe_codes
 
-OUT_COLS = ["code", "date", "cashBeforeTax", "stocksPs"]
+OUT_COLS = ["code", "date", "cashBeforeTax", "stocksPs", "total_shares", "eps"]
 
 
 def _cfg():
@@ -55,6 +55,10 @@ def fetch_one(code: str) -> pd.DataFrame:
             / 10.0,
             "stocksPs": pd.to_numeric(df["送转股份-送转总比例"], errors="coerce")
             / 10.0,
+            "total_shares": pd.to_numeric(
+                df["总股本"], errors="coerce"
+            ),  # 报告期时点总股本(股)
+            "eps": pd.to_numeric(df["每股收益"], errors="coerce"),  # 报告期口径
         }
     )
     return out.dropna(subset=["date"])
