@@ -84,6 +84,34 @@ def target_date(want: str | None) -> str:
     return str(today) if str(today) > have else have
 
 
+def backfill_missing(tgt: str, have: str) -> str:
+    """修复中间洞: 目标日未发布时, 循环补 have+1..tgt-1 的每个自然日。
+
+    背景(Round 41 修复): target_date 只试"今天", 若今天未发布则数据停留 have,
+    中间缺失的交易日(如 baostock 某日抓取失败留下的 09-21) 永远不会被自动补。
+    这里从 have+1 起逐自然日探测到 tgt-1: 交易日且已发布 → update_date 写入推进;
+    周末/节假日/未发布 → 单只探测秒退, 无副作用。循环直到数据推进或到达 tgt。
+    返回补数后的最新数据日。
+    """
+    from datetime import timedelta
+
+    have_dt = dt.date.fromisoformat(have)
+    tgt_dt = dt.date.fromisoformat(tgt)
+    nxt = have_dt + timedelta(days=1)
+    while nxt < tgt_dt:
+        print(f"  → 回退探测中间洞 {nxt}: 补数据源最新日的下一交易日...")
+        rc = update_date(str(nxt))
+        if rc != 0:
+            print(f"  ⚠️ update_date({nxt}) 返回 {rc}(baostock 会话失效), 请稍后重跑")
+        new_have = data_max_date()
+        if str(nxt) <= new_have:  # 数据推进(或 nxt 已是交易日且已发布)
+            nxt = dt.date.fromisoformat(new_have) + timedelta(days=1)  # 继续补下一日
+            have = new_have
+            continue
+        nxt += timedelta(days=1)  # 未推进(周末/节假日/未发布) → 下一自然日
+    return have
+
+
 def print_table():
     print(
         f"\n{'账户':<7}{'本金':<11}{'最新NAV':<12}{'当日涨幅':<9}{'盈亏(元)':<13}"
@@ -124,6 +152,8 @@ def main() -> None:
         have = data_max_date()
         if tgt > have:
             print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
+            # Round 41 修复: 目标日未发布 → 回退补中间洞(have+1), 防"抓取失败永不补"
+            have = backfill_missing(tgt, have)
     else:
         print(f"[1/2] {tgt} 数据已有, 跳过抓取")
     # 严谨数据完整度守卫: 中断的抓取会留下半成品(如 500/3187), 此时拒绝 mark
