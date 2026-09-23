@@ -26,8 +26,6 @@ from scripts.factor_round41_low_price import (
     ew_nav,
     load_data,
     ret_matrix,
-    COST_BASE,
-    COST_HIGH,
 )
 
 LOW23 = (2.0, 3.0)
@@ -42,10 +40,10 @@ def run(data: dict, mode: str) -> dict:
     out_date = data["out_date"]
     ret = ret_matrix(data["close"], out_date, mode)
     A23, B23, C, _, _ = build_sets(data, None, sub_price=LOW23)
-    navA = ew_nav(ret, A23, COST_BASE)
-    navB = ew_nav(ret, B23, COST_BASE)
-    navC = ew_nav(ret, C, COST_BASE)
-    navB45 = ew_nav(ret, B23, COST_HIGH)
+    navA = ew_nav(ret, A23, _cfg().costs.cost_base)
+    navB = ew_nav(ret, B23, _cfg().costs.cost_base)
+    navC = ew_nav(ret, C, _cfg().costs.cost_base)
+    navB45 = ew_nav(ret, B23, _cfg().costs.cost_high)
     return {
         "A23": metrics(navA),
         "B23": metrics(navB),
@@ -112,7 +110,7 @@ def main() -> None:
     for lo, hi, tag in [(1.8, 2.2, "1.8-2.2"), (2.8, 3.2, "2.8-3.2")]:
         A, B, C, _, _ = build_sets(data, None, sub_price=(lo, hi))
         ret = ret_matrix(data["close"], data["out_date"], "zero")
-        mb = metrics(ew_nav(ret, B, COST_BASE))
+        mb = metrics(ew_nav(ret, B, _cfg().costs.cost_base))
         print(f"  {tag}元: B 年化 {mb['年化']:+.1%} 回撤 {mb['最大回撤']:.1%}")
 
     print(f"\n总耗时 {time.time() - t0:.0f}s")

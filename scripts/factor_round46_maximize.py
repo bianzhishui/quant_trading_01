@@ -19,15 +19,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from quant_trading_01.config import load_config
+from quant_trading_01.config import get_config, load_config
 from quant_trading_01.dividend_factor import metrics
 from scripts.factor_round41_low_price import (
     build_sets,
     ew_nav,
     load_data,
     ret_matrix,
-    COST_BASE,
-    COST_HIGH,
 )
 
 VAL = ("2021-01-01", "2026-12-31")
@@ -74,14 +72,14 @@ def eval_var(
 ) -> dict:
     A, B, C, _, _ = build_sets(data, None, **kw)
     nav = (
-        quality_weighted_nav(ret, data, B, COST_BASE)
+        quality_weighted_nav(ret, data, B, get_config().costs.cost_base)
         if weighted
-        else ew_nav(ret, B, COST_BASE)
+        else ew_nav(ret, B, get_config().costs.cost_base)
     )
     nav45 = (
-        quality_weighted_nav(ret, data, B, COST_HIGH)
+        quality_weighted_nav(ret, data, B, get_config().costs.cost_high)
         if weighted
-        else ew_nav(ret, B, COST_HIGH)
+        else ew_nav(ret, B, get_config().costs.cost_high)
     )
     m = metrics(nav[VAL[0] : VAL[1]] / nav[VAL[0] : VAL[1]].dropna().iloc[0])
     m45 = metrics(nav45[VAL[0] : VAL[1]] / nav45[VAL[0] : VAL[1]].dropna().iloc[0])
@@ -113,7 +111,7 @@ def main() -> None:
 
     # C 全市场基准(验证段)
     A, B, C, _, _ = build_sets(data, None)
-    navC = ew_nav(ret, C, COST_BASE)
+    navC = ew_nav(ret, C, get_config().costs.cost_base)
     mC = metrics(navC[VAL[0] : VAL[1]] / navC[VAL[0] : VAL[1]].dropna().iloc[0])
 
     variants = [

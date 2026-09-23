@@ -17,15 +17,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from quant_trading_01.config import load_config
+from quant_trading_01.config import get_config, load_config
 from quant_trading_01.dividend_factor import metrics
 from scripts.factor_round41_low_price import (
     build_sets,
     ew_nav,
     load_data,
     ret_matrix,
-    COST_BASE,
-    COST_HIGH,
 )
 
 TRAIN = ("2014-01-01", "2020-12-31")
@@ -53,7 +51,7 @@ def main() -> None:
     train_rank = []
     for lo, hi, tag in [(0, 2, "0-2元"), (2, 3, "2-3元"), (3, 5, "3-5元")]:
         A, B, _, _, _ = build_sets(data, None, sub_price=(lo, hi))
-        nav = ew_nav(ret, B, COST_BASE)
+        nav = ew_nav(ret, B, get_config().costs.cost_base)
         m = seg_metrics(nav, *TRAIN)
         train_rank.append((tag, m["年化"], m["最大回撤"]))
         print(f"  {tag}: 年化 {m['年化']:+.1%} 回撤 {m['最大回撤']:.1%}")
@@ -63,9 +61,9 @@ def main() -> None:
     # ---- 验证段: B23(2-3元+质量) 独立评估 ----
     print("\n=== 验证段(2021-2026) B23 vs 全市场 ===")
     A23, B23, C, _, _ = build_sets(data, None, sub_price=(2.0, 3.0))
-    navB = ew_nav(ret, B23, COST_BASE)
-    navC = ew_nav(ret, C, COST_BASE)
-    navB45 = ew_nav(ret, B23, COST_HIGH)
+    navB = ew_nav(ret, B23, get_config().costs.cost_base)
+    navC = ew_nav(ret, C, get_config().costs.cost_base)
+    navB45 = ew_nav(ret, B23, get_config().costs.cost_high)
 
     mB = seg_metrics(navB, *VAL)
     mC = seg_metrics(navC, *VAL)
@@ -108,7 +106,7 @@ def main() -> None:
 
     # ---- 2.3-3.2 对照(仅报告) ----
     A2, B2, _, _, _ = build_sets(data, None, sub_price=(2.3, 3.2))
-    navB2 = ew_nav(ret, B2, COST_BASE)
+    navB2 = ew_nav(ret, B2, get_config().costs.cost_base)
     mB2 = seg_metrics(navB2, *VAL)
     print(
         f"\n  对照 2.3-3.2 元(仅报告): 验证段 年化 {mB2['年化']:+.1%} 回撤 {mB2['最大回撤']:.1%}"

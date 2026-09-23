@@ -63,6 +63,7 @@ costs:
   div_tax: 0.10              # 红利税 10%（冻结）
   slip_default: 0.0015       # 滑点 15bp（Round 32/33 三口径统一）
   cost_base: 0.0015          # 基准全成本 15bp/单边
+  cost_high: 0.0045          # 高成本压测档 45bp(低价股可交易性)
   cost_sweep: [0.0025, 0.0035]  # 成本扫描档位
   # Round35 流动性依赖滑点（评估口径 B，冻结）：按执行日成交额分档
   # slip_bounds = 全样本 amount 分位数 Q20/40/60/80（2026-09-16 计算冻结）
@@ -80,6 +81,7 @@ p3:
   liq_min: 5000000.0          # 近20日均成交额下限(元)
   seasoning: 375              # 上市天数下限
   disclose_lag: 120           # 年报披露滞后(天), 防前视
+  low_price: 5.0              # 低价研究总上限(Round41-47 主口径; P3 实际区间用 price_lo/hi)
 
 # ---------- 数据抓取（fetch 脚本） ----------
 fetch:

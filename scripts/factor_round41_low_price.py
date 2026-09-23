@@ -33,9 +33,6 @@ from quant_trading_01.data_io import load_full_daily, stock_basic
 from quant_trading_01.dividend_factor import month_last_days, metrics
 
 # ---- 冻结(预注册)参数 ----
-LOW_PRICE = 5.0
-COST_BASE = 0.0015
-COST_HIGH = 0.0045
 
 
 def _cfg():
@@ -209,7 +206,7 @@ def build_sets(
             )
             price_ok = real_T.between(lo, hi, inclusive="left")
         else:
-            price_ok = real_T <= LOW_PRICE
+            price_ok = real_T <= _cfg().p3.low_price
         not_st = isst.loc[T].astype(str) != "1"
         elig = (age_ok & tst_ok & board & price_ok & not_st & real_T.notna()).astype(
             bool
@@ -357,10 +354,10 @@ def main() -> None:
     ret = ret_matrix(data["close"], out_date, args.mode)
     A, B, C, rec, _ = build_sets(data, args.limit)
 
-    navA = ew_nav(ret, A, COST_BASE)
-    navB = ew_nav(ret, B, COST_BASE)
-    navC = ew_nav(ret, C, COST_BASE)
-    navB45 = ew_nav(ret, B, COST_HIGH)
+    navA = ew_nav(ret, A, _cfg().costs.cost_base)
+    navB = ew_nav(ret, B, _cfg().costs.cost_base)
+    navC = ew_nav(ret, C, _cfg().costs.cost_base)
+    navB45 = ew_nav(ret, B, _cfg().costs.cost_high)
 
     m = {
         k: metrics(v)
@@ -410,7 +407,7 @@ def main() -> None:
     print("\n== 子区间(真实价) ==")
     for lo, hi in [(0, 2), (2, 3), (3, 5)]:
         A2, B2, _, _, _ = build_sets(data, args.limit, sub_price=(lo, hi))
-        navB2 = ew_nav(ret, B2, COST_BASE)
+        navB2 = ew_nav(ret, B2, _cfg().costs.cost_base)
         rec2 = pd.DataFrame(_build_rec(data, args.limit, (lo, hi)))
         print(
             f"  {lo}-{hi}元: B年化 {metrics(navB2)['年化']:+.1%} 回撤 {metrics(navB2)['最大回撤']:.1%} 月均低价 {rec2['low'].mean():.0f} 只"

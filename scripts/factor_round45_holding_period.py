@@ -17,15 +17,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from quant_trading_01.config import load_config
+from quant_trading_01.config import get_config, load_config
 from quant_trading_01.dividend_factor import metrics
 from scripts.factor_round41_low_price import (
     build_sets,
     ew_nav,
     load_data,
     ret_matrix,
-    COST_BASE,
-    COST_HIGH,
 )
 
 PRICE = (2.3, 3.2)
@@ -69,8 +67,8 @@ def main() -> None:
         A, B, C, _, _ = build_sets(
             data, None, sub_price=PRICE, n_years=N_YEARS, freq=freq
         )
-        nav = ew_nav(ret, B, COST_BASE)
-        nav45 = ew_nav(ret, B, COST_HIGH)
+        nav = ew_nav(ret, B, get_config().costs.cost_base)
+        nav45 = ew_nav(ret, B, get_config().costs.cost_high)
         m = metrics(nav[VAL[0] : VAL[1]] / nav[VAL[0] : VAL[1]].dropna().iloc[0])
         m45 = metrics(nav45[VAL[0] : VAL[1]] / nav45[VAL[0] : VAL[1]].dropna().iloc[0])
         res[label] = {
@@ -86,7 +84,7 @@ def main() -> None:
     M = res["M月频"]
     # 全市场(月频 C)
     A, B, C, _, _ = build_sets(data, None, sub_price=PRICE, n_years=N_YEARS, freq=1)
-    navC = ew_nav(ret, C, COST_BASE)
+    navC = ew_nav(ret, C, get_config().costs.cost_base)
     mC = metrics(navC[VAL[0] : VAL[1]] / navC[VAL[0] : VAL[1]].dropna().iloc[0])
     print(f"  全市场: 年化 {mC['年化']:+.1%} 回撤 {mC['最大回撤']:.1%}")
 
