@@ -100,6 +100,11 @@ def _resolve_paths(cfg: dict) -> dict:
             val = fetch.get(sec, {}).get(key)
             if isinstance(val, str):
                 fetch[sec][key] = str(ROOT / val)
+    # 策略运营产物目录(r5/p3.out_dir, 相对仓库根解析为绝对)
+    for sec in ("r5", "p3"):
+        sc = cfg.get(sec)
+        if sc and isinstance(sc.get("out_dir"), str):
+            sc["out_dir"] = str(ROOT / sc["out_dir"])
     return resolved
 
 

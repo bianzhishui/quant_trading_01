@@ -51,7 +51,7 @@ COLORS = ["#c0392b", "#e67e22", "#2980b9", "#27ae60"]
 
 
 def _out() -> Path:
-    return Path(get_config().paths.output) / "r5"
+    return Path(get_config().r5.out_dir)
 
 
 def _aum_list() -> list[tuple[str, str, int]]:

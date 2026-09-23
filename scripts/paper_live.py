@@ -89,11 +89,11 @@ def _factor_panel_cached(close: pd.DataFrame) -> pd.DataFrame:
 
 
 def ledger_path(aum: float) -> Path:
-    return Path(_cfg().paths.output) / "r5" / f"ledger_aum{int(aum / 1e4)}w.json"
+    return Path(_cfg().r5.out_dir) / f"ledger_aum{int(aum / 1e4)}w.json"
 
 
 def monthly_funds_path(aum: float) -> Path:
-    return Path(_cfg().paths.output) / "r5" / f"monthly_funds_aum{int(aum / 1e4)}w.csv"
+    return Path(_cfg().r5.out_dir) / f"monthly_funds_aum{int(aum / 1e4)}w.csv"
 
 
 FUNDS_COLS = [
@@ -155,9 +155,7 @@ def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
                 "value": round(s * p, 2),
             }
         )
-    out = (
-        Path(_cfg().paths.output) / "r5" / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
-    )
+    out = Path(_cfg().r5.out_dir) / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
     pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
 
 
@@ -581,7 +579,7 @@ def mark(aum: float, slip: float | None = None):
             "涨幅%": ret.round(4),
         }
     )
-    out = Path(_cfg().paths.output) / "r5" / f"daily_nav_aum{int(aum / 1e4)}w.csv"
+    out = Path(_cfg().r5.out_dir) / f"daily_nav_aum{int(aum / 1e4)}w.csv"
     df.to_csv(out, index=False)
     cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
     print(

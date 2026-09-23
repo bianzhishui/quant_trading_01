@@ -64,13 +64,11 @@ def _mtime(p: Path | str) -> int | None:
 
 
 def ledger_path(aum: float) -> Path:
-    return Path(_cfg().paths.output) / "p3" / f"ledger_p3_aum{int(aum / 1e4)}w.json"
+    return Path(_cfg().p3.out_dir) / f"ledger_p3_aum{int(aum / 1e4)}w.json"
 
 
 def monthly_funds_path(aum: float) -> Path:
-    return (
-        Path(_cfg().paths.output) / "p3" / f"monthly_funds_p3_aum{int(aum / 1e4)}w.csv"
-    )
+    return Path(_cfg().p3.out_dir) / f"monthly_funds_p3_aum{int(aum / 1e4)}w.csv"
 
 
 def holdings_path(aum: float) -> Path:
@@ -390,7 +388,7 @@ def mark(aum: float, slip: float | None = None):
             "涨幅%": (nav.pct_change() * 100).round(4),
         }
     )
-    out = Path(_cfg().paths.output) / "p3" / f"daily_nav_p3_aum{int(aum / 1e4)}w.csv"
+    out = Path(_cfg().p3.out_dir) / f"daily_nav_p3_aum{int(aum / 1e4)}w.csv"
     df.to_csv(out, index=False)
     cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
     print(

@@ -30,7 +30,7 @@ from scripts.paper_trade import (  # noqa: E402
 
 def main(csv: str | None = None):
     cfg = get_config()
-    out = Path(cfg.paths.output) / "r5"
+    out = Path(cfg.r5.out_dir)
     w_amihud = cfg.r5.w_amihud
     w_mom = cfg.r5.w_mom
     w_f4 = cfg.r5.w_f4
