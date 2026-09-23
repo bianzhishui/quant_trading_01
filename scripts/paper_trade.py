@@ -53,7 +53,7 @@ def _load():
         return (
             d.pivot(index="date", columns="code", values=c)
             .sort_index()
-            .loc[cfg.strategy.start :]
+            .loc[cfg.r5.start :]
         )
 
     close, amount, tst, isst = (
@@ -95,12 +95,12 @@ def r5_rebalances(close, amount, tst, isst, ind):
       F4 = mean(amount, 5d)（低成交额→高分）
     """
     cfg = _cfg()
-    min_ind = cfg.strategy.min_ind
-    min_n = cfg.strategy.min_n
-    w_amihud = cfg.strategy.w_amihud
-    w_mom = cfg.strategy.w_mom
-    w_f4 = cfg.strategy.w_f4
-    r5 = cfg.strategy.r5
+    min_ind = cfg.r5.min_ind
+    min_n = cfg.r5.min_n
+    w_amihud = cfg.r5.w_amihud
+    w_mom = cfg.r5.w_mom
+    w_f4 = cfg.r5.w_f4
+    r5 = cfg.r5.r5
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
     amihud = (
@@ -255,7 +255,7 @@ class PaperPortfolio:
         传入执行日涨幅 Series → S3-跟随 阻塞: 涨停(≥+LIMIT_THR)买不进/跌停(≤-LIMIT_THR)卖不出,
         未成交递延到下月调仓再平衡(不强制补买)。Round 24 生产真实口径。
         """
-        limit_thr = _cfg().strategy.limit_thr
+        limit_thr = _cfg().r5.limit_thr
         V = self.value(prices)
         n = len(target)
         if n == 0:

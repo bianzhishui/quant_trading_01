@@ -155,7 +155,9 @@ def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
                 "value": round(s * p, 2),
             }
         )
-    out = Path(_cfg().paths.output) / "r5" / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
+    out = (
+        Path(_cfg().paths.output) / "r5" / f"monthly_holdings_aum{int(aum / 1e4)}w.csv"
+    )
     pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
 
 
@@ -617,7 +619,7 @@ def main():
     )  # 方案二: 入口处加载配置(含 --config), 之后函数内 get_config() 生效
     cfg = get_config()
     slip = args.slip if args.slip is not None else cfg.costs.slip_default
-    aums = [args.aum] if args.aum > 0 else list(cfg.accounts.aum_list)
+    aums = [args.aum] if args.aum > 0 else list(cfg.r5.aum_list)
     step_done = False
     for a in aums:
         if args.mode == "init":

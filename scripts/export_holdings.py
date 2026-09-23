@@ -31,10 +31,10 @@ from scripts.paper_trade import (  # noqa: E402
 def main(csv: str | None = None):
     cfg = get_config()
     out = Path(cfg.paths.output) / "r5"
-    w_amihud = cfg.strategy.w_amihud
-    w_mom = cfg.strategy.w_mom
-    w_f4 = cfg.strategy.w_f4
-    min_ind = cfg.strategy.min_ind
+    w_amihud = cfg.r5.w_amihud
+    w_mom = cfg.r5.w_mom
+    w_f4 = cfg.r5.w_f4
+    min_ind = cfg.r5.min_ind
     close, amount, tst, isst, ind = _load()
     raw, _ = _load_corp(close)
     rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
@@ -42,7 +42,7 @@ def main(csv: str | None = None):
     target = last["target"]
 
     # 因子分(全池计算, 与 r5_rebalances 同一口径, 供百分位列使用)
-    r5 = cfg.strategy.r5
+    r5 = cfg.r5.r5
     amihud = (
         ((close.pct_change().abs() / amount) * r5.amihud_scale)
         .rolling(r5.amihud_lookback, min_periods=r5.amihud_min_periods)

@@ -49,7 +49,7 @@ LOVE = "爱我中华"
 
 
 def load_all() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
-    start = get_config().strategy.start
+    start = get_config().r5.start
     fdir = Path(get_config().paths.fundamental)
     d = pd.read_parquet(fdir / "daily.parquet")
 
@@ -276,7 +276,7 @@ def main() -> None:
     )
 
     # ---- ③ 稳定性 ----
-    eras = get_config().strategy.eras
+    eras = get_config().r5.eras
     print("B组分年代稳定性(第③层):")
     stable = True
     for name, (s, e) in eras.items():

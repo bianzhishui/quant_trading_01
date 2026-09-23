@@ -55,10 +55,10 @@ def _out() -> Path:
 
 
 def _aum_list() -> list[tuple[str, str, int]]:
-    """(tag, 显示名, 建仓本金) —— 从配置 accounts.aum_list 惰性生成。"""
+    """(tag, 显示名, 建仓本金) —— 从配置 r5.aum_list 惰性生成。"""
     return [
         (f"{int(aum / 1e4)}w", f"{int(aum / 1e4)}万", aum)
-        for aum in get_config().accounts.aum_list
+        for aum in get_config().r5.aum_list
     ]
 
 

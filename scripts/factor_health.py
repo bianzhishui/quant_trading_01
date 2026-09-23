@@ -79,7 +79,7 @@ COLS = [
 def compute_rankic_panel() -> pd.DataFrame:
     """逐月末 T 计算 RankIC 面板。
 
-    口径(与 paper_trade.r5_rebalances 完全一致, 窗口取 config strategy.r5):
+    口径(与 paper_trade.r5_rebalances 完全一致, 窗口取 config r5):
       Amihud = (|ret|/amount×amihud_scale) amihud_lookback 日滚动(min_periods=amihud_min_periods)
       动量   = close.shift(mom_short)/close.shift(mom_long)-1 (T-mom_long~T-mom_short)
       F4     = amount.rolling(f4_window).mean() (5 日均成交额, 低→高分)
@@ -91,12 +91,12 @@ def compute_rankic_panel() -> pd.DataFrame:
     close, amount, tst, isst, ind = _load()
     pool = build_pool(close, tst, isst)
     cfg = get_config()
-    min_ind = cfg.strategy.min_ind
-    min_n = cfg.strategy.min_n
-    w_amihud = cfg.strategy.w_amihud
-    w_mom = cfg.strategy.w_mom
-    w_f4 = cfg.strategy.w_f4
-    r5 = cfg.strategy.r5
+    min_ind = cfg.r5.min_ind
+    min_n = cfg.r5.min_n
+    w_amihud = cfg.r5.w_amihud
+    w_mom = cfg.r5.w_mom
+    w_f4 = cfg.r5.w_f4
+    r5 = cfg.r5.r5
     ret = close.pct_change()
     amihud = (
         ((ret.abs() / amount) * r5.amihud_scale)

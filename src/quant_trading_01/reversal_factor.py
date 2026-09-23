@@ -75,8 +75,8 @@ def build_pool(
 ) -> pd.DataFrame:
     """逐日可交易池(布尔宽表): seasoning 日 + 非ST + 非创业/科创/北交 + 未涨停。"""
     cfg = _cfg()
-    limit_thr = cfg.strategy.limit_thr
-    seasoning = cfg.strategy.r5.seasoning
+    limit_thr = cfg.r5.limit_thr
+    seasoning = cfg.r5.seasoning
     days_count = close.notna().cumsum()
     board_ok = pd.Series(
         {
@@ -100,11 +100,11 @@ def build_pool(
 
 def main() -> None:
     cfg = _cfg()
-    lookback = cfg.strategy.lookback
-    n_q = cfg.strategy.n_q
+    lookback = cfg.r5.lookback
+    n_q = cfg.r5.n_q
     cost_base = cfg.costs.cost_base
     cost_sweep = cfg.costs.cost_sweep
-    eras = cfg.strategy.eras
+    eras = cfg.r5.eras
     out = Path(cfg.paths.output)
     print("== 短期反转因子月频实验 (预注册 v1.0) ==")
     close, real, pb, tst, isst, *_ = load_all()

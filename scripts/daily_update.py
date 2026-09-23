@@ -39,7 +39,7 @@ def _out_dir() -> Path:
 
 
 def _aum_list() -> list[tuple[int, str]]:
-    return [(aum, f"{int(aum / 1e4)}w") for aum in get_config().accounts.aum_list]
+    return [(aum, f"{int(aum / 1e4)}w") for aum in get_config().r5.aum_list]
 
 
 def data_max_date() -> str:

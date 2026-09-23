@@ -38,7 +38,7 @@ def run_scenario(
     start/end 为日期字符串; out_prefix 给定时写 daily_nav/monthly_funds CSV;
     verbose 控制打印。返回 nav 供统计/绘图复用(不重复回放)。
     """
-    aum_list = get_config().accounts.aum_list
+    aum_list = get_config().r5.aum_list
     start_ts = pd.Timestamp(start)
     out = Path(get_config().paths.output) / "r5"
     end_ts = pd.Timestamp(end) if end else None

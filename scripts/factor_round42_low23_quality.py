@@ -78,7 +78,7 @@ def main() -> None:
     exc = r["B23"]["年化"] - r["C"]["年化"]
     dd_ok = r["B23"]["最大回撤"] >= r["C"]["最大回撤"]  # 回撤数值>= 即不超过C
     stable = 0
-    for name, (s, e) in _cfg().strategy.eras.to_dict().items():
+    for name, (s, e) in _cfg().r5.eras.to_dict().items():
         b = r["navB"][s:e] / r["navB"][s:e].dropna().iloc[0]
         c = r["navC"][s:e] / r["navC"][s:e].dropna().iloc[0]
         mb, mc = metrics(b), metrics(c)

@@ -88,7 +88,7 @@ def eval_var(
     mfull = metrics(nav)
     n_hold = [len(s) for s in B.values() if s]
     eras = {}
-    for name, (s, e) in load_config(None).strategy.eras.to_dict().items():
+    for name, (s, e) in load_config(None).r5.eras.to_dict().items():
         eras[name] = metrics(nav[s:e] / nav[s:e].dropna().iloc[0])["年化"]
     return {
         "label": label,

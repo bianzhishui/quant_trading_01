@@ -49,13 +49,13 @@ def load_data() -> dict:
     full = load_full_daily()
     full["date"] = pd.to_datetime(full["date"])
     close = full.pivot(index="date", columns="code", values="close").sort_index()
-    close = close.loc[cfg.strategy.start :]
+    close = close.loc[cfg.r5.start :]
     amount = full.pivot(index="date", columns="code", values="amount").sort_index()
-    amount = amount.loc[cfg.strategy.start :]
+    amount = amount.loc[cfg.r5.start :]
     isst = full.pivot(index="date", columns="code", values="isST").sort_index()
-    isst = isst.loc[cfg.strategy.start :]
+    isst = isst.loc[cfg.r5.start :]
     tst = full.pivot(index="date", columns="code", values="tradestatus").sort_index()
-    tst = tst.loc[cfg.strategy.start :]
+    tst = tst.loc[cfg.r5.start :]
 
     sb = stock_basic().set_index("code")
     ipo = sb["ipoDate"].astype(str).str.strip()
@@ -383,7 +383,7 @@ def main() -> None:
     print(f"  ① B-A 年化超额: {exc:+.1%} (>=3pp: {exc >= 0.03})")
     print(f"  ② 回撤降幅: {dd_imp:+.1%} (>=10pp: {dd_imp >= 0.10})")
     # 分年代
-    eras = _cfg().strategy.eras.to_dict()
+    eras = _cfg().r5.eras.to_dict()
     stable = 0
     for name, (s, e) in eras.items():
         a = navB[s:e] / navB[s:e].dropna().iloc[0]
