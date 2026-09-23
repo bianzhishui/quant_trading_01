@@ -52,6 +52,13 @@ FROZEN_PARAMS = [
     ("costs", "div_tax", "红利税率"),
     ("costs", "slip_bounds", "流动性滑点分档边界"),
     ("costs", "slip_tiers", "流动性滑点档位表"),
+    ("p3", "price_lo", "P3 真实价下限"),
+    ("p3", "price_hi", "P3 真实价上限"),
+    ("p3", "n_years", "P3 扣非为正年限"),
+    ("p3", "debt_max", "P3 资产负债率上限"),
+    ("p3", "liq_min", "P3 近20日均成交额下限"),
+    ("p3", "seasoning", "P3 上市天数下限"),
+    ("p3", "disclose_lag", "P3 年报披露滞后"),
 ]
 
 

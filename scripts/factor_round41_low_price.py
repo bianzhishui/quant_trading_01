@@ -34,11 +34,7 @@ from quant_trading_01.dividend_factor import month_last_days, metrics
 
 # ---- 冻结(预注册)参数 ----
 LOW_PRICE = 5.0
-SEASONING = 375
-LIQ_MIN = 5_000_000.0  # 20日均成交额下限
-DEBT_MAX = 0.70
 DIV_YEARS = 3
-DISCLOSE_LAG = 120  # 年报披露滞后(天), 防前视
 COST_BASE = 0.0015
 COST_HIGH = 0.0045
 
@@ -104,7 +100,7 @@ def load_data() -> dict:
     fq = pd.read_parquet(cfg.paths.round2 + "/financial_quality.parquet")
     fq["report_date"] = pd.to_datetime(fq["report_date"])
     ann = fq[(fq["report_date"].dt.month == 12)].sort_values("report_date")
-    ann["visible"] = ann["report_date"] + pd.Timedelta(days=DISCLOSE_LAG)
+    ann["visible"] = ann["report_date"] + pd.Timedelta(days=_cfg().p3.disclose_lag)
     ded = ann.pivot_table(
         index="report_date", columns="code", values="deducted_profit"
     ).reindex(columns=close.columns)
@@ -201,7 +197,9 @@ def build_sets(
     rec = []
     for T in sig_days:
         exec_day = idx[idx.get_loc(T) + 1]
-        age_ok = ((pd.Timestamp(T) - ipo_date).dt.days >= SEASONING).astype(bool)
+        age_ok = ((pd.Timestamp(T) - ipo_date).dt.days >= _cfg().p3.seasoning).astype(
+            bool
+        )
         tst_ok = tst.loc[T].astype(str) == "1"
         board = pd.Series(data["board_ok"])
         real_T = real.loc[T]
@@ -221,7 +219,9 @@ def build_sets(
         # B: 质量筛选
         B_set = set()
         if elig_codes:
-            visible = ded.index[ded.index + pd.Timedelta(days=DISCLOSE_LAG) <= T]
+            visible = ded.index[
+                ded.index + pd.Timedelta(days=_cfg().p3.disclose_lag) <= T
+            ]
             if len(visible):
                 last_n = visible[-n_years:]  # 最近 n 个已披露年报
                 d_ok = (ded.loc[last_n, elig_codes] > 0).all(axis=0)  # n 年均正
@@ -241,8 +241,8 @@ def build_sets(
                 )
                 qual = (
                     d_ok.fillna(False)
-                    & (debt_v.fillna(1.0) < DEBT_MAX)
-                    & (amt20.fillna(0) >= LIQ_MIN)
+                    & (debt_v.fillna(1.0) < _cfg().p3.debt_max)
+                    & (amt20.fillna(0) >= _cfg().p3.liq_min)
                     & has_div
                 )
                 # R46 扩展条件

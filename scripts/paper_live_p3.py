@@ -45,9 +45,6 @@ from scripts.factor_round41_low_price import (  # noqa: E402
     load_data as load_data_p3,
 )
 
-AUM_LIST = [30000, 100000, 200000, 300000, 600000, 1000000, 3000000, 6000000]
-PRICE = (3.0, 4.0)
-N_YEARS = 3
 
 _CORE = None
 _CORE_KEY = None
@@ -71,11 +68,17 @@ def ledger_path(aum: float) -> Path:
 
 
 def monthly_funds_path(aum: float) -> Path:
-    return Path(_cfg().paths.output) / "p3" / f"monthly_funds_p3_aum{int(aum / 1e4)}w.csv"
+    return (
+        Path(_cfg().paths.output) / "p3" / f"monthly_funds_p3_aum{int(aum / 1e4)}w.csv"
+    )
 
 
 def holdings_path(aum: float) -> Path:
-    return Path(_cfg().paths.output) / "p3" / f"monthly_holdings_p3_aum{int(aum / 1e4)}w.csv"
+    return (
+        Path(_cfg().paths.output)
+        / "p3"
+        / f"monthly_holdings_p3_aum{int(aum / 1e4)}w.csv"
+    )
 
 
 FUNDS_COLS = [
@@ -184,7 +187,12 @@ def _load_all_p3():
     tst = data["tst"]  # tradestatus('1'=正常); data 键序 isst 在 tst 前, 按键取防错位
     isst = data["isst"]
     raw = data["real"]
-    A, B, C, _, _ = build_sets(data, None, sub_price=PRICE, n_years=N_YEARS)
+    A, B, C, _, _ = build_sets(
+        data,
+        None,
+        sub_price=(_cfg().p3.price_lo, _cfg().p3.price_hi),
+        n_years=_cfg().p3.n_years,
+    )
     idx = close.index
     sig = [
         t
@@ -431,7 +439,7 @@ def main():
     ap.add_argument("--slip-by-amount", action="store_true")
     args = ap.parse_args()
     load_config(args.config)
-    aums = [args.aum] if args.aum else AUM_LIST
+    aums = [args.aum] if args.aum else list(_cfg().p3.aum_list)
     for a in aums:
         t0 = time.time()
         if args.cmd == "init":

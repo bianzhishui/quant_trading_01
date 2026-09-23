@@ -63,6 +63,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 |---|---|---|
 | `scripts/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号；`--slip` 默认 15bp（Round 33 三口径统一，0 回退纯因子口径） | 单个 share 级回放 ~8-15 分钟 |
 | `scripts/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
+| `scripts/paper_live_p3.py` | **P3 模拟盘八账户**（3万~600万）：`init`/`step`/`mark`/`report`；策略参数与账户列表读 `config/default.yaml` 的 `p3` 段（冻结）；账本 `output/p3/` | mark 50 只 ~2 分钟/账户 |
 | `scripts/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
 | `scripts/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
 | `scripts/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
@@ -143,6 +144,15 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   ③ 月涨幅连乘=累计。
 - **"今日涨幅"以数据源最新 K 线为准**，不是系统日历——先 `date` 确认今天，再查
   `full_daily.parquet` 最大日期，数据没出就等数据出了再 mark。
+
+### P3 模拟盘运营（低价股，八账户，2026-09-01 建仓）
+
+- 策略 **P3** = 真实价 3.0-4.0 元 + 近 3 年扣非为正 + 负债率<70% + 流动性 + 分红 + 等权月频
+  （Round 41-47 预注册定稿，参数冻结在 `config/default.yaml` 的 `p3` 段，**改动须预注册**）；
+  账本 `output/p3/ledger_p3_aum{3w..600w}.json`，每日/月度 CSV 同目录（不入库）。
+- 账户：`3万/10万/20万/30万/60万/100万/300万/600万`（`p3.aum_list`，小账户 1 手约束天然退化）。
+- 每日：`python scripts/paper_live_p3.py mark`（8 账户净值）；每月：`... step`（月调仓）；`... report`。
+- 对账不变量同 R5：期末净值=现金+持仓；期末≈期初−费用；月涨幅连乘=累计。
 
 ---
 
