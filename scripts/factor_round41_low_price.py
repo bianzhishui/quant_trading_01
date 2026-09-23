@@ -163,12 +163,14 @@ def build_sets(
     limit: int | None = None,
     sub_price: tuple | None = None,
     n_years: int = 1,
+    freq: int = 1,
 ) -> tuple[dict, dict, dict, list, dict]:
     """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。
 
     n_years: 扣非条件 = 最近 n 个已披露年报均为正(默认 1 = 原口径最近年报;
              严格 3 年 = plan 文字语义)。历史归档(R41/42/43)为 n_years=1,
              较 plan 文字(3年)宽松 —— 已在 R44 复核。
+    freq: 重选频率(月数), 默认 1 = 每月; 12/36/60 = 年/3年/5年持有(R45)。
     """
     close, real = data["close"], data["real"]
     amount, isst, tst = data["amount"], data["isst"], data["tst"]
@@ -182,6 +184,8 @@ def build_sets(
     ]
     if limit:
         sig_days = sig_days[:limit]
+    if freq > 1:  # R45: 每 freq 个月重选一次
+        sig_days = sig_days[::freq]
 
     A, B, C = {}, {}, {}
     rec = []
