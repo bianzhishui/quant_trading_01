@@ -159,9 +159,17 @@ def ret_matrix(close: pd.DataFrame, out_date: pd.Series, mode: str) -> pd.DataFr
 
 
 def build_sets(
-    data: dict, limit: int | None = None, sub_price: tuple | None = None
+    data: dict,
+    limit: int | None = None,
+    sub_price: tuple | None = None,
+    n_years: int = 1,
 ) -> tuple[dict, dict, dict, list, dict]:
-    """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。"""
+    """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。
+
+    n_years: 扣非条件 = 最近 n 个已披露年报均为正(默认 1 = 原口径最近年报;
+             严格 3 年 = plan 文字语义)。历史归档(R41/42/43)为 n_years=1,
+             较 plan 文字(3年)宽松 —— 已在 R44 复核。
+    """
     close, real = data["close"], data["real"]
     amount, isst, tst = data["amount"], data["isst"], data["tst"]
     ded, debt = data["ded"], data["debt"]
@@ -201,9 +209,9 @@ def build_sets(
         if elig_codes:
             visible = ded.index[ded.index + pd.Timedelta(days=DISCLOSE_LAG) <= T]
             if len(visible):
-                v = visible[-1]
-                d3 = ded.loc[v, elig_codes]
-                debt_v = debt.loc[v, elig_codes]
+                last_n = visible[-n_years:]  # 最近 n 个已披露年报
+                d_ok = (ded.loc[last_n, elig_codes] > 0).all(axis=0)  # n 年均正
+                debt_v = debt.loc[visible[-1], elig_codes]
                 amt20 = amount.loc[T - pd.Timedelta(days=40) : T, elig_codes].mean()
                 # 近3年分红(除权日 <= T)
                 dv = data["dv"]
@@ -218,7 +226,7 @@ def build_sets(
                     }
                 )
                 qual = (
-                    (d3.fillna(-1) > 0)
+                    d_ok.fillna(False)
                     & (debt_v.fillna(1.0) < DEBT_MAX)
                     & (amt20.fillna(0) >= LIQ_MIN)
                     & has_div
