@@ -41,18 +41,18 @@
 
 <table>
   <tr>
-    <td align="center"><b>60万账户</b><br><img src="output/daily_nav_aum60w.png" width="100%"></td>
-    <td align="center"><b>100万账户</b><br><img src="output/daily_nav_aum100w.png" width="100%"></td>
+    <td align="center"><b>60万账户</b><br><img src="output/r5/daily_nav_aum60w.png" width="100%"></td>
+    <td align="center"><b>100万账户</b><br><img src="output/r5/daily_nav_aum100w.png" width="100%"></td>
   </tr>
   <tr>
-    <td align="center"><b>300万账户</b><br><img src="output/daily_nav_aum300w.png" width="100%"></td>
-    <td align="center"><b>600万账户</b><br><img src="output/daily_nav_aum600w.png" width="100%"></td>
+    <td align="center"><b>300万账户</b><br><img src="output/r5/daily_nav_aum300w.png" width="100%"></td>
+    <td align="center"><b>600万账户</b><br><img src="output/r5/daily_nav_aum600w.png" width="100%"></td>
   </tr>
 </table>
 
 **累计净值（建仓日=1.0）+ 每日涨幅% —— 四账户合并双面板**：
 
-<img src="output/daily_gains_live.png" width="100%">
+<img src="output/r5/daily_gains_live.png" width="100%">
 
 ## 快速开始
 

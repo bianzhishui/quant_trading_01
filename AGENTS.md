@@ -35,11 +35,14 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
   全历史质量财务：扣非净利润/每股经营现金流/ROE/资产负债率，akshare 同花顺，含退市股）、
   `data/round2/dividends.parquet`（全市场在市全历史分红，东财；退市股分红接口不可得如实记录）；
   详见 `docs/data_backfill_low_price_report.md`。
-- 输出：`output/`（账本 JSON、每日/月度 CSV、图）。**`output/*.csv` 与 `output/*.png` 被 gitignore**，
-  不入库；**例外：当前四账户运营产物全部入库跟踪**——5 张每日图（`daily_nav_aum*.png` ×4 +
-  `daily_gains_live.png` ×1，`daily_update.py --chart` 刷新，README 靠上位置引用）+ 12 个运营 CSV
-  （`daily_nav_aum*.csv` 每日净值 / `monthly_funds_aum*.csv` 月度资金 / `monthly_holdings_aum*.csv`
-  月度持仓快照）；`output/ledger_aum*.json` 已跟踪。
+- 输出：`output/`（账本 JSON、每日/月度 CSV、图）。**运营产物按策略分子目录**：
+  `output/r5/`（R5 四账户 + 年度场景/全量回测图）与 `output/p3/`（P3 八账户，2026-09 起运营）。
+  `output/*.csv` 与 `output/*.png` 被 gitignore 不入库；**例外（入库跟踪）**：
+  `output/r5/` 下 R5 运营产物——5 张每日图（`daily_nav_aum*.png` ×4 + `daily_gains_live.png` ×1，
+  `daily_update.py --chart` 刷新，README 靠上位置引用）+ 12 个运营 CSV（`daily_nav_aum*.csv`
+  每日净值 / `monthly_funds_aum*.csv` 月度资金 / `monthly_holdings_aum*.csv` 月度持仓快照）+
+  年度场景 CSV/图 + `ledger_aum*.json` 账本；`output/p3/ledger_p3_aum*.json` 账本也入库，
+  P3 每日/月度 CSV 不入库。
 
 ---
 
@@ -125,14 +128,14 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 
 ## 6. 模拟盘运营（四账户）
 
-- 账户：`60万/100万/300万/600万`，账本 `output/ledger_aum{60w,100w,300w,600w}.json`。
+- 账户：`60万/100万/300万/600万`，账本 `output/r5/ledger_aum{60w,100w,300w,600w}.json`。
 - **建仓 2026-09-01（信号 2026-08-31）**。注意：**生产账户跑的是"三因子 575 等权"**
   （Round 38 权重 Amihud 0.40/动量 0.10/F4 0.50，2026-09-18 落地重建账本），
   小账户因 1手 约束天然退化（60万 只持有 307 只、58% 现金）——**这是现状，不是 bug**。
 - 每日：**一键 `python scripts/daily_update.py`**（自动判断最新交易日 → 缺则补当日
   行情 → 四账户 mark → 输出"账户/本金/最新NAV/当日涨幅/盈亏(元)/盈亏率/建仓日NAV"总表；
   数据源未发布当天会自动探测跳过并以最新已有数据为准；`--table` 只读表不重跑；
-  `--chart` mark 后自动出建仓以来每日图（NAV 单图 `daily_nav_aum{tag}.png` ×4 + 双面板 `daily_gains_live.png`）；
+  `--chart` mark 后自动出建仓以来每日图（NAV 单图 `daily_nav_aum{tag}.png` ×4 + 双面板 `daily_gains_live.png`，均在 `output/r5/`）；
   单独出图可跑 `plot_daily_gains.py --live`）。
   手动分解：`fetch_daily_incremental.py <日期>` → 四账户各跑一次 `paper_live.py mark --aum NNNN`。
 - 每月：`paper_live.py step`（自动推进四账户调仓）+ `report`。

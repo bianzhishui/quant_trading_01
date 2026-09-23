@@ -35,7 +35,7 @@ WD = "一二三四五六日"
 
 
 def _out_dir() -> Path:
-    return Path(get_config().paths.output)
+    return Path(get_config().paths.output) / "r5"
 
 
 def _aum_list() -> list[tuple[int, str]]:

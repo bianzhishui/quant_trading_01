@@ -13,23 +13,26 @@ output/*.csv
 data/fundamental/*
 !data/fundamental/stock_basic.parquet
 
-# 运营每日图(5张, daily_update.py --chart 刷新)入库跟踪: 每账户NAV单图×4 + 累计净值/涨幅%双面板×1
-!output/daily_nav_aum*.png
-!output/daily_gains_live.png
+# 运营产物按策略分子目录: output/r5/ (R5四账户+场景) / output/p3/ (P3八账户)
+output/r5/*
+output/p3/*
 
-# 运营数据入库跟踪(当前四账户, 无年份前缀): 每日净值/月度资金/月度持仓快照
-!output/daily_nav_aum*.csv
-!output/monthly_funds_aum*.csv
-!output/monthly_holdings_aum*.csv
-
-# 年度场景回放入库跟踪(0.85口径, scenario_ytd.py 产出)
-!output/daily_nav_202*_aum*.csv
-!output/monthly_funds_202*_aum*.csv
-!output/daily_gains_202*.png
-
-# 全量回测窗口(2015-01 起, 11.7年)图入库跟踪(Round33 新口径, plot_daily_gains.py 产出)
-!output/daily_nav_20150101_aum*.png
-!output/daily_gains_20150101.png
+# R5 运营入库跟踪: 每日图(NAV单图×4 + 累计净值/涨幅%双面板×1)
+!output/r5/daily_nav_aum*.png
+!output/r5/daily_gains_live.png
+# R5 运营数据入库跟踪: 每日净值/月度资金/月度持仓快照
+!output/r5/daily_nav_aum*.csv
+!output/r5/monthly_funds_aum*.csv
+!output/r5/monthly_holdings_aum*.csv
+# R5 年度场景回放入库跟踪(0.85口径, scenario_ytd.py 产出)
+!output/r5/daily_nav_202*_aum*.csv
+!output/r5/monthly_funds_202*_aum*.csv
+!output/r5/daily_gains_202*.png
+# R5 全量回测窗口图入库跟踪(Round33 新口径, plot_daily_gains.py 产出)
+!output/r5/daily_nav_20150101_aum*.png
+!output/r5/daily_gains_20150101.png
+# P3 账本入库跟踪(八账户); P3 每日/月度 CSV 不入库(同 output/*.csv 策略)
+!output/p3/ledger_p3_aum*.json
 
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet

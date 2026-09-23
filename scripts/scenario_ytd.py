@@ -40,7 +40,7 @@ def run_scenario(
     """
     aum_list = get_config().accounts.aum_list
     start_ts = pd.Timestamp(start)
-    out = Path(get_config().paths.output)
+    out = Path(get_config().paths.output) / "r5"
     end_ts = pd.Timestamp(end) if end else None
 
     close, amount, tst, isst, ind = _load()
