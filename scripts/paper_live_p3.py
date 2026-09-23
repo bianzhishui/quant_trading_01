@@ -418,6 +418,35 @@ def report(aum: float):
     print(
         f"  累计费用 {led['total_fees'] / 1e4:.2f}万 | 累计分红(税后) {led['div_credited'] / 1e4:.2f}万"
     )
+    # 阻塞记录(涨停买不进/跌停卖不出)
+    lb = led.get("last_blocked")
+    if lb:
+        for blk in lb if isinstance(lb, list) else [lb]:
+            amt_b = sum(b["amount"] for b in blk["buy"])
+            codes_b = ", ".join(b["code"] for b in blk["buy"][:6])
+            if len(blk["buy"]) > 6:
+                codes_b += f" 等 {len(blk['buy'])} 只"
+            print(
+                f"  阻塞({blk['date']}): 涨停买不进 {len(blk['buy'])} 只"
+                f"(滞留 {amt_b / 1e4:.1f}万: {codes_b}) | 跌停卖不出 {len(blk['sell'])} 只"
+            )
+    # 近 6 次 NAV
+    for i in range(max(0, len(h) - 6), len(h)):
+        x = h[i]
+        print(f"    {x['date']}: NAV {x['nav'] / 1e4:.1f}万 | 基准 {x['bench']:.3f}")
+    # 月度资金变动(近 6 次调仓)
+    mp = monthly_funds_path(aum)
+    if mp.exists():
+        mf = pd.read_csv(mp)
+        print("  月度资金变动(近6次调仓, 单位: 万元):")
+        for _, r in mf.tail(6).iterrows():
+            m = r["月涨幅%"]
+            m_s = f"{m:+.2f}%" if pd.notna(m) else "建仓"
+            print(
+                f"    {r['date']}: 买 {r['买入额'] / 1e4:.1f} / 卖 {r['卖出额'] / 1e4:.1f} "
+                f"| 换手 {r['换手率%']:.1f}% | 费 {r['费用']:.0f}元 | 月涨 {m_s} "
+                f"| 较本金 {r['较本金盈亏'] / 1e4:+.1f}万 | NAV {r['post_nav'] / 1e4:.1f}万"
+            )
 
 
 def main():
