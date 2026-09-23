@@ -34,7 +34,6 @@ from quant_trading_01.dividend_factor import month_last_days, metrics
 
 # ---- 冻结(预注册)参数 ----
 LOW_PRICE = 5.0
-DIV_YEARS = 3
 COST_BASE = 0.0015
 COST_HIGH = 0.0045
 
@@ -111,7 +110,7 @@ def load_data() -> dict:
         columns=close.columns
     )
 
-    # 分红: T 前 DIV_YEARS 年有记录
+    # 分红: T 前有记录(历史任意时点)
     dv = pd.read_parquet(cfg.paths.round2 + "/dividends.parquet")
     dv["date"] = pd.to_datetime(dv["date"])
     div_code = set(dv["code"])
@@ -205,8 +204,10 @@ def build_sets(
         real_T = real.loc[T]
         # 低价(主口径或子区间)
         if sub_price:
-            lo, hi = sub_price
-            price_ok = real_T.between(lo, hi, inclusive="left") & (real_T <= 5.0)
+            lo, hi = (
+                sub_price  # 区间由调用方决定(如 P3 读配置 price_lo/hi), 无 5 元暗截断
+            )
+            price_ok = real_T.between(lo, hi, inclusive="left")
         else:
             price_ok = real_T <= LOW_PRICE
         not_st = isst.loc[T].astype(str) != "1"

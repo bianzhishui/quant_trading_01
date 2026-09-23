@@ -72,11 +72,7 @@ def monthly_funds_path(aum: float) -> Path:
 
 
 def holdings_path(aum: float) -> Path:
-    return (
-        Path(_cfg().paths.output)
-        / "p3"
-        / f"monthly_holdings_p3_aum{int(aum / 1e4)}w.csv"
-    )
+    return Path(_cfg().p3.out_dir) / f"monthly_holdings_p3_aum{int(aum / 1e4)}w.csv"
 
 
 FUNDS_COLS = [
@@ -192,11 +188,7 @@ def _load_all_p3():
         n_years=_cfg().p3.n_years,
     )
     idx = close.index
-    sig = [
-        t
-        for t in month_last_days(idx)
-        if idx.get_loc(t) + 1 < len(idx) and t >= pd.Timestamp("2014-01-01")
-    ]
+    sig = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
     rebs = []
     for T in sig:
         ex = idx[idx.get_loc(T) + 1]
