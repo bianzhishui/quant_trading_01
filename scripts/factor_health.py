@@ -41,7 +41,7 @@ from quant_trading_01.reversal_factor import build_pool  # noqa: E402
 
 
 def _out() -> Path:
-    return Path(get_config().paths.output)
+    return Path(get_config().r5.out_dir)
 
 
 def _baseline_start() -> pd.Timestamp:

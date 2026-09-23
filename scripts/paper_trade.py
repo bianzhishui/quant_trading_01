@@ -492,7 +492,7 @@ def init_portfolio(aum: float, slip: float = 0.0, slip_by_amount: bool = False):
     if aum < 200_000:
         print("  ⚠️ 10万级资金: 1手约束下多数标的一手都买不起 → 不可行(如预期)")
     df = pd.DataFrame(pf.trades).sort_values("amount", ascending=False)
-    path = Path(_cfg().paths.output) / f"paper_init_aum{aum / 1e4:.0f}w.csv"
+    path = Path(_cfg().r5.out_dir) / f"paper_init_aum{aum / 1e4:.0f}w.csv"
     df.to_csv(path, index=False)
     print(f"  建仓明细: {path.name}  | 头部5笔:\n{df.head(5).to_string()}")
     return pf
