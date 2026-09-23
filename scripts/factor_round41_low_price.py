@@ -105,10 +105,13 @@ def load_data() -> dict:
     fq["report_date"] = pd.to_datetime(fq["report_date"])
     ann = fq[(fq["report_date"].dt.month == 12)].sort_values("report_date")
     ann["visible"] = ann["report_date"] + pd.Timedelta(days=DISCLOSE_LAG)
-    ded = ann.pivot_table(index="report_date", columns="code", values="deducted_profit").reindex(
-        columns=close.columns
-    )
-    debt = ann.pivot_table(index="report_date", columns="code", values="debt_ratio").reindex(
+    ded = ann.pivot_table(
+        index="report_date", columns="code", values="deducted_profit"
+    ).reindex(columns=close.columns)
+    debt = ann.pivot_table(
+        index="report_date", columns="code", values="debt_ratio"
+    ).reindex(columns=close.columns)
+    roe = ann.pivot_table(index="report_date", columns="code", values="roe").reindex(
         columns=close.columns
     )
 
@@ -129,6 +132,7 @@ def load_data() -> dict:
         "board_ok": board_ok,
         "ded": ded,
         "debt": debt,
+        "roe": roe,
         "div_code": div_code,
         "dv": dv,
     }
@@ -164,6 +168,10 @@ def build_sets(
     sub_price: tuple | None = None,
     n_years: int = 1,
     freq: int = 1,
+    roe_min: float | None = None,
+    dy_min: float | None = None,
+    mom_drop: float | None = None,
+    top_n: int | None = None,
 ) -> tuple[dict, dict, dict, list, dict]:
     """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。
 
@@ -171,16 +179,18 @@ def build_sets(
              严格 3 年 = plan 文字语义)。历史归档(R41/42/43)为 n_years=1,
              较 plan 文字(3年)宽松 —— 已在 R44 复核。
     freq: 重选频率(月数), 默认 1 = 每月; 12/36/60 = 年/3年/5年持有(R45)。
+    roe_min/dy_min/mom_drop/top_n: R46 收益更大化探索参数(默认 None = 不启用)。
     """
     close, real = data["close"], data["real"]
     amount, isst, tst = data["amount"], data["isst"], data["tst"]
-    ded, debt = data["ded"], data["debt"]
+    ded, debt, roe = data["ded"], data["debt"], data["roe"]
     ipo_date = data["ipo_date"]
     idx = close.index
     sig_days = [
         t
         for t in month_last_days(idx)
-        if idx.get_loc(t) + 1 < len(idx) and t >= pd.Timestamp("2014-01-01")  # 回测窗口(plan)
+        if idx.get_loc(t) + 1 < len(idx)
+        and t >= pd.Timestamp("2014-01-01")  # 回测窗口(plan)
     ]
     if limit:
         sig_days = sig_days[:limit]
@@ -235,7 +245,38 @@ def build_sets(
                     & (amt20.fillna(0) >= LIQ_MIN)
                     & has_div
                 )
+                # R46 扩展条件
+                if roe_min is not None:
+                    roe_v = roe.loc[visible[-1], elig_codes]
+                    qual = qual & (roe_v.fillna(-1) > roe_min)
+                if dy_min is not None:
+                    dy = pd.Series(
+                        {
+                            c: (
+                                dv[(dv["code"] == c) & (dv["date"] <= T)][
+                                    "cashBeforeTax"
+                                ].sum()
+                                / real_T[c]
+                                if real_T[c] and real_T[c] > 0
+                                else 0.0
+                            )
+                            for c in elig_codes
+                        }
+                    )
+                    qual = qual & (dy >= dy_min)
+                if mom_drop is not None:
+                    iloc = close.index.get_loc(T)
+                    if iloc >= 126:
+                        mom6 = (
+                            close.loc[T, elig_codes]
+                            / close.iloc[iloc - 126][elig_codes].reindex(elig_codes)
+                            - 1.0
+                        )
+                        qual = qual & (mom6.fillna(1.0) > -mom_drop)
                 B_set = set(qual[qual].index)
+                if top_n and len(B_set) > top_n:
+                    ded_amt = ded.loc[visible[-1], list(B_set)]
+                    B_set = set(ded_amt.nlargest(top_n).index)
         B[exec_day] = B_set
         # C: 全市场(在市)等权基准
         c_ok = (tst_ok & board & close.loc[T].notna()).astype(bool)
