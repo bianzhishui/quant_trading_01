@@ -357,6 +357,36 @@
             "cwd": "${workspaceFolder}",
             "args": ["--strat", "p3", "--aum", "3000000"]
         },
+        {
+            "name": "[R5] 持仓明细 全部4账户",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "r5", "--all"]
+        },
+        {
+            "name": "[P3] 持仓明细 全部8账户",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--all"]
+        },
+        {
+            "name": "[数据] 持仓明细 全部12账户",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "both", "--all"]
+        },
         // ===== 数据更新（fetch）=====
         {
             "name": "[数据] 全市场更新",

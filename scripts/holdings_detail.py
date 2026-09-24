@@ -23,7 +23,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from quant_trading_01.config import load_config  # noqa: E402
+from quant_trading_01.config import get_config, load_config  # noqa: E402
 from quant_trading_01.data_io import stock_basic  # noqa: E402
 
 
@@ -107,46 +107,73 @@ def print_table(aum: float, df: pd.DataFrame, strat: str):
         )
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="持仓明细(成本/现价/涨幅/盈亏)")
-    ap.add_argument("--strat", required=True, choices=["r5", "p3"])
-    ap.add_argument("--aum", type=float, required=True, help="如 600000")
-    ap.add_argument("--config", default=None)
-    args = ap.parse_args()
-    load_config(args.config)
+COL_MAP = {
+    "code": "code(代码)",
+    "name": "name(名称)",
+    "shares": "shares(股数)",
+    "cost_px": "cost_px(成本价)",
+    "px": "px(现价)",
+    "mkt_val": "mkt_val(市值元)",
+    "ret_today": "ret_today(当日涨幅)",
+    "pnl": "pnl(盈亏元)",
+    "pnl_pct": "pnl_pct(盈亏率)",
+    "weight": "weight(权重)",
+}
 
-    real, close, ret_d = load_prices()
-    names = dict(zip(stock_basic()["code"], stock_basic()["code_name"]))
-    led_path = (
-        Path(f"output/{args.strat}/ledger_p3_aum{int(args.aum / 1e4)}w.json")
-        if args.strat == "p3"
-        else Path(f"output/{args.strat}/ledger_aum{int(args.aum / 1e4)}w.json")
+
+def _ledger_path(strat: str, aum: float) -> Path:
+    return (
+        Path(f"output/{strat}/ledger_p3_aum{int(aum / 1e4)}w.json")
+        if strat == "p3"
+        else Path(f"output/{strat}/ledger_aum{int(aum / 1e4)}w.json")
     )
+
+
+def run_one(aum: float, strat: str, real, close, ret_d, names) -> None:
+    led_path = _ledger_path(strat, aum)
     if not led_path.exists():
         print(f"账本不存在: {led_path}")
         return
     led = json.loads(led_path.read_text())
     df = compute_detail(led, real, close, ret_d, names)
-    print_table(args.aum, df, args.strat)
-    # CSV
+    print_table(aum, df, strat)
     csv = (
-        Path(f"output/{args.strat}")
-        / f"holdings_detail_{str(close.index[-1].date())}.csv"
+        Path(f"output/{strat}")
+        / f"holdings_detail_{strat}_{int(aum / 1e4)}w_{str(close.index[-1].date())}.csv"
     )
-    col_map = {
-        "code": "code(代码)",
-        "name": "name(名称)",
-        "shares": "shares(股数)",
-        "cost_px": "cost_px(成本价)",
-        "px": "px(现价)",
-        "mkt_val": "mkt_val(市值元)",
-        "ret_today": "ret_today(当日涨幅)",
-        "pnl": "pnl(盈亏元)",
-        "pnl_pct": "pnl_pct(盈亏率)",
-        "weight": "weight(权重)",
-    }
-    df.round(2).rename(columns=col_map).to_csv(csv, index=False)
-    print(f"\n已导出: {csv}")
+    df.round(2).rename(columns=COL_MAP).to_csv(csv, index=False)
+    print(f"已导出: {csv}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="持仓明细(成本/现价/涨幅/盈亏)")
+    ap.add_argument("--strat", required=True, choices=["r5", "p3", "both"])
+    ap.add_argument("--aum", type=float, default=None, help="单账户, 如 600000")
+    ap.add_argument(
+        "--all", action="store_true", help="跑该策略全部账户(数据只加载一次)"
+    )
+    ap.add_argument("--config", default=None)
+    args = ap.parse_args()
+    load_config(args.config)
+
+    # 确定账户清单
+    cfg = get_config()
+    if args.aum:
+        aums = [(args.strat, args.aum)]
+    elif args.all or args.strat == "both":
+        aums = []
+        for st in [args.strat] if args.strat != "both" else ["r5", "p3"]:
+            lst = cfg.r5.aum_list if st == "r5" else cfg.p3.aum_list
+            aums.extend((st, a) for a in lst)
+    else:
+        print("需指定 --aum <金额> 或 --all(全部账户)")
+        return
+
+    print(f"加载全市场数据(1次, 供 {len(aums)} 个账户)...", flush=True)
+    real, close, ret_d = load_prices()
+    names = dict(zip(stock_basic()["code"], stock_basic()["code_name"]))
+    for strat, aum in aums:
+        run_one(aum, strat, real, close, ret_d, names)
 
 
 if __name__ == "__main__":
