@@ -31,8 +31,9 @@ output/p3/*
 # R5 全量回测窗口图入库跟踪(Round33 新口径, plot_daily_gains.py 产出)
 !output/r5/daily_nav_20150101_aum*.png
 !output/r5/daily_gains_20150101.png
-# P3 账本入库跟踪(八账户); P3 每日/月度 CSV 不入库(同 output/*.csv 策略)
+# P3 入库跟踪: 账本 + 每日图(daily_nav_p3.png/daily_gains_p3.png); 每日/月度 CSV 不入库
 !output/p3/ledger_p3_aum*.json
+!output/p3/*.png
 
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
