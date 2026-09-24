@@ -133,7 +133,19 @@ def main() -> None:
         Path(f"output/{args.strat}")
         / f"holdings_detail_{str(close.index[-1].date())}.csv"
     )
-    df.round(2).to_csv(csv, index=False)
+    col_map = {
+        "code": "code(代码)",
+        "name": "name(名称)",
+        "shares": "shares(股数)",
+        "cost_px": "cost_px(成本价)",
+        "px": "px(现价)",
+        "mkt_val": "mkt_val(市值元)",
+        "ret_today": "ret_today(当日涨幅)",
+        "pnl": "pnl(盈亏元)",
+        "pnl_pct": "pnl_pct(盈亏率)",
+        "weight": "weight(权重)",
+    }
+    df.round(2).rename(columns=col_map).to_csv(csv, index=False)
     print(f"\n已导出: {csv}")
 
 
