@@ -289,6 +289,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     _seed_build_row(aum)
     prev_post = led["nav_history"][-1]["nav"]
     step_fees = 0.0
+    blocked_this_step: list[dict] = []
     for rb in todo:
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
         pre_nav = pf.value(raw.loc[rb["exec"]])
@@ -300,6 +301,14 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
             rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
         )
         post_nav = pf.value(raw.loc[rb["exec"]])
+        if pf.blocked_buys or pf.blocked_sells:
+            blocked_this_step.append(
+                {
+                    "date": str(rb["exec"].date()),
+                    "buy": [{"code": c, "amount": a} for c, a in pf.blocked_buys],
+                    "sell": [{"code": c, "value": v} for c, v in pf.blocked_sells],
+                }
+            )
         buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
         sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
         fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
@@ -341,6 +350,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     led["cash"] = pf.cash
     led["div_credited"] = pf.div_cash
     led["total_fees"] = round(led["total_fees"] + step_fees, 2)
+    led["last_blocked"] = blocked_this_step or None
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
     prices = raw.loc[led["last_exec"]]
     _append_holdings_snapshot(aum, led["last_exec"], pf, prices)
