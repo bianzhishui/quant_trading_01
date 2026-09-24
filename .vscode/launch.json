@@ -178,6 +178,16 @@
             "cwd": "${workspaceFolder}",
             "args": ["--prefix", "20260101", "--title", "2026全年"]
         },
+        {
+            "name": "P3 一键运营 daily_update_p3",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/p3/daily_update_p3.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--chart"]
+        },
         // ===== P3 模拟盘八账户（paper_live_p3）=====
         {
             "name": "P3 每日涨幅 mark (8账户)",

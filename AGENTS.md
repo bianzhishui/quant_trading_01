@@ -151,7 +151,9 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   （Round 41-47 预注册定稿，参数冻结在 `config/default.yaml` 的 `p3` 段，**改动须预注册**）；
   账本 `output/p3/ledger_p3_aum{3w..600w}.json`，每日/月度 CSV 同目录（不入库）。
 - 账户：`3万/10万/20万/30万/60万/100万/300万/600万`（`p3.aum_list`，小账户 1 手约束天然退化）。
-- 每日：`python scripts/p3/paper_live_p3.py mark`（8 账户净值）；每月：`... step`（月调仓）；`... report`。
+- 每日：**一键 `python scripts/p3/daily_update_p3.py`**（自动补行情 → 八账户 mark →
+  总表；`--chart` 出图；`--table` 只读总表）——分解：`python scripts/p3/paper_live_p3.py mark`；
+  每月：`python scripts/p3/paper_live_p3.py step`；报告：`... report`。
 - 对账不变量同 R5：期末净值=现金+持仓；期末≈期初−费用；月涨幅连乘=累计。
 
 ---
