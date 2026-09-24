@@ -257,6 +257,106 @@
             "cwd": "${workspaceFolder}",
             "args": ["--strat", "p3", "--aum", "6000000"]
         },
+        {
+            "name": "[R5] 持仓明细 100w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "r5", "--aum", "1000000"]
+        },
+        {
+            "name": "[R5] 持仓明细 300w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "r5", "--aum", "3000000"]
+        },
+        {
+            "name": "[R5] 持仓明细 600w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "r5", "--aum", "6000000"]
+        },
+        {
+            "name": "[P3] 持仓明细 3w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "30000"]
+        },
+        {
+            "name": "[P3] 持仓明细 10w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "100000"]
+        },
+        {
+            "name": "[P3] 持仓明细 20w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "200000"]
+        },
+        {
+            "name": "[P3] 持仓明细 30w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "300000"]
+        },
+        {
+            "name": "[P3] 持仓明细 60w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "600000"]
+        },
+        {
+            "name": "[P3] 持仓明细 100w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "1000000"]
+        },
+        {
+            "name": "[P3] 持仓明细 300w",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "3000000"]
+        },
         // ===== 数据更新（fetch）=====
         {
             "name": "[数据] 全市场更新",
