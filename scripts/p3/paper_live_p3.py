@@ -40,6 +40,7 @@ from scripts.r5.paper_live import (  # noqa: E402
     _bench_levels,
     _factor_panel_cached,
     _live_factors,
+    eval_prices,
 )
 from scripts.factor_round41_low_price import (  # noqa: E402
     build_sets,
@@ -211,7 +212,7 @@ def init_ledger(aum: float, slip: float | None = None, slip_by_amount: bool = Fa
         pf.slip_series = amount_slip_series(amount.loc[last["exec"]])
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
-    nav = pf.value(prices)
+    nav = pf.value(eval_prices(raw).loc[last["exec"]])
     bench_lv = _bench_levels(rebs, bench, ret)
     bench_base = bench_lv[last["exec"]]
     led = {
@@ -290,9 +291,10 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     prev_post = led["nav_history"][-1]["nav"]
     step_fees = 0.0
     blocked_this_step: list[dict] = []
+    raw_e = eval_prices(raw)
     for rb in todo:
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
-        pre_nav = pf.value(raw.loc[rb["exec"]])
+        pre_nav = pf.value(raw_e.loc[rb["exec"]])
         div_before = pf.div_cash
         pf.slip_series = (
             amount_slip_series(amount.loc[rb["exec"]]) if slip_by_amount else None
@@ -300,7 +302,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
         pf.rebalance(
             rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
         )
-        post_nav = pf.value(raw.loc[rb["exec"]])
+        post_nav = pf.value(raw_e.loc[rb["exec"]])
         if pf.blocked_buys or pf.blocked_sells:
             blocked_this_step.append(
                 {
@@ -387,6 +389,7 @@ def mark(aum: float, slip: float | None = None):
         return
     i0 = idx.get_loc(start)
     F_prev = F.shift(1).fillna(F.iloc[0])
+    raw_e = eval_prices(raw)
     navs = []
     for i in range(i0, len(idx)):
         if i > i0:
@@ -395,7 +398,7 @@ def mark(aum: float, slip: float | None = None):
             for c in list(pf.shares.keys()):
                 if fn[c] != fp[c]:
                     pf.corp_action_f(c, prices_i.get(c, np.nan), fp[c], fn[c])
-        navs.append(pf.value(raw.iloc[i]))
+        navs.append(pf.value(raw_e.iloc[i]))
     nav = pd.Series(navs, index=idx[i0:])
     df = pd.DataFrame(
         {
@@ -420,7 +423,7 @@ def report(aum: float):
         return
     led = json.loads(path.read_text())
     close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all_p3()
-    prices = raw.loc[led["last_exec"]]
+    prices = eval_prices(raw).loc[led["last_exec"]]
     nav_now = led["cash"] + sum(
         s * prices.get(c, np.nan)
         for c, s in led["shares"].items()

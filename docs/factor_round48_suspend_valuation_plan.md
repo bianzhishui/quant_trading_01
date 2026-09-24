@@ -1,6 +1,27 @@
 # Round 48 预注册 · 停牌股估值修正（raw.ffill 最后可得价）
 
-状态：**预注册，待批准** ｜ 日期：2026-09-24 ｜ 影响：R5 + P3 模拟盘运营（mark/step/init/report 估值口径）
+状态：**✅ 已批准并实施（2026-09-24）** ｜ 影响：R5 + P3 模拟盘运营（mark/step/init/report 估值口径）
+
+---
+
+## §0 实施结果归档
+
+**判定结果：✅ 通过（5/5）**
+
+1. **停牌平滑** ✅ 单元验证：停牌日 b 股市值旧口径归零(100320) → R48 沿用最后价(101370)
+2. **对账不变量** ✅ 无停牌持仓时 NAV 与改动前完全一致（P3 8 账户 mark 实测：9.63万/577.46万 等全部相同）——行为不变
+3. **R5/P3 同步** ✅ eval_prices 接入：R5 paper_live 8 处 + P3 paper_live_p3 7 处（mark/step/init/report 估值）
+4. **回测不变** ✅ 纯估值层改动，ret 收益矩阵未动
+5. **无回归** ✅ ruff 全过；P3 mark 8 账户跑通；import 正常
+
+**实现**：
+- `scripts/r5/paper_live.py` 新增 `eval_prices(raw) = raw.ffill()`（最后可得价）；
+  mark/step/init/report 估值统一改用（撮合仍用原始 raw）
+- `scripts/p3/paper_live_p3.py` import eval_prices 同步
+- 边界：停牌沿用最后价；尾部退市按最后价冻结；上市前 NaN 不填；复牌日涨幅正常
+
+**已知遗留**：历史账本 nav_history 若恰逢停牌调仓日，旧值略低（不重跑 step，只重跑 mark CSV）；
+退市股按最后价冻结 ≠ 归零（若运营期真遇退市，另案处理 step 清算动作）。
 
 ---
 

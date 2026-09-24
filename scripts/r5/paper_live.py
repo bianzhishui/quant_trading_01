@@ -266,6 +266,11 @@ def _bench_levels(rebs, bench, ret):
     return {r["exec"]: float(nav_b.loc[r["exec"]]) for r in rebs}
 
 
+def eval_prices(raw: pd.DataFrame) -> pd.DataFrame:
+    """估值价格矩阵: 最后可得价(停牌沿用最后价, 退市按最后价冻结; R48)。"""
+    return raw.ffill()
+
+
 def _apply_corp_period(
     pf: PaperPortfolio, F: pd.DataFrame, raw: pd.DataFrame, d_start, d_end
 ):
@@ -293,7 +298,7 @@ def init_ledger(aum: float, slip: float | None = None, slip_by_amount: bool = Fa
         pf.slip_series = amount_slip_series(amount.loc[last["exec"]])
     prices = raw.loc[last["exec"]]
     pf.rebalance(last["target"], prices, trad.loc[last["exec"]], ret.loc[last["exec"]])
-    nav = pf.value(prices)
+    nav = pf.value(eval_prices(raw).loc[last["exec"]])
     bench_lv = _bench_levels(rebs, bench, ret)
     # 基准在建账日归一到 1.0: 模拟盘超额 = 策略自建账起收益 − 同池等权自建账起收益
     bench_base = bench_lv[last["exec"]]
@@ -382,9 +387,10 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     _seed_build_row(aum)
     prev_post = led["nav_history"][-1]["nav"]
     blocked_this_step: list[dict] = []
+    raw_e = eval_prices(raw)
     for rb in todo:
         _apply_corp_period(pf, F, raw, prev_exec, rb["exec"])
-        pre_nav = pf.value(raw.loc[rb["exec"]])
+        pre_nav = pf.value(raw_e.loc[rb["exec"]])
         div_before = pf.div_cash
         pf.slip_series = (
             amount_slip_series(amount.loc[rb["exec"]]) if slip_by_amount else None
@@ -400,7 +406,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
                     "sell": [{"code": c, "value": v} for c, v in pf.blocked_sells],
                 }
             )
-        post_nav = pf.value(raw.loc[rb["exec"]])
+        post_nav = pf.value(raw_e.loc[rb["exec"]])
         buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
         sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
         fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
@@ -448,7 +454,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     led["last_blocked"] = blocked_this_step or None
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
     _append_holdings_snapshot(
-        aum, str(todo[-1]["exec"].date()), pf, raw.loc[todo[-1]["exec"]]
+        aum, str(todo[-1]["exec"].date()), pf, raw_e.loc[todo[-1]["exec"]]
     )
     if blocked_this_step:
         n_b = sum(len(b["buy"]) for b in blocked_this_step)
@@ -469,7 +475,7 @@ def report(aum: float):
         return
     led = json.loads(path.read_text())
     close, amount, tst, isst, ind, raw, rebs, bench, ret = _load_all()
-    prices = raw.loc[led["last_exec"]]
+    prices = eval_prices(raw).loc[led["last_exec"]]
     nav_now = led["cash"] + sum(
         s * prices.get(c, np.nan)
         for c, s in led["shares"].items()
@@ -561,6 +567,7 @@ def mark(aum: float, slip: float | None = None):
         return
     i0 = idx.get_loc(start)
     F_prev = F.shift(1).fillna(F.iloc[0])
+    raw_e = eval_prices(raw)
     navs = []
     for i in range(i0, len(idx)):
         if i > i0:
@@ -569,7 +576,7 @@ def mark(aum: float, slip: float | None = None):
             for c in list(pf.shares.keys()):
                 if fn[c] != fp[c]:
                     pf.corp_action_f(c, prices_i.get(c, np.nan), fp[c], fn[c])
-        navs.append(pf.value(raw.iloc[i]))
+        navs.append(pf.value(raw_e.iloc[i]))
     nav = pd.Series(navs, index=idx[i0:])
     ret = nav.pct_change() * 100
     df = pd.DataFrame(
