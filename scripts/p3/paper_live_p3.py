@@ -39,6 +39,7 @@ from scripts.r5.paper_live import (  # noqa: E402
     _apply_corp_period,
     _bench_levels,
     _factor_panel_cached,
+    _live_factors,
 )
 from scripts.factor_round41_low_price import (  # noqa: E402
     build_sets,
@@ -264,6 +265,19 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
             f"\n[{int(aum / 1e4)}万] 已是最新(信号 {led['last_signal']}), 无待处理调仓"
         )
         return
+    # 复权因子实时增量(与 R5 一致): 调仓窗口超出静态抓取截止日 → baostock 查持仓股新除权
+    static_fac_end = pd.Timestamp(get_config().fetch.corporate_actions.end)
+    if any(r["exec"] > static_fac_end for r in todo):
+        try:
+            _live_factors(
+                set(led["shares"]) | {c for r in todo for c in r["target"]},
+                led["last_exec"],
+            )
+        except Exception as e:
+            print(
+                f"  [live因子] 查询失败({e}), 用静态因子继续——窗口内新除权事件将缺失, 建议尽快重跑",
+                flush=True,
+            )
     F = _factor_panel_cached(close)
     pf = PaperPortfolio(led["aum"], slip)
     pf.shares = {k: int(v) for k, v in led["shares"].items()}
