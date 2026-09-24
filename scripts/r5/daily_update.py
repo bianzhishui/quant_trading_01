@@ -3,10 +3,10 @@
 """每日一键: 补当日行情(如需) → 四账户 mark → 输出建仓以来盈亏总表。
 
 用法:
-  python scripts/daily_update.py             # 自动判断最新交易日(以数据源为准)
-  python scripts/daily_update.py 2026-09-07  # 指定日期补跑
-  python scripts/daily_update.py --table     # 只读现有CSV打印总表(不抓数不mark)
-  python scripts/daily_update.py --chart     # mark 后自动出四账户每日涨幅图(daily_gains_live.png)
+  python scripts/r5/daily_update.py             # 自动判断最新交易日(以数据源为准)
+  python scripts/r5/daily_update.py 2026-09-07  # 指定日期补跑
+  python scripts/r5/daily_update.py --table     # 只读现有CSV打印总表(不抓数不mark)
+  python scripts/r5/daily_update.py --chart     # mark 后自动出四账户每日涨幅图(daily_gains_live.png)
 
 总表口径: 盈亏(元) = NAV - 本金(含一次性建仓费); 盈亏率相对本金。
 每日涨幅 = 当天收盘NAV / 前一日收盘NAV - 1 (数据源最新K线为准, 非系统日历)。
@@ -21,16 +21,16 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.data_io import data_max_date_fast, load_full_daily  # noqa: E402
 from scripts.fetch_daily_incremental import update_date  # noqa: E402
-from scripts.paper_live import mark as live_mark  # noqa: E402
-from scripts.plot_daily_gains import plot_live  # noqa: E402
+from scripts.r5.paper_live import mark as live_mark  # noqa: E402
+from scripts.r5.plot_daily_gains import plot_live  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 WD = "一二三四五六日"
 
 

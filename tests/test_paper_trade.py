@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from quant_trading_01.config import load_config  # noqa: E402
-from scripts.paper_trade import PaperPortfolio, fees, r5_rebalances  # noqa: E402
+from scripts.r5.paper_trade import PaperPortfolio, fees, r5_rebalances  # noqa: E402
 from quant_trading_01.reversal_factor import build_pool  # noqa: E402
 
 
@@ -219,7 +219,7 @@ def test_corp_action_dividend_credit():
 
 def test_slip_for_amount_tiers():
     """冻结分档表: 金额越大滑点越低 (<Q20→40bp ... ≥Q80→5bp)。"""
-    from scripts.paper_trade import slip_for_amount
+    from scripts.r5.paper_trade import slip_for_amount
 
     assert slip_for_amount(10_000_000) == 0.004  # < Q20
     assert slip_for_amount(30_000_000) == 0.0025  # Q20-40

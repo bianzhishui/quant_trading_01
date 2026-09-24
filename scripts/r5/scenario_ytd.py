@@ -7,7 +7,7 @@
 不触碰正式账本(ledger_aum*.json), 输出:
   output/daily_nav_{START}start_aum{60w,100w,300w,600w}.csv  (date, nav, 涨幅%)
 
-用法: python scripts/scenario_ytd.py [--start 2025-01-01]   (默认 2026-01-01)
+用法: python scripts/r5/scenario_ytd.py [--start 2025-01-01]   (默认 2026-01-01)
 核心: run_scenario(start, end, out_prefix, verbose) 可导入复用(AGENTS.md §5.6)。
 """
 
@@ -20,11 +20,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
-from scripts.paper_trade import PaperPortfolio, _load, _load_corp, r5_rebalances  # noqa: E402
-from scripts.paper_live import _factor_panel  # noqa: E402
+from scripts.r5.paper_trade import PaperPortfolio, _load, _load_corp, r5_rebalances  # noqa: E402
+from scripts.r5.paper_live import _factor_panel  # noqa: E402
 
 
 def run_scenario(

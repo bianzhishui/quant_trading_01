@@ -10,9 +10,9 @@
 - 调仓: 每月向目标等权再平衡, |Δ|≥1手才交易; 停牌(tradestatus!=1)跳过
 
 用法:
-  python scripts/paper_trade.py replay --aum 3000000   # 历史回放(2013-2026, 真实费率)
-  python scripts/paper_trade.py init --aum 3000000     # 当前建仓快照(真实价格)
-  python scripts/paper_trade.py init --aum 100000      # 演示: 10万不可行性
+  python scripts/r5/paper_trade.py replay --aum 3000000   # 历史回放(2013-2026, 真实费率)
+  python scripts/r5/paper_trade.py init --aum 3000000     # 当前建仓快照(真实价格)
+  python scripts/r5/paper_trade.py init --aum 100000      # 演示: 10万不可行性
 选项: --slip 0.001 (滑点比例, 默认0.0015=15bp, Round33 与基准/账本口径统一; 0=纯因子口径)
 """
 
@@ -25,8 +25,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.data_io import delist_map, load_full_daily  # noqa: E402
 from quant_trading_01.dividend_factor import month_last_days, metrics  # noqa: E402
@@ -36,7 +36,7 @@ from quant_trading_01.reversal_factor import build_pool, ew_nav  # noqa: E402
 # 注：paper_trade 不再定义模块级配置常量。所有配置值在函数内通过 get_config() 读取
 # （方案二：函数内惰性读取，main() 里 load_config(args.config) 后生效）。
 # 外部脚本如需要路径/账户等，请从 quant_trading_01.config 读取，不再 import paper_trade 的常量。
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 def _cfg():

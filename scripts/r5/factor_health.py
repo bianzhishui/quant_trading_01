@@ -5,8 +5,8 @@
 预注册方案: docs/factor_round18_factor_health_plan.md
 
 用法:
-  python scripts/factor_health.py            # 全量: 历史基准 + 运营期状态灯
-  python scripts/factor_health.py --chart    # 额外画出 RankIC 时序 + μ±2σ 带
+  python scripts/r5/factor_health.py            # 全量: 历史基准 + 运营期状态灯
+  python scripts/r5/factor_health.py --chart    # 额外画出 RankIC 时序 + μ±2σ 带
 
 输出:
   output/factor_health_rankic.csv    每期(月末T) × 因子 × 口径 的 RankIC 时间序列
@@ -25,18 +25,18 @@ import os
 # matplotlib 配置/缓存目录 → 项目内可写位置(默认 ~/.matplotlib 在本环境不可写,
 # 否则每次进程重建字体缓存 30-90s); setdefault: 用户已设 MPLCONFIGDIR 时不覆盖。
 os.environ.setdefault(
-    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplconfig")
+    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent.parent / ".mplconfig")
 )
 
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.dividend_factor import month_last_days  # noqa: E402
-from scripts.paper_trade import _load  # noqa: E402
+from scripts.r5.paper_trade import _load  # noqa: E402
 from quant_trading_01.reversal_factor import build_pool  # noqa: E402
 
 

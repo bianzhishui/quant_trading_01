@@ -7,11 +7,11 @@
 账本: output/ledger_p3_aum{XX}w.json | 月度: monthly_funds_p3_aum*.csv /
       monthly_holdings_p3_aum*.csv | 每日: daily_nav_p3_aum*.csv
 用法:
-  python scripts/paper_live_p3.py init                 # 建仓 8 账户
-  python scripts/paper_live_p3.py init --aum 100000    # 单账户
-  python scripts/paper_live_p3.py step                 # 推进全部账本(月调仓)
-  python scripts/paper_live_p3.py mark                 # 每日涨幅(全部)
-  python scripts/paper_live_p3.py report               # 全部账本报告
+  python scripts/p3/paper_live_p3.py init                 # 建仓 8 账户
+  python scripts/p3/paper_live_p3.py init --aum 100000    # 单账户
+  python scripts/p3/paper_live_p3.py step                 # 推进全部账本(月调仓)
+  python scripts/p3/paper_live_p3.py mark                 # 每日涨幅(全部)
+  python scripts/p3/paper_live_p3.py report               # 全部账本报告
 数据: 全市场 full_daily(经 data_io) + financial_quality + dividends + raw_close_*(真实价)。
 """
 
@@ -26,16 +26,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config, load_config  # noqa: E402
 from quant_trading_01.data_io import data_version  # noqa: E402
 from quant_trading_01.dividend_factor import month_last_days  # noqa: E402
-from scripts.paper_trade import (  # noqa: E402
+from scripts.r5.paper_trade import (  # noqa: E402
     PaperPortfolio,
     amount_slip_series,
 )
-from scripts.paper_live import (  # noqa: E402
+from scripts.r5.paper_live import (  # noqa: E402
     _apply_corp_period,
     _bench_levels,
     _factor_panel_cached,

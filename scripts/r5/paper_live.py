@@ -6,12 +6,12 @@
 每月新数据到手后运行 step, 自动补跑错过的所有调仓(长期执行核心)。
 
 用法:
-  python scripts/paper_live.py init --aum 3000000   # 建账(当前信号起, 默认滑点15bp)
-  python scripts/paper_live.py init --aum 6000000
-  python scripts/paper_live.py step                 # 推进全部账本到最新数据
-  python scripts/paper_live.py step --aum 3000000   # 只推进单个
-  python scripts/paper_live.py report               # 全部账本报告
-  python scripts/paper_live.py mark --slip 0        # 每日涨幅(0=旧理想化口径, 默认15bp)
+  python scripts/r5/paper_live.py init --aum 3000000   # 建账(当前信号起, 默认滑点15bp)
+  python scripts/r5/paper_live.py init --aum 6000000
+  python scripts/r5/paper_live.py step                 # 推进全部账本到最新数据
+  python scripts/r5/paper_live.py step --aum 3000000   # 只推进单个
+  python scripts/r5/paper_live.py report               # 全部账本报告
+  python scripts/r5/paper_live.py mark --slip 0        # 每日涨幅(0=旧理想化口径, 默认15bp)
 数据: 行情用 data/fundamental/full_daily.parquet(先跑 fetch_full_market.py 更新);
 公司行为增量用 baostock 实时查询(持仓股), 缓存 data/round2/adjust_factor_live.parquet。
 Round32: 滑点默认 15bp(账本真实化, 与回测基准口径一致); --slip 0 回退理想化。
@@ -28,11 +28,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.data_io import data_version  # noqa: E402
-from scripts.paper_trade import (  # noqa: E402
+from scripts.r5.paper_trade import (  # noqa: E402
     PaperPortfolio,
     _load,
     _load_corp,
@@ -632,7 +632,7 @@ def main():
     # Round18 因子失效监控: step 完成后打印状态灯摘要(失败仅提示, 不影响 step 结果)
     if step_done:
         try:
-            from scripts.factor_health import factor_health_summary  # noqa: PLC0415
+            from scripts.r5.factor_health import factor_health_summary  # noqa: PLC0415
 
             factor_health_summary()
         except Exception as e:  # noqa: BLE001 — 监控失败不阻断运营

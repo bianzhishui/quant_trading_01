@@ -209,7 +209,7 @@ Amihud = |当日收益率| ÷ 当日成交额 × 1e6
 ### 5.4 关键结论（回测纪律）
 
 1. **回测含全部费用税**（佣金/印花/过户/红利税/1手取整/停牌跳过），非"15bp 简化口径"；
-2. **可复现**：`python scripts/paper_trade.py` 主程序可重跑，结果与本文一致；
+2. **可复现**：`python scripts/r5/paper_trade.py` 主程序可重跑，结果与本文一致；
 3. **未做参数搜索**：所有参数 2013 年起冻结，无过拟合（多轮实验按预注册文档逐一验证）。
 
 ---
@@ -298,9 +298,9 @@ Python  : .venv/bin/python
 ### 8.2 每日例行（一键，收盘后跑）
 
 ```bash
-python scripts/daily_update.py             # 一键: 判断最新交易日 → 补当日行情(如需)
+python scripts/r5/daily_update.py             # 一键: 判断最新交易日 → 补当日行情(如需)
                                            #       → 四账户 mark → 输出盈亏总表
-python scripts/daily_update.py --table     # 只读现有CSV, 随时查看当天总表(秒级)
+python scripts/r5/daily_update.py --table     # 只读现有CSV, 随时查看当天总表(秒级)
 ```
 
 自动输出"账户 / 本金 / 最新NAV / 当日涨幅 / 盈亏(元) / 盈亏率 / 建仓日NAV"总表；
@@ -324,38 +324,38 @@ print("在市但 full_daily 缺失:", len(alive - full_daily_codes()))
 PY
 
 # ③ 月度调仓 + 记账（四账户自动一起推进）
-python scripts/paper_live.py step
+python scripts/r5/paper_live.py step
 
 # ④ 每日涨幅（当天收盘 vs 前一天收盘 NAV）
-python scripts/paper_live.py mark
+python scripts/r5/paper_live.py mark
 
 # ⑤ 月频报告（净值/年化/超额/月度资金变动）
-python scripts/paper_live.py report
+python scripts/r5/paper_live.py report
 
 # ⑥ 因子健康监控（R5 RankIC 状态灯，对比历史基准）
-python scripts/factor_health.py
+python scripts/r5/factor_health.py
 ```
 
 ### 8.4 账户管理
 
 ```bash
 # 新建账户（默认 60/100/300/600万 四账户）
-python scripts/paper_live.py init --aum 3000000     # 单账户建账
-python scripts/paper_live.py init                   # 四账户一起
+python scripts/r5/paper_live.py init --aum 3000000     # 单账户建账
+python scripts/r5/paper_live.py init                   # 四账户一起
 
 # 单账户操作
-python scripts/paper_live.py step --aum 3000000
-python scripts/paper_live.py report --aum 3000000
+python scripts/r5/paper_live.py step --aum 3000000
+python scripts/r5/paper_live.py report --aum 3000000
 ```
 
 ### 8.5 年度复盘 / 场景分析
 
 ```bash
 # 年度每日涨幅 + 月度资金变动（如 2025 全年）
-python scripts/scenario_ytd.py --start 2025-01-01 --end 2025-12-31
+python scripts/r5/scenario_ytd.py --start 2025-01-01 --end 2025-12-31
 
 # 年度图（累计净值 + 每日涨幅）
-python scripts/plot_daily_gains.py --prefix 20250101 --title "2025全年"
+python scripts/r5/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 ```
 
 ### 8.6 数据更新注意事项

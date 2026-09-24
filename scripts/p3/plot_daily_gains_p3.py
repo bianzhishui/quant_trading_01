@@ -6,7 +6,7 @@
 - daily_nav_p3.png      8 账户 NAV 合并 2×4 子图(每格标注最新 NAV + 建仓资金水平线)
 - daily_gains_p3.png    累计净值(8 条, 建仓日=1.0) + 每日涨幅%(8 条+20日MA) 双面板
 
-用法: python scripts/plot_daily_gains_p3.py
+用法: python scripts/p3/plot_daily_gains_p3.py
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 import os
 
 os.environ.setdefault(
-    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplconfig")
+    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent.parent / ".mplconfig")
 )
 
 import matplotlib
@@ -26,8 +26,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 
 plt.rcParams["font.sans-serif"] = [
@@ -118,7 +118,9 @@ def plot() -> list[Path]:
         c = COLORS[i]
         ax1.plot(df["date"], df["nav"] / df["nav"].iloc[0], label=name, color=c, lw=1.3)
         ax2.plot(df["date"], df["涨幅%"], color=c, lw=0.6, alpha=0.5)
-        ax2.plot(df["date"], df["涨幅%"].rolling(20).mean(), color=c, lw=1.4, label=name)
+        ax2.plot(
+            df["date"], df["涨幅%"].rolling(20).mean(), color=c, lw=1.4, label=name
+        )
     ax1.set_title("P3 八账户累计净值（建仓日=1.0）", fontsize=13)
     ax1.legend(loc="upper left", fontsize=9, ncol=4)
     ax1.grid(alpha=0.3)

@@ -34,7 +34,7 @@
 
 ## 📊 模拟盘运营每日图（建仓 2026-09-01 起）
 
-> 每日 `python scripts/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
+> 每日 `python scripts/r5/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
 > 数据到 **2026-09-08**，最新行情发布后自动续上）。
 
 **每日 NAV（元）——每账户一张（灰色虚线=建仓资金水平线，数据点=当日 NAV）**：
@@ -69,8 +69,8 @@ uv sync
 uv run pytest                                       # 回测引擎正确性单元测试 (4项)
 
 # 研究/运营入口（常用，详见 AGENTS.md §3 核心脚本一览）
-.venv/bin/python scripts/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
-.venv/bin/python scripts/paper_live.py report      # 四账户报告
+.venv/bin/python scripts/r5/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
+.venv/bin/python scripts/r5/paper_live.py report      # 四账户报告
 ```
 
 > 数据源：首选 **baostock**（稳定、免费、含前复权），失败时自动兜底 **akshare**(东方财富源)。

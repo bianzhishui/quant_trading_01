@@ -126,7 +126,7 @@
 如需重跑（数据再丢失/重建环境）：
 ```bash
 python scripts/fetch_full_market.py     # 全量重下(宇宙=stock_basic 含退市) → full_daily/ 年分区
-python scripts/daily_update.py          # 守卫放行 → 四账户重 mark → 修复 daily_nav CSV → 出表
+python scripts/r5/daily_update.py          # 守卫放行 → 四账户重 mark → 修复 daily_nav CSV → 出表
 # 验证：close 非空率≈100%、最新日行数≈3187、在市缺失=0
 ```
 
@@ -134,15 +134,15 @@ python scripts/daily_update.py          # 守卫放行 → 四账户重 mark →
 
 ```bash
 python scripts/fetch_daily_incremental.py <日期>   # 单只探测：未发布秒退；发布则补全（原子写）
-python scripts/daily_update.py                     # 守卫(≥前5日90%) → 四账户 mark → 总表
+python scripts/r5/daily_update.py                     # 守卫(≥前5日90%) → 四账户 mark → 总表
 ```
 
 ### 5.3 月度（每月末数据到手）
 
 ```bash
 python scripts/fetch_daily_incremental.py <月末日>   # 若有新交易日
-python scripts/paper_live.py step                    # 四账户月调仓
-python scripts/paper_live.py report
+python scripts/r5/paper_live.py step                    # 四账户月调仓
+python scripts/r5/paper_live.py report
 ```
 
 ---
@@ -151,7 +151,7 @@ python scripts/paper_live.py report
 
 ```bash
 # ① 最新交易日行数守卫（daily_update 内置）
-python scripts/daily_update.py --table   # 正常时应显示四账户总表
+python scripts/r5/daily_update.py --table   # 正常时应显示四账户总表
 
 # ② 手动核查关键文件
 python -c "

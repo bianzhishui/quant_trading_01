@@ -9,8 +9,8 @@
 - 累计净值 + 每日涨幅%: 四账户合并一张双面板图 → output/daily_gains_live.png
   （年度场景 → output/daily_gains_{PREFIX}.png）
 
-用法: python scripts/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
-      python scripts/plot_daily_gains.py --live
+用法: python scripts/r5/plot_daily_gains.py [--prefix 20250101] [--title '2025全年']
+      python scripts/r5/plot_daily_gains.py --live
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import os
 # matplotlib 配置/缓存目录 → 项目内可写位置(默认 ~/.matplotlib 在本环境不可写,
 # 否则每次进程重建字体缓存 30-90s); setdefault: 用户已设 MPLCONFIGDIR 时不覆盖。
 os.environ.setdefault(
-    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplconfig")
+    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent.parent / ".mplconfig")
 )
 
 import matplotlib
@@ -33,8 +33,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 
 plt.rcParams["font.sans-serif"] = [

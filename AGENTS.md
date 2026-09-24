@@ -61,17 +61,17 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 
 | 脚本 | 用途 | 典型耗时 |
 |---|---|---|
-| `scripts/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号；`--slip` 默认 15bp（Round 33 三口径统一，0 回退纯因子口径） | 单个 share 级回放 ~8-15 分钟 |
-| `scripts/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
-| `scripts/paper_live_p3.py` | **P3 模拟盘八账户**（3万~600万）：`init`/`step`/`mark`/`report`；策略参数与账户列表读 `config/default.yaml` 的 `p3` 段（冻结）；账本 `output/p3/` | mark 50 只 ~2 分钟/账户 |
-| `scripts/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
-| `scripts/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
+| `scripts/r5/paper_trade.py` | PaperPortfolio 引擎 + 历史全口径回放（`replay`/`replay_w`/`init`）+ `r5_rebalances` 信号；`--slip` 默认 15bp（Round 33 三口径统一，0 回退纯因子口径） | 单个 share 级回放 ~8-15 分钟 |
+| `scripts/r5/paper_live.py` | **模拟盘四账户**：`init` 建仓 / `step` 月调仓 / `mark` 每日涨幅 / `report` 报告；`--slip` 滑点默认 15bp（Round 32 账本真实化，0 回退旧口径） | mark 数百只 ~1-2 分钟/账户 |
+| `scripts/p3/paper_live_p3.py` | **P3 模拟盘八账户**（3万~600万）：`init`/`step`/`mark`/`report`；策略参数与账户列表读 `config/default.yaml` 的 `p3` 段（冻结）；账本 `output/p3/` | mark 50 只 ~2 分钟/账户 |
+| `scripts/r5/scenario_ytd.py` | 年度场景回放（`--start`/`--end`），输出 daily_nav/monthly_funds | 同回放 |
+| `scripts/r5/plot_daily_gains.py` | 四账户每日图：每账户 NAV 单图 `daily_nav_aum{tag}.png` ×4 + 累计净值/每日涨幅%双面板 `daily_gains_live.png`；`--prefix/--title` 年度场景、`--live` 建仓以来实时场景（读无前缀 daily_nav_aum*.csv） | 秒级 |
 | `scripts/fetch_full_market.py` | 全市场数据更新（按 code 增量，新 code 才抓） | 分钟~小时 |
 | `scripts/fetch_daily_incremental.py` | **日常收盘后只补当日 K 线**（`<日期>` 参数，按已有 code 补指定日） | 全市场 ~20-30 分钟 |
 | `scripts/fetch_stock_basic.py` | **宇宙清单（stock_basic+universe）低频刷新**（季度/半年，src/fundamental 迁移，config paths 段） | baostock 全表, 低频 |
 | `scripts/factor_round1*.py` | Round 12-16 专项实验（集中版/满仓补买/行业中性/20万/拥挤度择时） | 每个 10-20 分钟 |
 | `scripts/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
-| `scripts/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |
+| `scripts/r5/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |
 
 ---
 
@@ -110,7 +110,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 6. **同仓库 Python 脚本间调用用"导入模块"，不用 subprocess**：
    - 已重构范例：`daily_update.py` 直接
      `from scripts.fetch_daily_incremental import update_date`、
-     `from scripts.paper_live import mark`（省 4 次进程冷启动 + 4 次字体缓存，治发热）；
+     `from scripts.r5.paper_live import mark`（省 4 次进程冷启动 + 4 次字体缓存，治发热）；
    - 被导入的脚本须满足：逻辑放函数、`main()` 只做 argparse 壳、**模块级不读 sys.argv**
      （否则 import 时读错调用方参数）；
    - subprocess 只留给：跨环境/跨语言、独立一次性工具、需超时强杀的场景；
@@ -133,13 +133,13 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
 - **建仓 2026-09-01（信号 2026-08-31）**。注意：**生产账户跑的是"三因子 575 等权"**
   （Round 38 权重 Amihud 0.40/动量 0.10/F4 0.50，2026-09-18 落地重建账本），
   小账户因 1手 约束天然退化（60万 只持有 307 只、58% 现金）——**这是现状，不是 bug**。
-- 每日：**一键 `python scripts/daily_update.py`**（自动判断最新交易日 → 缺则补当日
+- 每日：**一键 `python scripts/r5/daily_update.py`**（自动判断最新交易日 → 缺则补当日
   行情 → 四账户 mark → 输出"账户/本金/最新NAV/当日涨幅/盈亏(元)/盈亏率/建仓日NAV"总表；
   数据源未发布当天会自动探测跳过并以最新已有数据为准；`--table` 只读表不重跑；
   `--chart` mark 后自动出建仓以来每日图（NAV 单图 `daily_nav_aum{tag}.png` ×4 + 双面板 `daily_gains_live.png`，均在 `output/r5/`）；
-  单独出图可跑 `plot_daily_gains.py --live`）。
-  手动分解：`fetch_daily_incremental.py <日期>` → 四账户各跑一次 `paper_live.py mark --aum NNNN`。
-- 每月：`paper_live.py step`（自动推进四账户调仓）+ `report`。
+  单独出图可跑 `python scripts/r5/plot_daily_gains.py --live`）。
+  手动分解：`python scripts/fetch_daily_incremental.py <日期>` → 四账户各跑一次 `python scripts/r5/paper_live.py mark --aum NNNN`。
+- 每月：`python scripts/r5/paper_live.py step`（自动推进四账户调仓）+ `report`。
 - **对账不变量**（每次 step 后抽查）：① 期末净值=现金+持仓；② 期末≈期初−费用(<1%)；
   ③ 月涨幅连乘=累计。
 - **"今日涨幅"以数据源最新 K 线为准**，不是系统日历——先 `date` 确认今天，再查
@@ -151,7 +151,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   （Round 41-47 预注册定稿，参数冻结在 `config/default.yaml` 的 `p3` 段，**改动须预注册**）；
   账本 `output/p3/ledger_p3_aum{3w..600w}.json`，每日/月度 CSV 同目录（不入库）。
 - 账户：`3万/10万/20万/30万/60万/100万/300万/600万`（`p3.aum_list`，小账户 1 手约束天然退化）。
-- 每日：`python scripts/paper_live_p3.py mark`（8 账户净值）；每月：`... step`（月调仓）；`... report`。
+- 每日：`python scripts/p3/paper_live_p3.py mark`（8 账户净值）；每月：`... step`（月调仓）；`... report`。
 - 对账不变量同 R5：期末净值=现金+持仓；期末≈期初−费用；月涨幅连乘=累计。
 
 ---
