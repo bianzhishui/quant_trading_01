@@ -100,7 +100,7 @@ def r5_rebalances(close, amount, tst, isst, ind):
     w_amihud = cfg.r5.w_amihud
     w_mom = cfg.r5.w_mom
     w_f4 = cfg.r5.w_f4
-    r5 = cfg.r5.r5
+    r5 = cfg.r5
     ret = close.pct_change()
     pool = build_pool(close, tst, isst)
     amihud = (

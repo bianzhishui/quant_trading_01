@@ -96,7 +96,7 @@ def compute_rankic_panel() -> pd.DataFrame:
     w_amihud = cfg.r5.w_amihud
     w_mom = cfg.r5.w_mom
     w_f4 = cfg.r5.w_f4
-    r5 = cfg.r5.r5
+    r5 = cfg.r5
     ret = close.pct_change()
     amihud = (
         ((ret.abs() / amount) * r5.amihud_scale)

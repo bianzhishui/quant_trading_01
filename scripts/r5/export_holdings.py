@@ -42,7 +42,7 @@ def main(csv: str | None = None):
     target = last["target"]
 
     # 因子分(全池计算, 与 r5_rebalances 同一口径, 供百分位列使用)
-    r5 = cfg.r5.r5
+    r5 = cfg.r5
     amihud = (
         ((close.pct_change().abs() / amount) * r5.amihud_scale)
         .rolling(r5.amihud_lookback, min_periods=r5.amihud_min_periods)
