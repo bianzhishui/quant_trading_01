@@ -44,6 +44,17 @@ KEEP = {
     "export_holdings",
     "reversal_factor",  # 基座：paper_live/paper_trade 依赖 ew_nav/build_pool
     "dividend_factor",  # 基座：paper_trade 依赖 month_last_days/metrics
+    # P3 生产链(Round 41-47 定稿上线)
+    "factor_round41_low_price",  # 基座：P3 选股 build_sets/load_data, paper_live_p3 依赖
+    "paper_live_p3",
+    "daily_update_p3",
+    "plot_daily_gains_p3",
+    # 低价股数据维护生产链(round2 财务/分红/真实价)
+    "fetch_financial_quality",
+    "fetch_dividends_backfill",
+    "fetch_delisted_dividends",
+    "fetch_delisted_daily",
+    "fetch_delisted_raw_price",
 }
 
 # 归档单元表：脚本/plan/输出前缀/状态/结论摘要（结论来自 plan §0 与 README 探索表）
@@ -504,6 +515,62 @@ UNITS = [
             "C4短动量5/21 未通过(月频方向=反转, 高动量组−10.5%); 框架结论: 异法度是必要不充分"
             "条件, 最终裁判=组合增量门禁; 无新因子并入, R5/w*生产不变"
         ),
+    },
+    {
+        "name": "round41_low_price_quality",
+        "scripts": [],  # factor_round41_low_price.py 是共享基座(paper_live_p3 依赖), 留位 scripts/
+        "plans": ["factor_round41_low_price_quality_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": "低价股研究起点: 子区间2-3元甜蜜区/0-2元重灾区, 低价整体跑赢全市场; P3链起点",
+    },
+    {
+        "name": "round42_low23_quality",
+        "scripts": ["factor_round42_low23_quality.py"],
+        "plans": ["factor_round42_low23_quality_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过",
+        "conclusion": "2-3元+质量筛选预注册通过(全样本19.8%/0.86/-40.6%)",
+    },
+    {
+        "name": "round43_outsample",
+        "scripts": ["factor_round43_outsample.py"],
+        "plans": ["factor_round43_outsample_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过",
+        "conclusion": "样本外5/5: 验证段12.0%/+3.2pp; 训练段2-3元即最优, 选择偏差减轻",
+    },
+    {
+        "name": "round44_improve",
+        "scripts": ["factor_round44_improve.py"],
+        "plans": ["factor_round44_improve_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过",
+        "conclusion": "V1区间上移2.3-3.2: 验证段16.0%/0.78/-25.4%",
+    },
+    {
+        "name": "round45_holding_period",
+        "scripts": ["factor_round45_holding_period.py"],
+        "plans": ["factor_round45_holding_period_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过并入",
+        "conclusion": "月频>>买入持有(16% vs 2.2%): 换血是超额主来源; 买入持有正期望(胜率74-78%)非最优",
+    },
+    {
+        "name": "round46_maximize",
+        "scripts": ["factor_round46_maximize.py"],
+        "plans": ["factor_round46_maximize_plan.md"],
+        "outputs": [],
+        "status": "✅ 通过",
+        "conclusion": "收益更大化收敛: P3=3.0-4.0元 验证段18.6%/0.93/-25.0%",
+    },
+    {
+        "name": "round47_combine_boundary",
+        "scripts": ["factor_round47_combine_boundary.py"],
+        "plans": ["factor_round47_combine_boundary_plan.md"],
+        "outputs": [],
+        "status": "✅ 定稿",
+        "conclusion": "组合无增益+4元边界失效, P3定稿并上线模拟盘八账户(2026-09-01)",
     },
 ]
 
