@@ -76,7 +76,9 @@ def compute_detail(led: dict, real, close, ret_d, names: dict) -> pd.DataFrame:
                 "pnl_pct": pnl_pct,
             }
         )
-    df = pd.DataFrame(rows).sort_values("mkt_val", ascending=False)
+    df = pd.DataFrame(rows).sort_values(
+        "ret_today", ascending=False, na_position="last"
+    )
     total_mkt = df["mkt_val"].sum()
     df["weight"] = (
         df["mkt_val"] / total_mkt if total_mkt and total_mkt == total_mkt else 0.0
