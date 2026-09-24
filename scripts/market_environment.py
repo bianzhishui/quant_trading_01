@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""市场环境仪表盘 —— 感知当前市场走势(跨 R5/P3 两策略, 用项目数据)。
+"""市场环境仪表盘 v2 —— 感知市场走势(跨 R5/P3, 更高精度)。
 
-输出 5 块:
-1. 风格: 全市场等权(小盘代理) vs 沪深300, 近20/60日滚动超额 → 小盘强/弱
-2. 宽度: 近20日上涨家数占比, 当日涨停/跌停家数
-3. 策略环境: 低价池(3-4元真实价)规模 + 扣非为正通过率(P3 供给端);
-            全市场成交额中位(R5 流动性环境)
-4. 估值: 全市场 PB 中位(分位近似)
-5. 策略超额: R5/P3 账本净值 vs 全市场等权(建仓以来)
+v2 改进(2026-09-24):
+- 风格: 中证1000(纯小盘) vs 沪深300, 滚动相对强弱(原全市场等权近似升级)
+- 低价池: 真实价(复权) 3-4 元池 + 近3年扣非通过率(P3 精确供给端, 原收盘价近似升级)
+- 估值: PB 中位 + 历史分位(2014 以来) + 破净率(原绝对值升级)
+保留: 宽度/成交额/策略超额
 
 用法: .venv/bin/python scripts/market_environment.py
 """
@@ -19,7 +17,6 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -27,35 +24,40 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.data_io import load_full_daily  # noqa: E402
 
 
+def _load_index(symbol: str, start: str = "20140101") -> pd.Series | None:
+    """指数日线(缓存在 data/)。"""
+    try:
+        from quant_trading_01.data_loader import load_index_daily
+
+        s = load_index_daily(symbol, start=start, refresh=False)["close"]
+        s = pd.to_datetime(s.index) if not isinstance(s.index, pd.DatetimeIndex) else s
+        return s
+    except Exception as e:
+        print(f"  [跳过] 指数 {symbol}: {e}", flush=True)
+        return None
+
+
 def main() -> None:
     print("加载全市场数据...", flush=True)
     full = load_full_daily()
     full["date"] = pd.to_datetime(full["date"])
     last_date = full["date"].max()
+
+    # ---- 真实价 + 财务(load_data 一次, 供低价池/扣非) ----
+    print("加载真实价与财务...", flush=True)
+    from scripts.factor_round41_low_price import load_data
+
+    data = load_data()
+    real, ded = data["real"], data["ded"]
+
     print(f"最新交易日: {last_date.date()}\n", flush=True)
 
-    # ---- 全市场等权(小盘代理) ----
-    ret_ew = full.pivot(index="date", columns="code", values="close").pct_change()
-    ew = (1 + ret_ew.mean(axis=1).fillna(0)).cumprod()
-
-    # 沪深300
-    try:
-        from quant_trading_01.data_loader import load_index_daily
-
-        hs300 = load_index_daily("000300", start="20200101", refresh=False)["close"]
-        hs300 = (
-            pd.to_datetime(hs300.index)
-            if not isinstance(hs300.index, pd.DatetimeIndex)
-            else hs300
-        )
-        hs300 = hs300.reindex(ew.index).ffill()
-    except Exception as e:
-        print(f"  [跳过] 沪深300: {e}")
-        hs300 = None
-
-    print("=== 1) 风格(全市场等权 vs 沪深300, 小盘代理) ===")
-    if hs300 is not None:
-        rel = (ew / hs300).dropna()
+    # ---- 1) 风格: 中证1000 vs 沪深300 ----
+    print("=== 1) 风格(中证1000 vs 沪深300, 纯小盘代理) ===")
+    zs1000 = _load_index("000852")
+    hs300 = _load_index("000300")
+    if zs1000 is not None and hs300 is not None:
+        rel = (zs1000 / hs300).dropna()
         for w in (20, 60, 250):
             if len(rel) <= w:
                 continue
@@ -63,10 +65,10 @@ def main() -> None:
             print(
                 f"  近{w}日 小盘相对强弱: {r:+.1f}% ({'小盘强势' if r > 0 else '小盘弱势'})"
             )
-    ew20 = ew.iloc[-1] / ew.iloc[-21] - 1 if len(ew) > 21 else np.nan
-    print(f"  全市场等权近20日: {ew20:+.1%}")
+    else:
+        print("  (指数不可用)")
 
-    # ---- 宽度 ----
+    # ---- 2) 宽度 ----
     print("\n=== 2) 市场宽度 ===")
     close = full.pivot(index="date", columns="code", values="close")
     ret_d = close.pct_change()
@@ -80,38 +82,49 @@ def main() -> None:
     )
     print(f"  今日: 涨 {up_today} / 跌 {dn_today} | 涨停 {limit_up} / 跌停 {limit_dn}")
 
-    # ---- 策略环境 ----
-    print("\n=== 3) 策略环境 ===")
-    # 低价池(3-4元): 用收盘价近似真实价(精确需复权, 仪表盘用当日收盘粗判)
-    last_close = close.iloc[-1]
-    low_pool = last_close.between(3.0, 4.0, inclusive="left").sum()
-    prev_close = close.iloc[-21] if len(close) > 21 else None
-    low_pool_prev = (
-        (prev_close.between(3.0, 4.0, inclusive="left")).sum()
-        if prev_close is not None
-        else np.nan
-    )
+    # ---- 3) 策略环境(真实价低价池 + 扣非通过率) ----
+    print("\n=== 3) 策略环境(P3 供给端, 真实价) ===")
+    real_T = real.loc[last_date]
+    pool_now = real_T.between(3.0, 4.0, inclusive="left").sum()
+    i20 = close.index.get_indexer([last_date], method="nearest")[0]
+    d20 = close.index[max(0, i20 - 20)]
+    pool_20 = real.loc[d20].between(3.0, 4.0, inclusive="left").sum()
     print(
-        f"  低价池(3-4元收盘近似): 当前 {low_pool} 只 (20日前 {low_pool_prev:.0f}) "
-        f"{'扩张' if low_pool >= low_pool_prev else '收缩'}"
+        f"  真实价低价池(3-4元): 当前 {pool_now} 只 (20日前 {pool_20:.0f}) "
+        f"{'扩张' if pool_now >= pool_20 else '收缩'}"
     )
+    vis = ded.index[ded.index + pd.Timedelta(days=120) <= last_date]
+    if len(vis) >= 3:
+        pool_mask = real_T.between(3.0, 4.0, inclusive="left").astype(bool)
+        pool_codes = list(pool_mask[pool_mask].index)
+        last3 = ded.loc[vis[-3:], pool_codes]
+        pass_rate = (last3 > 0).all(axis=0).mean()
+        print(
+            f"  低价池近3年扣非为正通过率: {pass_rate:.0%} "
+            f"({'健康' if pass_rate > 0.35 else '恶化中' if pass_rate > 0.25 else '显著恶化'})"
+        )
     amt = full.pivot(index="date", columns="code", values="amount")
     print(
-        f"  全市场成交额中位(当日): {amt.iloc[-1].median() / 1e8:.1f}亿 | "
-        f"近20日: {amt.iloc[-20:].median().median() / 1e8:.1f}亿"
+        f"  全市场成交额中位: 当日 {amt.iloc[-1].median() / 1e8:.1f}亿 | 近20日 {amt.iloc[-20:].median().median() / 1e8:.1f}亿"
     )
 
-    # ---- 估值 ----
+    # ---- 4) 估值(PB 中位 + 历史分位) ----
     print("\n=== 4) 估值 ===")
     pb = full.pivot(index="date", columns="code", values="pbMRQ")
-    pb_pos = pb.iloc[-1].dropna()
-    pb_pos = pb_pos[pb_pos > 0]
+    pb_pos = pb[pb > 0]
+    pb_med = pb_pos.median(axis=1).dropna()
+    cur = pb_med.iloc[-1]
+    pct = (pb_med < cur).mean() * 100
+    brk = (pb_pos.iloc[-1] < 1).mean()
     print(
-        f"  全市场 PB 中位: {pb_pos.median():.2f} | PB<1(破净)占比: {(pb_pos < 1).mean():.0%}"
+        f"  全市场 PB 中位: {cur:.2f} | 历史分位(2014以来): {pct:.0f}% "
+        f"({'偏高' if pct > 70 else '中性' if pct > 30 else '偏低'}) | 破净率 {brk:.0%}"
     )
 
-    # ---- 策略超额 ----
+    # ---- 5) 策略超额 ----
     print("\n=== 5) 策略超额(建仓以来 vs 全市场等权) ===")
+    ret_ew = close.pct_change()
+    ew = (1 + ret_ew.mean(axis=1).fillna(0)).cumprod()
     for strat, outdir, pat in [
         ("R5", "r5", "ledger_aum*w.json"),
         ("P3", "p3", "ledger_p3_aum*w.json"),
@@ -125,8 +138,7 @@ def main() -> None:
         )
         if not ledgers:
             continue
-        lf = ledgers[-1]  # 最大账户
-        led = json.load(open(lf))
+        led = json.load(open(ledgers[-1]))
         h = led["nav_history"]
         if not h:
             continue
