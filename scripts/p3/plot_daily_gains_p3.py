@@ -76,39 +76,44 @@ def plot() -> list[Path]:
     if not dfs:
         print(f"P3 无 daily_nav_p3_aum*.csv（先跑 paper_live_p3.py mark）: {out}")
         return []
-    n = len(dfs)
-    import math
+    outs: list[Path] = []
 
-    ncol, nrow = 4, math.ceil(n / 4)
-
-    # 1) NAV 合并 2×4 子图
-    fig, axes = plt.subplots(nrow, ncol, figsize=(18, 3.6 * nrow), squeeze=False)
+    # 1) 每账户 NAV 单图(对齐 R5 plot_daily_gains: 每账户一张 daily_nav_p3_aum{tag}.png)
     for i, (name, aum, df) in enumerate(dfs):
-        ax = axes[i // ncol][i % ncol]
-        ax.plot(
-            df["date"], df["nav"], color=COLORS[i], lw=1.4, marker="o", markersize=3
-        )
-        ax.axhline(aum, color="gray", ls="--", lw=1.0, alpha=0.7)
+        c = COLORS[i]
+        fig, ax = plt.subplots(figsize=(11, 5))
+        ax.plot(df["date"], df["nav"], color=c, lw=1.6, marker="o", markersize=4)
+        ax.axhline(aum, color="gray", ls="--", lw=1.2, alpha=0.8)
         ax.text(
             df["date"].iloc[-1],
             aum,
-            f" 本金{aum:,.0f}",
+            f"  建仓资金 {aum:,.0f} 元",
             va="bottom",
-            fontsize=8,
+            ha="left",
+            fontsize=9,
             color="dimgray",
         )
-        ax.set_title(f"{name} · NAV 最新 {df['nav'].iloc[-1]:,.0f}", fontsize=11)
-        ax.grid(alpha=0.3)
+        for x, y in zip(df["date"], df["nav"]):
+            ax.annotate(
+                f"{y:,.0f}",
+                (x, y),
+                textcoords="offset points",
+                xytext=(0, 9),
+                ha="center",
+                fontsize=8,
+                color=c,
+            )
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+        ax.set_title(f"P3 {name} · 每日 NAV（元）", fontsize=13)
+        ax.grid(alpha=0.3)
         fig.autofmt_xdate()
-    for ax in axes.flat[n:]:
-        ax.set_visible(False)
-    fig.suptitle("P3 八账户 · 每日 NAV（元）", fontsize=14)
-    fig.tight_layout()
-    nav_out = out / "daily_nav_p3.png"
-    fig.savefig(nav_out, dpi=130)
-    plt.close(fig)
-    print(f"已输出: {nav_out}")
+        fig.tight_layout()
+        tag = f"{int(aum / 1e4)}w"
+        nav_out = out / f"daily_nav_p3_aum{tag}.png"
+        fig.savefig(nav_out, dpi=130)
+        plt.close(fig)
+        outs.append(nav_out)
+        print(f"已输出: {nav_out}")
 
     # 2) 累计净值 + 每日涨幅% 双面板
     fig, (ax1, ax2) = plt.subplots(
@@ -133,8 +138,9 @@ def plot() -> list[Path]:
     gains_out = out / "daily_gains_p3.png"
     fig.savefig(gains_out, dpi=130)
     plt.close(fig)
+    outs.append(gains_out)
     print(f"已输出: {gains_out}")
-    return [nav_out, gains_out]
+    return outs
 
 
 if __name__ == "__main__":
