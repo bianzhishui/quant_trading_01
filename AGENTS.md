@@ -12,7 +12,8 @@ A 股规则：T+1、1手=100股、涨跌停、佣金/印花/过户/红利税全�
 **模拟盘长期运营（四账户）**。
 
 - 当前最终策略 = **R5 等权575**（Amihud × 中期动量 × F4低成交额，行业内百分位打分，前 20% 等权，月频调仓）。
-- 完整运营文档：`docs/strategy_operations_handbook.md`（**只维护 R5 一版内容**）。
+- 完整运营文档：`docs/strategy_operations_handbook.md`（**只维护 R5 一版内容**）；
+  **P3 运营文档：`docs/p3_operations_handbook.md`**（低价股策略，八账户，独立于 R5 手册）。
 - 多版本探索谱系见 README 顶部 ⭐ 标注（R5 只是其中运营中的一版）。
 
 ---
