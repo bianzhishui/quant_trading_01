@@ -5,7 +5,7 @@
     "configurations": [
         // ===== 每日运营（daily_update）=====
         {
-            "name": "daily_update 一键运营",
+            "name": "[R5] 一键运营",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -15,7 +15,7 @@
             "args": ["--chart"]
         },
         {
-            "name": "daily_update 只读总表",
+            "name": "[R5] 只读总表",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -26,7 +26,7 @@
         },
         // ===== 模拟盘四账户（paper_live）=====
         {
-            "name": "paper_live 月调仓 step",
+            "name": "[R5] 月调仓 step",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -36,7 +36,7 @@
             "args": ["step"]
         },
         {
-            "name": "paper_live 每日涨幅 mark",
+            "name": "[R5] 每日涨幅 mark",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -46,7 +46,7 @@
             "args": ["mark"]
         },
         {
-            "name": "paper_live 报告 report",
+            "name": "[R5] 报告 report",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -57,7 +57,7 @@
         },
         // ===== 因子健康监控（factor_health）=====
         {
-            "name": "factor_health 因子监控",
+            "name": "[R5] 因子监控",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -66,7 +66,7 @@
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "factor_health 因子监控+图",
+            "name": "[R5] 因子监控+图",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -77,7 +77,7 @@
         },
         // ===== 历史回测（paper_trade）=====
         {
-            "name": "paper_trade replay 60万",
+            "name": "[R5] replay 60万",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -87,7 +87,7 @@
             "args": ["replay", "--aum", "600000"]
         },
         {
-            "name": "paper_trade replay 100万",
+            "name": "[R5] replay 100万",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -97,7 +97,7 @@
             "args": ["replay", "--aum", "1000000"]
         },
         {
-            "name": "paper_trade replay 300万",
+            "name": "[R5] replay 300万",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -107,7 +107,7 @@
             "args": ["replay", "--aum", "3000000"]
         },
         {
-            "name": "paper_trade replay 600万",
+            "name": "[R5] replay 600万",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -117,7 +117,7 @@
             "args": ["replay", "--aum", "6000000"]
         },
         {
-            "name": "paper_trade replay 300万 (自定义配置)",
+            "name": "[R5] replay 300万 (自定义配置)",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -128,7 +128,7 @@
         },
         // ===== 年度场景回放（scenario_ytd）=====
         {
-            "name": "scenario_ytd 2026全年",
+            "name": "[R5] 2026全年",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -138,7 +138,7 @@
             "args": ["--start", "2026-01-01"]
         },
         {
-            "name": "scenario_ytd 2025全年",
+            "name": "[R5] 2025全年",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -149,7 +149,7 @@
         },
         // ===== 出图（plot_daily_gains）=====
         {
-            "name": "plot_daily_gains 运营图(live)",
+            "name": "[R5] 运营图(live)",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -159,7 +159,7 @@
             "args": ["--live"]
         },
         {
-            "name": "plot_daily_gains 2015回测图",
+            "name": "[R5] 2015回测图",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -169,7 +169,7 @@
             "args": ["--prefix", "20150101", "--title", "2015-01起全量回测"]
         },
         {
-            "name": "plot_daily_gains 2026全年图",
+            "name": "[R5] 2026全年图",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -179,7 +179,7 @@
             "args": ["--prefix", "20260101", "--title", "2026全年"]
         },
         {
-            "name": "P3 一键运营 daily_update_p3",
+            "name": "[P3] 一键运营 daily_update",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -190,7 +190,7 @@
         },
         // ===== P3 模拟盘八账户（paper_live_p3）=====
         {
-            "name": "P3 每日涨幅 mark (8账户)",
+            "name": "[P3] 每日涨幅 mark",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -200,7 +200,7 @@
             "args": ["mark"]
         },
         {
-            "name": "P3 月调仓 step (8账户)",
+            "name": "[P3] 月调仓 step",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -210,7 +210,7 @@
             "args": ["step"]
         },
         {
-            "name": "P3 报告 report (8账户)",
+            "name": "[P3] 报告 report",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -220,7 +220,7 @@
             "args": ["report"]
         },
         {
-            "name": "P3 每日图 plot",
+            "name": "[P3] 每日图 plot",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
@@ -230,7 +230,7 @@
         },
         // ===== 数据更新（fetch）=====
         {
-            "name": "fetch_full_market 全市场更新",
+            "name": "[数据] 全市场更新",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
