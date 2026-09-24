@@ -237,6 +237,26 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "[R5] 持仓明细 60万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "r5", "--aum", "600000"]
+        },
+        {
+            "name": "[P3] 持仓明细 600万",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/holdings_detail.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--strat", "p3", "--aum", "6000000"]
+        },
         // ===== 数据更新（fetch）=====
         {
             "name": "[数据] 全市场更新",
