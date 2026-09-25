@@ -34,6 +34,7 @@ output/p3/*
 # P3 入库跟踪: 账本 + 每日图(daily_nav_p3.png/daily_gains_p3.png); 每日/月度 CSV 不入库
 !output/p3/ledger_p3_aum*.json
 !output/p3/*.png
+!output/p3/pool_quality_trend.csv
 
 # 大体积衍生数据(可经 fetch_round2_data.py 增量再生, 仅旧轮实验用)
 data/round2/daily_ext.parquet
