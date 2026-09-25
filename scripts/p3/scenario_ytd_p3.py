@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
 from scripts.r5.paper_trade import PaperPortfolio  # noqa: E402
-from scripts.r5.paper_live import _factor_panel_cached  # noqa: E402
+from scripts.r5.paper_live import _factor_panel  # noqa: E402  # 场景回放用静态因子(与R5一致), 不混入运营live增量
 from scripts.factor_round41_low_price import build_sets, load_data as load_data_p3  # noqa: E402
 
 
@@ -60,7 +60,7 @@ def run_scenario_p3(
         ex = idx[idx.get_loc(T) + 1]
         if ex in B:
             rebs.append({"T": T, "exec": ex, "target": B[ex]})
-    F = _factor_panel_cached(close)
+    F = _factor_panel(close)
     F_prev = F.shift(1).fillna(F.iloc[0])
 
     rb0 = next(r for r in rebs if r["exec"].date() >= start_ts.date())
