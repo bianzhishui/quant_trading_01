@@ -88,24 +88,24 @@ def test_r5_rebalances_deterministic():
 
 
 def test_r5_config_wiring_quantile(tmp_path, capsys):
-    """config strategy.r5.quantile 驱动分组: 3 → 目标 34 只(≠20), 且触发冻结警告。"""
+    """config r5.quantile 驱动分组: 3 → 目标 34 只(≠20), 且触发冻结警告。"""
     custom = tmp_path / "custom.yaml"
-    custom.write_text("strategy:\n  r5:\n    quantile: 3\n", encoding="utf-8")
+    custom.write_text("r5:\n  quantile: 3\n", encoding="utf-8")
     try:
         load_config(str(custom))
         close, amount, tst, isst, ind = _make_universe()
         rebs, _, _ = r5_rebalances(close, amount, tst, isst, ind)
         assert len(rebs[-1]["target"]) == 33  # 100/3 → 34/33/33, 顶组 33
         out = capsys.readouterr().out
-        assert "分组数(strategy.r5.quantile)" in out  # 冻结偏离警告
+        assert "分组数(r5.quantile)" in out  # 冻结偏离警告
     finally:
         load_config(None)
 
 
 def test_r5_config_wiring_seasoning(tmp_path):
-    """config strategy.r5.seasoning=2000(>1043日) → 全池为空 → 零调仓。"""
+    """config r5.seasoning=2000(>1043日) → 全池为空 → 零调仓。"""
     custom = tmp_path / "custom.yaml"
-    custom.write_text("strategy:\n  r5:\n    seasoning: 2000\n", encoding="utf-8")
+    custom.write_text("r5:\n  seasoning: 2000\n", encoding="utf-8")
     try:
         load_config(str(custom))
         close, amount, tst, isst, ind = _make_universe()
