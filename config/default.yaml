@@ -85,6 +85,14 @@ p3:
 
 # ---------- 数据抓取（fetch 脚本） ----------
 fetch:
+  minute:                      # 主板 5 分钟线(baostock, 2025 起; 1 分钟历史免费源不可得)
+    out_dir: "data/fundamental/minute"   # 按月分 parquet 目录
+    start: "2025-01-01"        # 抓取起点
+    end: null                  # 默认抓至最新交易日
+    freq: "5"                  # 5 分钟线(baostock 无 1 分钟)
+    adjust: "3"                # 3=不复权(与日线真实价口径一致)
+    batch: 200                 # 内存分批落盘(只/批)
+    pause: 0.3                 # 请求间停顿(秒, 防 baostock 封会话)
   corporate_actions:
     out_factor: "data/round2/adjust_factor.parquet"
     out_dividends: "data/round2/dividends.parquet"

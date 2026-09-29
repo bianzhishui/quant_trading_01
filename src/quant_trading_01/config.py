@@ -85,6 +85,7 @@ FETCH_PATH_KEYS = {
     ("financial_quality", "progress"),
     ("dividends_backfill", "out"),
     ("dividends_backfill", "progress"),
+    ("minute", "out_dir"),
 }
 
 
