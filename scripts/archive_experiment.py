@@ -572,6 +572,14 @@ UNITS = [
         "status": "✅ 定稿",
         "conclusion": "组合无增益+4元边界失效, P3定稿并上线模拟盘八账户(2026-09-01)",
     },
+    {
+        "name": "round49_event_momentum",
+        "scripts": ["factor_round49_event_momentum.py"],
+        "plans": ["factor_round49_event_momentum_plan.md"],
+        "outputs": [],
+        "status": "❌ 已否决",
+        "conclusion": "涨停事件动量否决(E1胜率44.7%<50%): 1-2日动量为正但5日胜率转负, 可交易(换手)子集5日胜率43%多数亏, 暴涨在买不进的缩量/一字; 游资打板=对手盘负和, 数据终结叙事",
+    },
 ]
 
 # 探索脚本在 scripts/；共享基座在 src/quant_trading_01/（KEEP 内）；闭包互 import 为 scripts.X
