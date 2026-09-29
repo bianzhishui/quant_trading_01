@@ -7,6 +7,7 @@
 - daily_gains_p3.png    累计净值(8 条, 建仓日=1.0) + 每日涨幅%(8 条+20日MA) 双面板
 
 用法: python scripts/p3/plot_daily_gains_p3.py
+      python scripts/p3/plot_daily_gains_p3.py --prefix 20250101 --title '2025全年'   # 场景图
 """
 
 from __future__ import annotations
@@ -56,12 +57,17 @@ def _out() -> Path:
     return Path(get_config().p3.out_dir)
 
 
-def _load_dfs() -> list[tuple[str, int, pd.DataFrame]]:
+def _load_dfs(prefix: str | None = None) -> list[tuple[str, int, pd.DataFrame]]:
     out = _out()
     dfs = []
     for aum in get_config().p3.aum_list:
         tag = f"{int(aum / 1e4)}w"
-        p = out / f"daily_nav_p3_aum{tag}.csv"
+        name = (
+            f"daily_nav_{prefix}_aum{tag}.csv"
+            if prefix
+            else f"daily_nav_p3_aum{tag}.csv"
+        )
+        p = out / name
         if not p.exists():
             continue
         df = pd.read_csv(p, parse_dates=["date"])
@@ -70,13 +76,17 @@ def _load_dfs() -> list[tuple[str, int, pd.DataFrame]]:
     return dfs
 
 
-def plot() -> list[Path]:
+def plot(prefix: str | None = None, title: str | None = None) -> list[Path]:
     out = _out()
-    dfs = _load_dfs()
+    dfs = _load_dfs(prefix)
     if not dfs:
-        print(f"P3 无 daily_nav_p3_aum*.csv（先跑 paper_live_p3.py mark）: {out}")
+        which = f"daily_nav_{prefix}_aum*.csv" if prefix else "daily_nav_p3_aum*.csv"
+        print(
+            f"P3 无 {which}（场景先跑 scenario_ytd_p3.py，运营先跑 paper_live_p3.py mark）: {out}"
+        )
         return []
     outs: list[Path] = []
+    title_use = title or (f"{prefix} 起" if prefix else "建仓以来")
 
     # 1) 每账户 NAV 单图(对齐 R5 plot_daily_gains: 每账户一张 daily_nav_p3_aum{tag}.png)
     for i, (name, aum, df) in enumerate(dfs):
@@ -109,7 +119,11 @@ def plot() -> list[Path]:
         fig.autofmt_xdate()
         fig.tight_layout()
         tag = f"{int(aum / 1e4)}w"
-        nav_out = out / f"daily_nav_p3_aum{tag}.png"
+        nav_out = out / (
+            f"daily_nav_{prefix}_aum{tag}.png"
+            if prefix
+            else f"daily_nav_p3_aum{tag}.png"
+        )
         fig.savefig(nav_out, dpi=130)
         plt.close(fig)
         outs.append(nav_out)
@@ -126,7 +140,7 @@ def plot() -> list[Path]:
         ax2.plot(
             df["date"], df["涨幅%"].rolling(20).mean(), color=c, lw=1.4, label=name
         )
-    ax1.set_title("P3 八账户累计净值（建仓日=1.0）", fontsize=13)
+    ax1.set_title(f"P3 八账户累计净值（{title_use}，建仓日=1.0）", fontsize=13)
     ax1.legend(loc="upper left", fontsize=9, ncol=4)
     ax1.grid(alpha=0.3)
     ax2.set_title("每日涨幅 %（细线=当日，粗线=20日MA）", fontsize=13)
@@ -135,7 +149,7 @@ def plot() -> list[Path]:
     ax2.grid(alpha=0.3)
     ax2.set_xlabel("日期")
     fig.tight_layout()
-    gains_out = out / "daily_gains_p3.png"
+    gains_out = out / (f"daily_gains_{prefix}.png" if prefix else "daily_gains_p3.png")
     fig.savefig(gains_out, dpi=130)
     plt.close(fig)
     outs.append(gains_out)
@@ -144,4 +158,14 @@ def plot() -> list[Path]:
 
 
 if __name__ == "__main__":
-    plot()
+    import argparse
+
+    ap = argparse.ArgumentParser(description="P3 八账户每日图（运营图或场景回放图）")
+    ap.add_argument(
+        "--prefix",
+        default=None,
+        help="场景回放前缀(如 20250101)；缺省=运营图(读 daily_nav_p3_aum*)",
+    )
+    ap.add_argument("--title", default=None, help="图标题(缺省用前缀/建仓以来)")
+    args = ap.parse_args()
+    plot(args.prefix, args.title)
