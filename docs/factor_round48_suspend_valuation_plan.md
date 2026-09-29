@@ -32,7 +32,7 @@
 ```python
 p = prices.get(c, np.nan)
 if pd.notna(p):
-    v += s * p        # 停牌日 raw=NaN → 该股市值 = 0
+    v += s * p  # 停牌日 raw=NaN → 该股市值 = 0
 ```
 
 后果：
