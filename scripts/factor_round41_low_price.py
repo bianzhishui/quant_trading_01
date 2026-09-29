@@ -106,6 +106,10 @@ def load_data() -> dict:
     roe = ann.pivot_table(index="report_date", columns="code", values="roe").reindex(
         columns=close.columns
     )
+    # R50: 经营现金流(每股)年报面板 — E1a/E1b 质量条件
+    ocf = ann.pivot_table(index="report_date", columns="code", values="ocf_ps").reindex(
+        columns=close.columns
+    )
 
     # 分红: T 前有记录(历史任意时点)
     dv = pd.read_parquet(cfg.paths.round2 + "/dividends.parquet")
@@ -125,6 +129,7 @@ def load_data() -> dict:
         "ded": ded,
         "debt": debt,
         "roe": roe,
+        "ocf": ocf,
         "div_code": div_code,
         "dv": dv,
     }
@@ -164,6 +169,8 @@ def build_sets(
     dy_min: float | None = None,
     mom_drop: float | None = None,
     top_n: int | None = None,
+    ocf_mode: str | None = None,
+    sig_days: list | None = None,
 ) -> tuple[dict, dict, dict, list, dict]:
     """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。
 
@@ -172,22 +179,33 @@ def build_sets(
              较 plan 文字(3年)宽松 —— 已在 R44 复核。
     freq: 重选频率(月数), 默认 1 = 每月; 12/36/60 = 年/3年/5年持有(R45)。
     roe_min/dy_min/mom_drop/top_n: R46 收益更大化探索参数(默认 None = 不启用)。
+    ocf_mode: R50 经营现金流条件(None=不启用 / "all"=近n年年报 ocf_ps 均为正 /
+              "sum"=近n年 ocf_ps 之和>0)。
+    sig_days: R50 自定义信号日(默认 None = 每月最后交易日; 传入则不套用 freq)。
     """
     close, real = data["close"], data["real"]
     amount, isst, tst = data["amount"], data["isst"], data["tst"]
     ded, debt, roe = data["ded"], data["debt"], data["roe"]
     ipo_date = data["ipo_date"]
     idx = close.index
-    sig_days = [
-        t
-        for t in month_last_days(idx)
-        if idx.get_loc(t) + 1 < len(idx)
-        and t >= pd.Timestamp("2014-01-01")  # 回测窗口(plan)
-    ]
-    if limit:
-        sig_days = sig_days[:limit]
-    if freq > 1:  # R45: 每 freq 个月重选一次
-        sig_days = sig_days[::freq]
+    if sig_days is not None:  # R50: 自定义信号日(如每 10 个交易日)
+        sig = [
+            t
+            for t in sig_days
+            if t >= pd.Timestamp("2014-01-01") and idx.get_loc(t) + 1 < len(idx)
+        ]
+    else:
+        sig = [
+            t
+            for t in month_last_days(idx)
+            if idx.get_loc(t) + 1 < len(idx)
+            and t >= pd.Timestamp("2014-01-01")  # 回测窗口(plan)
+        ]
+        if limit:
+            sig = sig[:limit]
+        if freq > 1:  # R45: 每 freq 个月重选一次
+            sig = sig[::freq]
+    sig_days = sig
 
     A, B, C = {}, {}, {}
     rec = []
@@ -271,6 +289,14 @@ def build_sets(
                             - 1.0
                         )
                         qual = qual & (mom6.fillna(1.0) > -mom_drop)
+                if ocf_mode is not None:  # R50: 经营现金流质量
+                    ocv = data["ocf"].loc[visible[-n_years:], elig_codes]
+                    ok_ocf = (
+                        (ocv > 0).all(axis=0)
+                        if ocf_mode == "all"
+                        else (ocv.sum(axis=0) > 0)
+                    )
+                    qual = qual & ok_ocf.fillna(False) & ocv.notna().all(axis=0)
                 B_set = set(qual[qual].index)
                 if top_n and len(B_set) > top_n:
                     ded_amt = ded.loc[visible[-1], list(B_set)]

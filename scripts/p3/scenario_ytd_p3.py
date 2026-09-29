@@ -34,10 +34,15 @@ def run_scenario_p3(
     end: str | None = None,
     out_prefix: str | None = None,
     verbose: bool = True,
+    aums: list | None = None,
+    block: bool = True,
 ) -> dict[str, pd.Series]:
-    """P3 场景回放: 指定建仓起点, 返回 {tag: nav Series}。"""
+    """P3 场景回放: 指定建仓起点, 返回 {tag: nav Series}。
+
+    aums: 限定账户(默认 None = 配置八账户); block: 涨跌停阻塞(R50 E3 对照用, 默认 True)。
+    """
     cfg = get_config()
-    aum_list = cfg.p3.aum_list
+    aum_list = aums if aums is not None else cfg.p3.aum_list
     out = Path(cfg.p3.out_dir)
     start_ts = pd.Timestamp(start)
     end_ts = pd.Timestamp(end) if end else None
@@ -99,7 +104,12 @@ def run_scenario_p3(
             if rb is not None:
                 pre_nav = pf.value(prices)
                 div_before = pf.div_cash
-                pf.rebalance(rb["target"], prices, trad.loc[idx[i]], ret.loc[idx[i]])
+                pf.rebalance(
+                    rb["target"],
+                    prices,
+                    trad.loc[idx[i]],
+                    ret.loc[idx[i]] if block else None,  # R50 E3: None = 无阻塞理想口径
+                )
                 post_nav = pf.value(prices)
                 buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
                 sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")

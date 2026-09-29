@@ -580,6 +580,14 @@ UNITS = [
         "status": "❌ 已否决",
         "conclusion": "涨停事件动量否决(E1胜率44.7%<50%): 1-2日动量为正但5日胜率转负, 可交易(换手)子集5日胜率43%多数亏, 暴涨在买不进的缩量/一字; 游资打板=对手盘负和, 数据终结叙事",
     },
+    {
+        "name": "round50_p3_optimize",
+        "scripts": ["factor_round50_p3_optimize.py"],
+        "plans": ["factor_round50_p3_optimize_plan.md"],
+        "outputs": [],
+        "status": "❌ 未达标",
+        "conclusion": "P3 优化空间封闭(R50): 经营现金流质量否决(验证段 -0.4/-0.8pp, 全样本 -4.7~-5.2pp) + 双周频否决(-3.05pp@45bp, 换手翻倍) + 阻塞口径验证段稳健(全样本 +1.8pp/年 高估, 集中 2014-17); 行业上限探查即否决(大类 HHI 0.05-0.08 已分散); 剩余空间仅框架外(扩池/行业排序补位)",
+    },
 ]
 
 # 探索脚本在 scripts/；共享基座在 src/quant_trading_01/（KEEP 内）；闭包互 import 为 scripts.X
@@ -591,6 +599,24 @@ IMPORT_RE = re.compile(
 # 脚本位置与基座位置（闭包解析/存在性检查）
 SCRIPTS_DIR = "scripts"
 BASES_DIR = "src/quant_trading_01"
+
+# 归档后脚本位于 archive/experiments/<unit>/（比 scripts/ 深 2 层）
+# → 仓库根推导须由 `Path(__file__).resolve().parent.parent` 改为 `parents[3]`，否则归档脚本不可运行
+REPO_ROOT_RE = re.compile(r"Path\(__file__\)\.resolve\(\)(?:\.parent){2,}")
+
+
+def rewrite_repo_root_paths(unit_dir: str, scripts: set[str]) -> None:
+    """重写移入归档单元的脚本的仓库根推导深度（保证归档副本可直接运行）。"""
+    for script in sorted(scripts):
+        path = os.path.join(unit_dir, f"{script}.py")
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding="utf-8").read()
+        new_text = REPO_ROOT_RE.sub("Path(__file__).resolve().parents[3]", text)
+        if new_text != text:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new_text)
+
 
 # 索引"方向"列展示名
 DIRECTIONS = {
@@ -635,6 +661,7 @@ DIRECTIONS = {
     "round37_f4_combo": "F4组合验证",
     "round38_weight_scan": "三因子权重扫描",
     "round39_candidates": "同向但异法候选因子",
+    "round50_p3_optimize": "P3 优化空间验证",
 }
 
 
@@ -749,7 +776,15 @@ def collect_outputs(unit_name: str, outputs: list[str]) -> list[str]:
 def render_readme(
     unit: dict, scripts: set[str], plans: list[str], outs: list[str]
 ) -> str:
-    main = next((f"{s}.py" for s in sorted(scripts) if s in unit["scripts"]), None)
+    main = next(
+        (
+            f"{s}.py"
+            for s in sorted(scripts)
+            # UNITS 登记可能带 .py 后缀，此处统一按"无扩展名"比较
+            if s in {p[:-3] if p.endswith(".py") else p for p in unit["scripts"]}
+        ),
+        None,
+    )
     run_cmd = (
         f".venv/bin/python archive/experiments/{unit['name']}/{main}   # cwd=仓库根"
         if main
@@ -893,6 +928,8 @@ def main() -> int:
                 moved.append((src, dst))
         # 3. 改写闭包内互 import
         rewrite_closure_imports(unit_dir, closure)
+        # 3.5 重写仓库根推导深度（脚本移入归档目录后 parent.parent 会指错）
+        rewrite_repo_root_paths(unit_dir, closure)
         # 4. 搬结论输出（untracked，用 rename）并 git add 入库
         for src in outs:
             dst = os.path.join(unit_dir, os.path.basename(src))

@@ -59,6 +59,7 @@
 | round46_maximize | round46_maximize | ✅ 通过 | 收益更大化收敛: P3=3.0-4.0元 验证段18.6%/0.93/-25.0% | archive/experiments/round46_maximize/ | 2026-09-24 |
 | round47_combine_boundary | round47_combine_boundary | ✅ 定稿 | 组合无增益+4元边界失效, P3定稿并上线模拟盘八账户(2026-09-01) | archive/experiments/round47_combine_boundary/ | 2026-09-24 |
 | round49_event_momentum | round49_event_momentum | ❌ 已否决 | 涨停事件动量否决(E1胜率44.7%<50%): 1-2日动量为正但5日胜率转负, 可交易(换手)子集5日胜率43%多数亏, 暴涨在买不进的缩量/一字; 游资打板=对手盘负和, 数据终结叙事 | archive/experiments/round49_event_momentum/ | 2026-09-29 |
+| round50_p3_optimize | P3 优化空间验证 | ❌ 未达标 | P3 优化空间封闭(R50): 经营现金流质量否决(验证段 -0.4/-0.8pp, 全样本 -4.7~-5.2pp) + 双周频否决(-3.05pp@45bp, 换手翻倍) + 阻塞口径验证段稳健(全样本 +1.8pp/年 高估, 集中 2014-17); 行业上限探查即否决(大类 HHI 0.05-0.08 已分散); 剩余空间仅框架外(扩池/行业排序补位) | archive/experiments/round50_p3_optimize/ | 2026-09-29 |
 | screen01_factor_screen | 因子筛选·中期动量 | 🟡 部分通过 | Round 1 批量筛选：中期动量因子判定部分通过，入组合观察名单 | archive/experiments/screen01_factor_screen/ | 2026-09-09 |
 | screen02_factor_screen | 因子筛选·Amihud | ✅ 通过并入 | Round 2 批量筛选：Amihud 非流动性首个全通过因子（+7.3pp） | archive/experiments/screen02_factor_screen/ | 2026-09-09 |
 | weekday_effect | 周内效应 | ⏸ 搁置 | 周内效应检验（独立方向，无 plan 文档） | archive/experiments/weekday_effect/ | 2026-09-09 |
