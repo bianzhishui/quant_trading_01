@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.data_io import FULL_DIR, FULL_FILE  # noqa: E402
 
 INDEX_COLS = None  # 动态识别 __index_level_* 垃圾列

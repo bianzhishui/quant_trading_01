@@ -26,13 +26,13 @@ from scipy import stats as sps
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.dividend_factor import load_all, month_last_days, metrics
 from research.reversal_factor import ERAS, N_Q, build_pool, ew_nav
 
 COST = 15e-4
 COST_SWEEP = [25e-4, 35e-4]
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / "output"
 R2 = ROOT / "data" / "round2"
 MIN_N = 50  # 一般因子最小截面

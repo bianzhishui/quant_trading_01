@@ -32,7 +32,7 @@ import pandas as pd
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.data_loader import _fetch_fund_sina
 
 # 代表性ETF池: 宽基股票 + 行业股票 + 海外股票 + 商品 + 债券
@@ -197,7 +197,7 @@ def main() -> None:
     ax.legend()
     ax.grid(alpha=0.3)
     ax.set_title("ETF低波轮动策略复现 (对数净值)")
-    out = Path(__file__).resolve().parent.parent / "output" / "etf_lowvol_replica.png"
+    out = Path(__file__).resolve().parents[3] / "output" / "etf_lowvol_replica.png"
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")

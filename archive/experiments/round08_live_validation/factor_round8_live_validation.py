@@ -26,11 +26,11 @@ from research.data_io import load_full_daily  # noqa: E402
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.dividend_factor import month_last_days, metrics
 from research.reversal_factor import build_pool, ew_nav
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / "output"
 R2 = ROOT / "data" / "round2"
 BASE = 15e-4

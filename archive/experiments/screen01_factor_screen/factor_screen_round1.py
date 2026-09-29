@@ -26,13 +26,13 @@ from scipy import stats as sps
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.dividend_factor import load_all, month_last_days, metrics
 from research.reversal_factor import ERAS, N_Q, build_pool, ew_nav
 
 COST = 15e-4
 COST_SWEEP = [25e-4, 35e-4]
-OUT = Path(__file__).resolve().parent.parent / "output"
+OUT = Path(__file__).resolve().parents[3] / "output"
 
 # 方向: +1 = 因子值高→看好(多头=Q5); -1 = 值低→看好(多头=Q1)  —— 预注册写死
 FACTORS = {"BP": +1, "低波动": -1, "中期动量": +1, "距52周高点": +1}

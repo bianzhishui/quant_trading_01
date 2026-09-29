@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.paper_trade import _load, r5_rebalances
 from research.reversal_factor import ew_nav
 from research.dividend_factor import metrics

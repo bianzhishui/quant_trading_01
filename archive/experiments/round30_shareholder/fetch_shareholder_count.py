@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 OUT_FILE = Path("data/round2/shareholder_count.parquet")
 

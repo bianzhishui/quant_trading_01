@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.dividend_factor import month_last_days  # noqa: E402
 from research.paper_trade import _load, _load_corp, metrics  # noqa: E402
 from research.reversal_factor import ERAS, N_Q, build_pool, ew_nav  # noqa: E402

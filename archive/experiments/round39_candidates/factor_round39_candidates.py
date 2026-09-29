@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats as sps
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.config import get_config  # noqa: E402
 from research.data_io import load_full_daily  # noqa: E402
 from research.dividend_factor import metrics, month_last_days  # noqa: E402

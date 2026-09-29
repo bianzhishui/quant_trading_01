@@ -25,11 +25,11 @@ from scipy import stats
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.data_loader import load_index_daily
 from research.dividend_factor import metrics, monthly
 
-CDIR = Path(__file__).resolve().parent.parent / "data" / "convertible"
+CDIR = Path(__file__).resolve().parents[3] / "data" / "convertible"
 START = "2018-01-01"
 TOP_N = 20
 WARMUP = 20  # 上市满20交易日
@@ -250,9 +250,7 @@ def main() -> None:
     ax.legend(fontsize=9)
     ax.grid(alpha=0.3)
     ax.set_title("可转债双低轮动 (对数净值, 5bp基础成本)")
-    out = (
-        Path(__file__).resolve().parent.parent / "output" / "convertible_double_low.png"
-    )
+    out = Path(__file__).resolve().parents[3] / "output" / "convertible_double_low.png"
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")

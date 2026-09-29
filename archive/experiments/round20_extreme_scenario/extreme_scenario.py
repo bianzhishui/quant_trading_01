@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.paper_trade import OUT  # noqa: E402
 from research.scenario_ytd import run_scenario  # noqa: E402
 

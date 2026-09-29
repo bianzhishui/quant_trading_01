@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.config import get_config  # noqa: E402
 from research.dividend_factor import metrics, month_last_days  # noqa: E402
 from research.paper_trade import (  # noqa: E402

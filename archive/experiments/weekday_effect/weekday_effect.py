@@ -30,7 +30,7 @@ from scipy import stats
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from research.data_loader import load_index_daily
 
@@ -236,7 +236,7 @@ def main() -> None:
     ax.grid(alpha=0.3)
 
     out = (
-        Path(__file__).resolve().parent.parent
+        Path(__file__).resolve().parents[3]
         / "output"
         / f"weekday_effect_{args.symbol}.png"
     )

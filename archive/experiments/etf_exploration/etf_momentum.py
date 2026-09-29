@@ -35,7 +35,7 @@ from scipy import stats
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.data_loader import _fetch_fund_sina
 
 POOL = {
@@ -282,7 +282,7 @@ def main() -> None:
     ax.legend()
     ax.grid(alpha=0.3)
     ax.set_title("ETF 动量轮动三变体 (对数净值, 含成本5bp)")
-    out = Path(__file__).resolve().parent.parent / "output" / "etf_momentum.png"
+    out = Path(__file__).resolve().parents[3] / "output" / "etf_momentum.png"
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")

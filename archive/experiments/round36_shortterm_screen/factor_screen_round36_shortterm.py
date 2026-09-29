@@ -23,7 +23,7 @@ from pathlib import Path
 
 # matplotlib 配置/缓存目录 → 项目内可写位置
 os.environ.setdefault(
-    "MPLCONFIGDIR", str(Path(__file__).resolve().parent.parent / ".mplconfig")
+    "MPLCONFIGDIR", str(Path(__file__).resolve().parents[3] / ".mplconfig")
 )
 
 import matplotlib
@@ -37,7 +37,7 @@ from scipy import stats as sps
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.config import get_config  # noqa: E402
 from research.data_io import load_full_daily  # noqa: E402
 from research.dividend_factor import metrics  # noqa: E402

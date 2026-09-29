@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.dividend_factor import month_last_days  # noqa: E402
 from research.paper_trade import (  # noqa: E402
     MIN_IND,
@@ -201,9 +201,7 @@ def main() -> None:
             f"→ 改生产需用户批准"
         )
     elif not c2:
-        print(
-            "\n② 样本外不成立 → 训练段最优在验证段失灵 → 过拟合证据, 维持 0.5 (诚实)"
-        )
+        print("\n② 样本外不成立 → 训练段最优在验证段失灵 → 过拟合证据, 维持 0.5 (诚实)")
     else:
         print("\n判据未全过 → 诚实结论: 维持 0.5 或需用户决策")
 

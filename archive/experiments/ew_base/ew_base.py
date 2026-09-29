@@ -25,7 +25,7 @@ import pandas as pd
 plt.rcParams["font.sans-serif"] = ["PingFang SC", "Heiti TC", "Arial Unicode MS"]
 plt.rcParams["axes.unicode_minus"] = False
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from research.data_loader import load_index_daily
 from research.dividend_factor import load_all, metrics
 
@@ -177,7 +177,7 @@ def main() -> None:
     ax.legend(fontsize=9)
     ax.grid(alpha=0.3)
     ax.set_title("等权底仓三变体(持仓模拟) vs 真实指数 (对数净值)")
-    out = Path(__file__).resolve().parent.parent / "output" / "ew_base.png"
+    out = Path(__file__).resolve().parents[3] / "output" / "ew_base.png"
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     print(f"\n图已保存: {out}")

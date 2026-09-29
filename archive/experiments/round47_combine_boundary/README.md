@@ -9,5 +9,5 @@
 - **相关脚本**：factor_round47_combine_boundary
 - **plan 文档**：factor_round47_combine_boundary_plan.md
 - **结论输出**：（无）
-- **复现命令**：`（脚本留位 scripts/，无需复现命令）`
+- **复现命令**：`.venv/bin/python archive/experiments/round47_combine_boundary/factor_round47_combine_boundary.py   # cwd=仓库根`
 - **数据依赖**：`data/fundamental/full_daily.parquet`、`data/round2/` 等；依赖的共享基座 `src/quant_trading_01/reversal_factor.py` / `src/quant_trading_01/dividend_factor.py` 因被生产链依赖而留位，import 路径不变。
