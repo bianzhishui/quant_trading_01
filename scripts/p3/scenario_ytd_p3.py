@@ -36,10 +36,16 @@ def run_scenario_p3(
     verbose: bool = True,
     aums: list | None = None,
     block: bool = True,
+    target_fn=None,
+    detail: list | None = None,
 ) -> dict[str, pd.Series]:
     """P3 场景回放: 指定建仓起点, 返回 {tag: nav Series}。
 
     aums: 限定账户(默认 None = 配置八账户); block: 涨跌停阻塞(R50 E3 对照用, 默认 True)。
+    target_fn: 可选 (信号日 T, 原始目标集合) -> 目标集合; None(默认) = 现行行为逐位不变
+               (R53 用于低波截断的份额级验证)。
+    detail: 可选 list; 给出时把每次调仓明细(含 n_target/n_hold/n_fail/cash/fee)追加进去,
+            不影响任何默认输出(CSV 列不变)。
     """
     cfg = get_config()
     aum_list = aums if aums is not None else cfg.p3.aum_list
@@ -104,8 +110,13 @@ def run_scenario_p3(
             if rb is not None:
                 pre_nav = pf.value(prices)
                 div_before = pf.div_cash
+                target = (
+                    rb["target"]
+                    if target_fn is None
+                    else target_fn(rb["T"], rb["target"])
+                )
                 pf.rebalance(
-                    rb["target"],
+                    target,
                     prices,
                     trad.loc[idx[i]],
                     ret.loc[idx[i]] if block else None,  # R50 E3: None = 无阻塞理想口径
@@ -115,6 +126,19 @@ def run_scenario_p3(
                 sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
                 fee = sum(
                     t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades
+                )
+                # R53: 实际持仓只数 / 因 1 手约束或涨跌停无法建仓的目标数
+                n_target = len(target)
+                n_fail = len([c for c in target if pf.shares.get(c, 0) <= 0])
+                # R53 诊断: 按理论等权额度(pre_nav/n_target)连 1 手都买不起的目标数
+                _budget = pre_nav / max(n_target, 1)
+                n_1lot_short = len(
+                    [
+                        c
+                        for c in target
+                        if pd.notna(prices.get(c, np.nan))
+                        and 100.0 * float(prices[c]) > _budget
+                    ]
                 )
                 funds_rows.append(
                     {
@@ -133,6 +157,10 @@ def run_scenario_p3(
                         "div": pf.div_cash - div_before,
                         "cash": pf.cash,
                         "pos": post_nav - pf.cash,
+                        "n_target": n_target,
+                        "n_hold": n_target - n_fail,
+                        "n_fail": n_fail,
+                        "n_1lot_short": n_1lot_short,
                     }
                 )
                 prev_post = post_nav
@@ -195,6 +223,10 @@ def run_scenario_p3(
                 f"\n[{int(aum / 1e4)}万] {nav.index[0].date()} → {nav.index[-1].date()} "
                 f"({len(nav) - 1} 个交易日) | 期间累计 {cum:+.2f}%"
             )
+        if detail is not None:
+            for r in funds_rows:
+                r["aum"] = aum
+            detail.extend(funds_rows)
     return result
 
 

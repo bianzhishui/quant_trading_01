@@ -49,6 +49,7 @@ KEEP = {
     "paper_live_p3",
     "daily_update_p3",
     "plot_daily_gains_p3",
+    "scenario_ytd_p3",  # P3 场景回放(份额级): paper_live_p3 同族, plot_daily_gains_p3 引用
     # 低价股数据维护生产链(round2 财务/分红/真实价)
     "fetch_financial_quality",
     "fetch_dividends_backfill",
@@ -604,6 +605,14 @@ UNITS = [
         "status": "❌ 未达标",
         "conclusion": "P3 池内多因子合成打分(首次引入打分机制)全部未达标: 绑定判据为'不劣于单因子 A1'——Z1-Z4 合成抬高收益(Z4 年化 20.2% vs A1 19.8%, 夏普 1.04)但回撤恶化 1.5-1.8pp(-23.1~-23.4% vs -21.6%), Calmar 0.85-0.87 全面低于 A1 0.92, 净效应=用回撤换一点收益, 与'提收益+降回撤'目标相反; Z5 取 50% 回撤 -19.3%(改善 5.7pp)但年化仅 +0.3pp/45bp 持平/持仓 26 只(<30 下限); 探查预测被证实(vol/ivol 秩相关 0.917 → Z2≈Z1, 增量仅来自低PB, 而低PB 自身回撤不及低波); A1 仍为唯一可用候选; 自校验双重通过(Z0=R50, A1=R51 逐位一致); 生产采纳须另行批准",
     },
+    {
+        "name": "round53_p3_a1_share_level",
+        "scripts": ["factor_round53_p3_a1_share_level.py"],
+        "plans": ["factor_round53_p3_a1_share_level_plan.md"],
+        "outputs": [],
+        "status": "🟡 部分通过",
+        "conclusion": "A1 低波60 份额级八账户验证(主窗口 2021-2026): 八账户全部不劣于现冻结 P3——10万-600万 年化 +0.63~+1.86pp(随规模递减)、回撤改善 +2.45~+3.13pp、夏普 +0.06~+0.10, 买不起1手 0.0%; 3万账户是执行失败而非策略表现(66.5 目标仅持 35.0只=52.6%、47.3% 目标买不起1手、现金 49.1%、累计费用 35%、年化 -3.99%), A1 修复到 +8.09%(持仓率 99.7%)→ 该 +12.08pp 是'从不可执行到可执行'而非 alpha; 600万 份额级仅 +0.63pp(等权口径 +1.6pp)说明 1手取整/阻塞/现金拖累吃掉约 1pp; 主窗口可信性已验证(600万 S0 -24.96% vs 等权 -25.0%); 全样本窗口作废(口径缺陷): 份额级回撤 -95% vs 等权 -45.54%、累计费用 117-165%, 根因 scenario_ytd_p3 未接入 R48 的 eval_prices(raw.ffill()) 估值口径(已量化证据, 修正须另轮预注册); 生产采纳/3万账户处置须另行批准",
+    },
 ]
 
 # 探索脚本在 scripts/；共享基座在 src/quant_trading_01/（KEEP 内）；闭包互 import 为 scripts.X
@@ -678,6 +687,9 @@ DIRECTIONS = {
     "round38_weight_scan": "三因子权重扫描",
     "round39_candidates": "同向但异法候选因子",
     "round50_p3_optimize": "P3 优化空间验证",
+    "round51_p3_risk_value": "P3 风险维度与未用因子验证",
+    "round52_p3_composite": "P3 池内多因子合成打分",
+    "round53_p3_a1_share_level": "A1 份额级八账户落地验证",
 }
 
 

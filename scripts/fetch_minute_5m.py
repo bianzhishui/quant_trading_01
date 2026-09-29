@@ -45,15 +45,30 @@ def universe() -> list[str]:
 
 
 def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
-    rs = bs.query_history_k_data_plus(
-        code, FIELDS, start_date=start, end_date=end, frequency="5", adjustflag="3"
-    )
-    rows = []
-    while (rs.error_code == "0") & rs.next():
-        rows.append(rs.get_row_data())
-    df = pd.DataFrame(rows, columns=FIELDS.split(","))
-    df.insert(0, "code", code)
-    return df
+    """拉单只 5 分钟线, 带 90s 超时保护(baostock rs.next() 可能挂起)。"""
+    import signal
+
+    class _TO(Exception):
+        pass
+
+    def _handler(signum, frame):
+        raise _TO("timeout")
+
+    signal.signal(signal.SIGALRM, _handler)
+    signal.alarm(90)
+    try:
+        rs = bs.query_history_k_data_plus(
+            code, FIELDS, start_date=start, end_date=end, frequency="5", adjustflag="3"
+        )
+        rows = []
+        while (rs.error_code == "0") & rs.next():
+            rows.append(rs.get_row_data())
+        signal.alarm(0)
+        df = pd.DataFrame(rows, columns=FIELDS.split(","))
+        df.insert(0, "code", code)
+        return df
+    finally:
+        signal.alarm(0)
 
 
 def month_key(date_s: str) -> str:
