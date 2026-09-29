@@ -102,8 +102,13 @@ def last_visible(panel: pd.DataFrame, T: pd.Timestamp, lag: int) -> pd.Series | 
 
 
 def rank_keep(S: set, vals: pd.Series, ascending: bool) -> set:
-    """按因子排序保留最优 KEEP 比例; NaN 记最差。"""
-    s = pd.Series(vals).reindex(list(S))
+    """按因子排序保留最优 KEEP 比例; NaN 记最差。
+
+    注意: 必须 reindex(sorted(S)) —— 池是 set, 其迭代顺序由 PYTHONHASHSEED 决定;
+    稳定排序遇到平局(NaN 并列最差、或因子值相同)会继承输入顺序, 导致跨进程抖动
+    (实测全样本年化最大 ~1.3pp; 验证段指标稳定, 见 plan §0 确定性修正记录)。
+    """
+    s = pd.Series(vals).reindex(sorted(S))
     s = s.replace([np.inf, -np.inf], np.nan)
     s = s.fillna(np.inf if ascending else -np.inf)
     order = s.sort_values(ascending=ascending).index.tolist()
