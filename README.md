@@ -1,16 +1,17 @@
 # quant_trading_01 — A 股量化研究项目（策略探索 + 模拟盘运营中）
 
-> **状态**：免费数据管线（baostock/akshare）+ 本地事件式回测引擎（含 A 股规则）+ 38 轮因子研究 + **R5 等权575 四账户模拟盘运营中**（2026-09-01 建仓，三因子 Amihud 0.40×动量 0.10×F4低成交额 0.50，手册见 ⭐ 标注）。
+> **状态**：免费数据管线（baostock/akshare）+ 本地事件式回测引擎（含 A 股规则）+ 49 轮因子研究 + **双策略模拟盘运营中**：**R5 等权575** 四账户 + **P3 低价股** 八账户（均 2026-09-01 建仓，R5 三因子 Amihud 0.40×动量 0.10×F4低成交额 0.50，P3 真实价 3.0-4.0 元质量筛选；手册见 ⭐ 标注）。
 > **所有回测与文档结论仅用于策略研究，不构成投资建议。**
 
 > ## ⭐ 特别标注 · 多轮探索产出的策略版本
 >
-> 本项目通过多轮实验（详见下方 Round 记录）产出了**多个策略版本**，当前仅 **R5 等权575**
-> 一版投入模拟盘运营（60/100/300/600万 四账户，2026-09-01 建仓）。清单如下：
+> 本项目通过多轮实验（详见下方 Round 记录）产出了**多个策略版本**，当前 **R5 等权575**
+> 与 **P3 低价股** 两版投入模拟盘运营（均 2026-09-01 建仓）。清单如下：
 >
 > | 策略版本 | 结果 | 说明 |
 > |---|---|---|
-> | **R5 等权575**（三因子 Amihud 0.40 × 动量 0.10 × F4低成交额 0.50，行业内百分位，前 20% 等权） | ✅ 运营中 | **运营手册** [`docs/strategy_operations_handbook.md`](docs/strategy_operations_handbook.md)：定义/调仓/成本/规模指南/运营流程/监控对账 |
+> | **R5 等权575**（三因子 Amihud 0.40 × 动量 0.10 × F4低成交额 0.50，行业内百分位，前 20% 等权） | ✅ 运营中 | **运营手册** [`docs/strategy_operations_handbook.md`](docs/strategy_operations_handbook.md)：定义/调仓/成本/规模指南/运营流程/监控对账；四账户（60/100/300/600万），账本 `output/r5/` |
+> | **P3 低价股**（真实价 3.0-4.0 元 + 近3年扣非为正 + 负债率<70% + 流动性 + 分红，等权月频 50-60 只） | ✅ 运营中 | **运营手册** [`docs/p3_operations_handbook.md`](docs/p3_operations_handbook.md)：定义/质量筛选/验证结果/规模指南/运营流程；八账户（3万~600万），账本 `output/p3/` |
 > | 短期反转因子（800池） | ❌ 未通过 | IC 不足 + 15bp 成本致命 |
 > | 中期动量（Round 1） | 🟡 部分通过 | 入组合观察名单 |
 > | Amihud 非流动性（Round 2） | ✅ 通过 | 项目首个全通过因子（+7.3pp） |
@@ -24,18 +25,18 @@
 > | 全选满仓变体（Round 11） | ❌ 否决 | 换手 2.2 倍 + 规则脆弱 |
 > | 权重调整 Amihud 0.85（Round 26-29） | ✅ 采纳→被 R38 取代 | 样本外验证（训练14-21→验证22-26 超额差 +6.2pp）+ 顶点 0.95 + 高原稳健 → 用户批准 0.5:0.5 → 0.85:0.15（2026-09-10）；**Round 38 三因子（Amihud 0.40×动量 0.10×F4 0.50）样本外 +2.30pp 全过，2026-09-18 用户批准取代** |
 >
-> **说明：以上是探索历史产出的多个版本，不代表项目最终定论；R5 等权575 只是其中
-> 当前投入运营的一版，后续如有新版本取代，本文档与 README 标注将同步更新。**
+> **说明：以上是探索历史产出的多个版本，不代表项目最终定论；R5 等权575 与 P3 低价股
+> 是当前投入运营的两版，后续如有新版本取代，本文档与 README 标注将同步更新。**
 > **已结束探索的完整归档（代码+plan+结论输出）见 [`archive/INDEX.md`](archive/INDEX.md)。**
-> 每日涨幅/月度资金变动等运营数据在 `output/`（详见手册 §8-§11）。
+> 每日涨幅/月度资金变动等运营数据在 `output/`（R5 见手册 §8-§11，P3 见 P3 手册 §6）。
 >
 > > 🤖 **给 AI 代理/协作者**：改动本仓库前请先读 **[`AGENTS.md`](AGENTS.md)**
 > > （项目纪律：冻结参数、先预注册后回测、运营细则、禁忌清单）。
 
-## 📊 模拟盘运营每日图（建仓 2026-09-01 起）
+## 📊 R5 模拟盘运营每日图（四账户，建仓 2026-09-01 起）
 
 > 每日 `python scripts/r5/daily_update.py --chart` 自动刷新以下 5 张图（已入库跟踪，
-> 数据到 **2026-09-08**，最新行情发布后自动续上）。
+> 数据到 **2026-09-28**，最新行情发布后自动续上）。
 
 **每日 NAV（元）——每账户一张（灰色虚线=建仓资金水平线，数据点=当日 NAV）**：
 
@@ -54,6 +55,35 @@
 
 <img src="output/r5/daily_gains_live.png" width="100%">
 
+## 📊 P3 模拟盘运营每日图（低价股八账户，建仓 2026-09-01 起）
+
+> 每日 `python scripts/p3/daily_update_p3.py --chart` 自动刷新（已入库跟踪，
+> 数据到 **2026-09-28**）。八账户：3万/10万/20万/30万/60万/100万/300万/600万
+> （小账户 1 手约束天然退化）。NAV 单图 `output/p3/daily_nav_p3_aum{tag}.png` ×8：
+
+<table>
+  <tr>
+    <td align="center"><b>3万账户</b><br><img src="output/p3/daily_nav_p3_aum3w.png" width="100%"></td>
+    <td align="center"><b>10万账户</b><br><img src="output/p3/daily_nav_p3_aum10w.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>20万账户</b><br><img src="output/p3/daily_nav_p3_aum20w.png" width="100%"></td>
+    <td align="center"><b>30万账户</b><br><img src="output/p3/daily_nav_p3_aum30w.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>60万账户</b><br><img src="output/p3/daily_nav_p3_aum60w.png" width="100%"></td>
+    <td align="center"><b>100万账户</b><br><img src="output/p3/daily_nav_p3_aum100w.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>300万账户</b><br><img src="output/p3/daily_nav_p3_aum300w.png" width="100%"></td>
+    <td align="center"><b>600万账户</b><br><img src="output/p3/daily_nav_p3_aum600w.png" width="100%"></td>
+  </tr>
+</table>
+
+**累计净值（建仓日=1.0）+ 每日涨幅% —— 八账户合并双面板**：
+
+<img src="output/p3/daily_gains_p3.png" width="100%">
+
 ## 快速开始
 
 本项目使用 **uv** 管理 Python 环境与依赖（锁文件 `uv.lock` 保证可复现）。
@@ -69,8 +99,10 @@ uv sync
 uv run pytest                                       # 回测引擎正确性单元测试 (4项)
 
 # 研究/运营入口（常用，详见 AGENTS.md §3 核心脚本一览）
-.venv/bin/python scripts/r5/daily_update.py --table   # 只读模拟盘四账户总表，不重跑
-.venv/bin/python scripts/r5/paper_live.py report      # 四账户报告
+.venv/bin/python scripts/r5/daily_update.py --table    # 只读 R5 四账户总表，不重跑
+.venv/bin/python scripts/r5/paper_live.py report       # R5 四账户报告
+.venv/bin/python scripts/p3/daily_update_p3.py --table # 只读 P3 八账户总表，不重跑
+.venv/bin/python scripts/p3/paper_live_p3.py report    # P3 八账户报告
 ```
 
 > 数据源：首选 **baostock**（稳定、免费、含前复权），失败时自动兜底 **akshare**(东方财富源)。
@@ -88,7 +120,7 @@ tests/
 docs/                  设计文档与研究方案（入口见 docs/README.md）
 archive/               已结束探索归档（代码+plan+结论输出，索引见 archive/INDEX.md）
 data/                  行情缓存（自动生成）
-output/                回测图表与成交明细（自动生成）
+output/                运营产物（r5/ 四账户 + p3/ 八账户；账本/每日图入库跟踪，CSV 多数 gitignore）
 ```
 
 ## 引擎处理的 A 股关键约束
@@ -201,9 +233,11 @@ T+1 涨跌停阻塞损失仅 0.18pp（每月约 8 买不进/3 卖不出，同组
 `output/factor_round8_holdings_2026-09-03.csv`（575 只）。
 **研究闭环：因子筛选 → 组合 → 风控 → 行业中性化 → 扩池验证 → 实盘化验证。**
 
-**▶ 当前状态：四账户模拟盘按 R5 等权575（探索产出的一版）运营中**（60/100/300/600万，2026-09-01 建仓）。
-运营与监控请以 ⭐ 标注的 [`docs/strategy_operations_handbook.md`](docs/strategy_operations_handbook.md) 为准；
-月度调仓 `paper_live.py step`、每日涨幅 `mark`、报告 `report`，详见手册 §8。
+**▶ 当前状态：双策略模拟盘运营中**（均 2026-09-01 建仓）——
+**R5 等权575** 四账户（60/100/300/600万）按 ⭐ [`docs/strategy_operations_handbook.md`](docs/strategy_operations_handbook.md) 运营
+（月度调仓 `scripts/r5/paper_live.py step`、每日 `scripts/r5/daily_update.py`、报告 `report`，详见手册 §8）；
+**P3 低价股** 八账户（3万~600万）按 ⭐ [`docs/p3_operations_handbook.md`](docs/p3_operations_handbook.md) 运营
+（月度调仓 `scripts/p3/paper_live_p3.py step`、每日 `scripts/p3/daily_update_p3.py`、报告 `report`，详见 P3 手册 §6）。
 
 ## 附录 · 早期学习路线（教程期归档，仅供入门者复用）
 
