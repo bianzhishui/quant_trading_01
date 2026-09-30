@@ -81,7 +81,17 @@ def load_data() -> dict:
         if len(f):
             s = f.set_index("date")["foreAdjustFactor"]
             s = s[~s.index.duplicated()].sort_index()
-            fac_ser = s.reindex(close.index).ffill().fillna(1.0)
+            # R57: 先并集 ffill 再 reindex —— 否则索引起点(2013-06-01)之前的因子记录会被
+            # reindex 丢弃, 因子回落为 1.0(real=close 前复权价, 非真实价), 直到该股索引内
+            # 首条因子记录才切换 → 2014-2015 出现 -169%~-386% 的单日"收益"(超 ±10% 涨跌停)。
+            # bfill: 整表无更早记录时用最早可得因子; fillna(1.0): 完全无因子记录时的兜底。
+            fac_ser = (
+                s.reindex(close.index.union(s.index))
+                .ffill()
+                .reindex(close.index)
+                .bfill()
+                .fillna(1.0)
+            )
             real[code] = close[code] / fac_ser
         elif code in set(rf["code"]):
             s = rf[rf["code"] == code].set_index("date")["raw_close"]
