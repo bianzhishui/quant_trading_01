@@ -333,7 +333,9 @@ def build_sets(
     return A, B, C, rec, {"ded": ded, "debt": debt}
 
 
-def ew_nav(ret: pd.DataFrame, sets: dict, cost: float, empty_mode: str = "cash") -> pd.Series:
+def ew_nav(
+    ret: pd.DataFrame, sets: dict, cost: float, empty_mode: str = "cash"
+) -> pd.Series:
     """逐日等权持仓模拟(退市收益已在 ret 内)。
 
     empty_mode: 调仓日目标池为**空集**时的行为(R58 新增):
