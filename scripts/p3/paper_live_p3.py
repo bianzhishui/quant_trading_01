@@ -188,6 +188,8 @@ def _load_all_p3():
         None,
         sub_price=(_cfg().p3.price_lo, _cfg().p3.price_hi),
         n_years=_cfg().p3.n_years,
+        low_vol_keep=_cfg().p3.low_vol_keep,  # R54 A1 低波截断(配置驱动, null = 关闭)
+        low_vol_window=_cfg().p3.low_vol_window,
     )
     idx = close.index
     sig = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]

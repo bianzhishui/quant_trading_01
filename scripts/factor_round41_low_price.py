@@ -171,6 +171,8 @@ def build_sets(
     top_n: int | None = None,
     ocf_mode: str | None = None,
     sig_days: list | None = None,
+    low_vol_keep: float | None = None,
+    low_vol_window: int = 60,
 ) -> tuple[dict, dict, dict, list, dict]:
     """逐月信号: A组/B组/C组集合 + 记录(低价数/退市数)。
 
@@ -182,6 +184,9 @@ def build_sets(
     ocf_mode: R50 经营现金流条件(None=不启用 / "all"=近n年年报 ocf_ps 均为正 /
               "sum"=近n年 ocf_ps 之和>0)。
     sig_days: R50 自定义信号日(默认 None = 每月最后交易日; 传入则不套用 freq)。
+    low_vol_keep: R54 A1 低波截断——质量筛选后的池内按 vol(窗口 low_vol_window)升序保留
+                  前 keep 比例(NaN 记最差); 默认 None = 不启用(行为与 R41-R53 逐位一致)。
+    low_vol_window: vol 窗口(交易日, 默认 60 = R51 的 vol60 口径)。
     """
     close, real = data["close"], data["real"]
     amount, isst, tst = data["amount"], data["isst"], data["tst"]
@@ -206,6 +211,11 @@ def build_sets(
         if freq > 1:  # R45: 每 freq 个月重选一次
             sig = sig[::freq]
     sig_days = sig
+
+    # R54 A1: 低波面板预计算一次(避免逐月重算); 仅启用时计算, 默认路径零开销
+    vol_panel = None
+    if low_vol_keep is not None:
+        vol_panel = close.pct_change().rolling(low_vol_window).std()
 
     A, B, C = {}, {}, {}
     rec = []
@@ -301,6 +311,17 @@ def build_sets(
                 if top_n and len(B_set) > top_n:
                     ded_amt = ded.loc[visible[-1], list(B_set)]
                     B_set = set(ded_amt.nlargest(top_n).index)
+        if vol_panel is not None and B_set:  # R54 A1: 池内低波截断(升序保留前 keep)
+            v = (
+                vol_panel.loc[T]
+                .reindex(
+                    sorted(B_set)
+                )  # sorted: 固定输入顺序, 防 hash 序抖动(R51 §0.1)
+                .replace([np.inf, -np.inf], np.nan)
+                .fillna(np.inf)  # NaN(新股/停牌多) 记最差
+            )
+            keep_n = max(int(np.ceil(len(v) * low_vol_keep)), 1)
+            B_set = set(v.sort_values(ascending=True, kind="stable").index[:keep_n])
         B[exec_day] = B_set
         # C: 全市场(在市)等权基准
         c_ok = (tst_ok & board & close.loc[T].notna()).astype(bool)

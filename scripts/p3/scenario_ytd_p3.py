@@ -23,7 +23,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
-from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.config import get_config, load_config  # noqa: E402
 from scripts.r5.paper_trade import PaperPortfolio  # noqa: E402
 from scripts.r5.paper_live import _factor_panel  # noqa: E402  # 场景回放用静态因子(与R5一致), 不混入运营live增量
 from scripts.factor_round41_low_price import build_sets, load_data as load_data_p3  # noqa: E402
@@ -38,14 +38,17 @@ def run_scenario_p3(
     block: bool = True,
     target_fn=None,
     detail: list | None = None,
+    low_vol_keep: float | None = None,
+    low_vol_window: int = 60,
 ) -> dict[str, pd.Series]:
     """P3 场景回放: 指定建仓起点, 返回 {tag: nav Series}。
 
-    aums: 限定账户(默认 None = 配置八账户); block: 涨跌停阻塞(R50 E3 对照用, 默认 True)。
-    target_fn: 可选 (信号日 T, 原始目标集合) -> 目标集合; None(默认) = 现行行为逐位不变
-               (R53 用于低波截断的份额级验证)。
+    aums: 限定账户(默认 None = 配置七账户); block: 涨跌停阻塞(R50 E3 对照用, 默认 True)。
+    target_fn: 可选 (信号日 T, 原始目标集合) -> 目标集合; None(默认) = 不额外截断
+               (R53 研究钩子; **不要与 low_vol_keep 同时用**, 否则双重截断)。
     detail: 可选 list; 给出时把每次调仓明细(含 n_target/n_hold/n_fail/cash/fee)追加进去,
             不影响任何默认输出(CSV 列不变)。
+    low_vol_keep/low_vol_window: R54 A1 低波截断, 直接转发 build_sets(默认 None = 不启用)。
     """
     cfg = get_config()
     aum_list = aums if aums is not None else cfg.p3.aum_list
@@ -61,7 +64,12 @@ def run_scenario_p3(
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
     idx = close.index
     A, B, C, _, _ = build_sets(
-        data, None, sub_price=(cfg.p3.price_lo, cfg.p3.price_hi), n_years=cfg.p3.n_years
+        data,
+        None,
+        sub_price=(cfg.p3.price_lo, cfg.p3.price_hi),
+        n_years=cfg.p3.n_years,
+        low_vol_keep=low_vol_keep,  # R54 A1(与 paper_live_p3 同口径)
+        low_vol_window=low_vol_window,
     )
     from quant_trading_01.dividend_factor import month_last_days
 
@@ -234,9 +242,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--start", default="2026-01-01")
     ap.add_argument("--end", default=None, help="截止日期(含), 默认数据末尾")
+    ap.add_argument("--config", default=None)
     args = ap.parse_args()
+    load_config(args.config)
     prefix = pd.Timestamp(args.start).strftime("%Y%m%d")
-    run_scenario_p3(args.start, args.end, out_prefix=prefix, verbose=True)
+    # R54: 场景回放与生产同口径(读配置的 A1 低波截断)
+    run_scenario_p3(
+        args.start,
+        args.end,
+        out_prefix=prefix,
+        verbose=True,
+        low_vol_keep=get_config().p3.low_vol_keep,
+        low_vol_window=get_config().p3.low_vol_window,
+    )
 
 
 if __name__ == "__main__":
