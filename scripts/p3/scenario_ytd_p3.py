@@ -59,6 +59,10 @@ def run_scenario_p3(
     data = load_data_p3()
     close = data["close"]
     raw = data["real"]
+    # R56: 估值口径与生产 paper_live_p3 统一 —— 估值用 raw.ffill()(停牌沿用最后价, 与 R48 一致),
+    # 成交/除权补缺/1手买不起判断仍用原始价 raw。此前全程用 raw 估值 → 停牌持仓市值记 0,
+    # 触发换手/费用死亡螺旋(R53 §0.1 全样本窗口因此作废)。
+    raw_e = raw.ffill()
     tst = data["tst"]
     ret = close.pct_change()  # 涨跌停阻塞需执行日涨幅
     trad = tst.apply(pd.to_numeric, errors="coerce") == 1
@@ -116,7 +120,7 @@ def run_scenario_p3(
                         pf.corp_action_f(c, prices.get(c, np.nan), fp[c], fn[c])
             rb = rb_by_exec.get(idx[i])
             if rb is not None:
-                pre_nav = pf.value(prices)
+                pre_nav = pf.value(raw_e.iloc[i])  # R56: 估值用 ffill 价
                 div_before = pf.div_cash
                 target = (
                     rb["target"]
@@ -129,7 +133,7 @@ def run_scenario_p3(
                     trad.loc[idx[i]],
                     ret.loc[idx[i]] if block else None,  # R50 E3: None = 无阻塞理想口径
                 )
-                post_nav = pf.value(prices)
+                post_nav = pf.value(raw_e.iloc[i])  # R56: 估值用 ffill 价
                 buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
                 sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
                 fee = sum(
@@ -173,7 +177,7 @@ def run_scenario_p3(
                 )
                 prev_post = post_nav
                 pf.trades = []
-            navs.append(pf.value(prices))
+            navs.append(pf.value(raw_e.iloc[i]))  # R56: 估值用 ffill 价
         nav = pd.Series(navs, index=idx[i0 : i1 + 1])
         result[f"aum{int(aum / 1e4)}w"] = nav
         if out_prefix is not None:
