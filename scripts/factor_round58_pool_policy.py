@@ -169,7 +169,43 @@ def main() -> int:
         print(
             f"  {y:>5}{ra:>+10.2%}{rb:>+10.2%}{rb - ra:>+10.2%}{rc:>+10.2%}{ra - rc:>+13.2%}{rb - rc:>+13.2%}"
         )
-    # 2014 分解
+    # ---------- Y2 空池月窗口: hold 与份额级对齐 ----------
+    EMPTY_WIN = ("2015-04-01", "2015-08-31")
+    print(f"\n=== Y2 空池月窗口 {EMPTY_WIN[0]}~{EMPTY_WIN[1]} 三口径对照 ===")
+    sl, sl_rows = run(*EMPTY_WIN, True)
+    ew_c, ew_h = navs[("P0", "cash")], navs[("P0", "hold")]
+    idx2 = sl.index.intersection(ew_h.index)
+    cum = {
+        "份额级(生产行为)": float(
+            sl.reindex(idx2).iloc[-1] / sl.reindex(idx2).iloc[0] - 1
+        ),
+        "等权 cash(清仓)": float(
+            ew_c.reindex(idx2).iloc[-1] / ew_c.reindex(idx2).iloc[0] - 1
+        ),
+        "等权 hold(维持)": float(
+            ew_h.reindex(idx2).iloc[-1] / ew_h.reindex(idx2).iloc[0] - 1
+        ),
+    }
+    for k, v in cum.items():
+        print(f"  {k:<18}{v:>+9.2%}")
+    d_h = abs(cum["等权 hold(维持)"] - cum["份额级(生产行为)"])
+    d_c = abs(cum["等权 cash(清仓)"] - cum["份额级(生产行为)"])
+    print(
+        f"  Y2 |等权hold−份额级| = {d_h:.2%}（判据 ≤5pp）→ {'✅' if d_h <= 0.05 else '❌'}"
+        f" | 对照 |等权cash−份额级| = {d_c:.2%}"
+    )
+    mm_c = ew_c.reindex(idx2).resample("ME").last()
+    mm_h = ew_h.reindex(idx2).resample("ME").last()
+    rc_ = (mm_c / mm_c.shift(1) - 1).dropna()
+    rh_ = (mm_h / mm_h.shift(1) - 1).dropna()
+    print(
+        "  等权逐月: "
+        + " | ".join(
+            f"{d.date()} cash {rc_[d]:+.2%} hold {rh_[d]:+.2%}" for d in rc_.index
+        )
+    )
+
+    # ---------- X5 2014 分解 ----------
     y = 2014
     a = nb[nb.index.year == y]
     b_ = nn[nn.index.year == y]
@@ -179,26 +215,73 @@ def main() -> int:
         b_.iloc[-1] / b_.iloc[0] - 1,
         c.iloc[-1] / c.iloc[0] - 1,
     )
-    rows14 = [r for r in res[("full", True)][1] if r["date"].year == y]
+    rows14 = [
+        r for r in res[("full", True)][1] if pd.Timestamp(str(r["date"])).year == y
+    ]
     n1 = sum(r["n_1lot_short"] for r in rows14) / max(
         sum(r["n_target"] for r in rows14), 1
     )
+    print("\n=== X5 2014 分解 ===")
     print(
-        f"\n  X5 2014 分解: 含阻塞−等权 {ra - rc:+.2%} = (无阻塞−等权) {rb - rc:+.2%} + (阻塞影响) {ra - rb:+.2%}"
+        f"  含阻塞−等权 {ra - rc:+.2%} = (无阻塞−等权) {rb - rc:+.2%} + (阻塞影响) {ra - rb:+.2%}"
     )
     print(
-        f"    建仓日错位: 0.00pp(两序列已对齐到同一交易日网格) | 买不起1手: {n1:.2%} 目标只数占比"
+        f"  建仓日错位 0.00pp(两序列已对齐同一交易日网格) | 2014 买不起1手占目标只数 {n1:.3%}(600万)"
     )
-    resid = (rb - rc) - 0.0
+    resid = abs(rb - rc)
     print(
-        f"    归因残差 |无阻塞−等权| = {abs(resid):.2%}（判据 Y6 ≤2pp）→ {'✅ 可解释' if abs(resid) <= 0.02 else '❌ 未解释'}"
+        f"  归因残差 |无阻塞−等权| = {resid:.2%}（判据 Y6 ≤2pp）→ "
+        f"{'✅ 可解释' if resid <= 0.02 else '❌ 未完全解释(记录待查)'}"
     )
     pd.DataFrame(
         [
-            {"年": y, "含阻塞": ra, "无阻塞": rb, "等权hold": rc}
-            for y in sorted(set(idx.year))
+            {
+                "年": yy,
+                "含阻塞": float(
+                    nb[nb.index.year == yy].iloc[-1] / nb[nb.index.year == yy].iloc[0]
+                    - 1
+                ),
+                "无阻塞": float(
+                    nn[nn.index.year == yy].iloc[-1] / nn[nn.index.year == yy].iloc[0]
+                    - 1
+                ),
+                "等权hold": float(
+                    ne[ne.index.year == yy].iloc[-1] / ne[ne.index.year == yy].iloc[0]
+                    - 1
+                ),
+            }
+            for yy in sorted(set(idx.year))
+            if len(nb[nb.index.year == yy]) > 1
         ]
     ).to_csv("tmp/r58_yearly.csv", index=False, encoding="utf-8-sig")
+
+    # ---------- Y1 生产不变: 运营窗口回放 vs 生产账本每日 CSV ----------
+    print("\n=== Y1 运营窗口 2026-09-01~最新 回放 vs 生产账本(逐日) ===")
+    AUMS7 = [100_000, 200_000, 300_000, 600_000, 1_000_000, 3_000_000, 6_000_000]
+    navs7 = run_scenario_p3(
+        "2026-09-01",
+        None,
+        out_prefix=None,
+        verbose=False,
+        aums=AUMS7,
+        low_vol_keep=KEEP,
+        low_vol_window=WINDOW,
+    )
+    out_dir = Path(get_config().p3.out_dir)
+    worst = 0.0
+    for au in AUMS7:
+        tag = f"aum{int(au / 1e4)}w"
+        csv = out_dir / f"daily_nav_p3_{tag}.csv"
+        pr = pd.read_csv(csv, parse_dates=["date"]).set_index("date")["nav"]
+        common = navs7[tag].index.intersection(pr.index)
+        dd = (navs7[tag].reindex(common) / pr.reindex(common) - 1).abs().max()
+        worst = max(worst, float(dd))
+        print(
+            f"  {int(au / 1e4):>4}万 NAV {navs7[tag].iloc[-1]:>14,.2f} vs 账本 {pr.iloc[-1]:>14,.2f} | 逐日最大相对差 {dd:.6%}"
+        )
+    print(
+        f"  Y1 生产不变(逐日 ≤1e-6) → {'✅' if worst <= 1e-6 else '❌'}（最大 {worst:.2e}）"
+    )
     print(f"\n总耗时 {time.time() - t0:.0f}s")
     return 0
 
