@@ -98,6 +98,17 @@ def main() -> None:
     fail_p = out_dir / "_failed.txt"
     done = set(done_p.read_text().split()) if done_p.exists() else set()
     failed = set(fail_p.read_text().split()) if fail_p.exists() else set()
+    # 启动校验: done 只保留实际已落盘 parquet 的 code(防 kill 时最后批次内存丢失造成假 done)
+    real = set()
+    for p in out_dir.glob("*.parquet"):
+        real.update(pd.read_parquet(p, columns=["code"])["code"].unique())
+    stale = done - real
+    if stale:
+        print(
+            f"  [校验] 剔除假 done {len(stale)} 只(最后批次未落盘, 将重抓): {sorted(stale)[:3]}..."
+        )
+        done = done & real
+        done_p.write_text("\n".join(sorted(done)) + "\n")
 
     codes = universe()
     if args.limit:
