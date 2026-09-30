@@ -301,6 +301,14 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
         pf.slip_series = (
             amount_slip_series(amount.loc[rb["exec"]]) if slip_by_amount else None
         )
+        if len(rb["target"]) == 0:
+            # R58(X8): 空池月**仅打印告警**, 不改交易/估值逻辑 ——
+            # PaperPortfolio.rebalance 在 n==0 时直接 return(不成交也不清仓), 即"维持上月持仓"。
+            # 该行为是 R58 裁定的权威口径(与份额级一致); 详见 docs/p3_operations_handbook.md §3.2。
+            print(
+                f"  ⚠️ {rb['exec'].date()} 目标池为空(空池月): 维持现有持仓, 不调仓、不清仓",
+                flush=True,
+            )
         pf.rebalance(
             rb["target"], raw.loc[rb["exec"]], trad.loc[rb["exec"]], ret.loc[rb["exec"]]
         )

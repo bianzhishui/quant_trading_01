@@ -37,6 +37,7 @@ testpaths = ["tests"]
 # 让 pytest 直接 import src/ 下的包（scripts/ 经测试文件内 sys.path 引导）
 pythonpath = ["src"]
 markers = ["slow: 全市场全区间体检（pytest -m slow 手动跑）"]
+addopts = "-m 'not slow'"  # 默认跳过全市场体检门, 手动: pytest -m slow
 
 # 无 [build-system]：本项目作为“虚拟项目”管理，uv sync 只安装依赖，
 # src/ 包经 pytest pythonpath 或脚本顶部 sys.path 引导（仓库根 + src）导入；
