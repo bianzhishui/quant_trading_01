@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.config import get_config
 from quant_trading_01.data_io import load_full_daily, stock_basic
 from quant_trading_01.dividend_factor import month_last_days, metrics
+from quant_trading_01.panel import forward_factor_series
 
 # ---- 冻结(预注册)参数 ----
 
@@ -81,17 +82,10 @@ def load_data() -> dict:
         if len(f):
             s = f.set_index("date")["foreAdjustFactor"]
             s = s[~s.index.duplicated()].sort_index()
-            # R57: 先并集 ffill 再 reindex —— 否则索引起点(2013-06-01)之前的因子记录会被
-            # reindex 丢弃, 因子回落为 1.0(real=close 前复权价, 非真实价), 直到该股索引内
-            # 首条因子记录才切换 → 2014-2015 出现 -169%~-386% 的单日"收益"(超 ±10% 涨跌停)。
-            # bfill: 整表无更早记录时用最早可得因子; fillna(1.0): 完全无因子记录时的兜底。
-            fac_ser = (
-                s.reindex(close.index.union(s.index))
-                .ffill()
-                .reindex(close.index)
-                .bfill()
-                .fillna(1.0)
-            )
+            # R58: 统一走公共助手(其正确性由 tests/test_data_panel.py 看守);
+            # R57 前这里是 s.reindex(close.index).ffill().fillna(1.0) —— 索引起点之前的
+            # 因子记录被 reindex 丢弃 → 因子回落 1.0 → real=close(前复权价, 非真实价)。
+            fac_ser = forward_factor_series(s, close.index)
             real[code] = close[code] / fac_ser
         elif code in set(rf["code"]):
             s = rf[rf["code"] == code].set_index("date")["raw_close"]
@@ -339,17 +333,27 @@ def build_sets(
     return A, B, C, rec, {"ded": ded, "debt": debt}
 
 
-def ew_nav(ret: pd.DataFrame, sets: dict, cost: float) -> pd.Series:
-    """逐日等权持仓模拟(退市收益已在 ret 内)。"""
+def ew_nav(ret: pd.DataFrame, sets: dict, cost: float, empty_mode: str = "cash") -> pd.Series:
+    """逐日等权持仓模拟(退市收益已在 ret 内)。
+
+    empty_mode: 调仓日目标池为**空集**时的行为(R58 新增):
+      "cash"(默认, 历史口径): 权重置零 → 清仓持币;
+      "hold"(与生产一致): 不重设权重 → 维持上月持仓(PaperPortfolio.rebalance 在 n==0 时
+        直接 return: 不成交也不清仓) → 让研究口径与生产行为对齐。
+    """
+    if empty_mode not in ("cash", "hold"):
+        raise ValueError(f"empty_mode 只能是 cash/hold, 收到 {empty_mode}")
     cols = ret.columns
     W = pd.DataFrame(0.0, index=ret.index, columns=cols)
     w = pd.Series(0.0, index=cols)
     for dt in ret.index:
         if dt in sets:
             S = sets[dt]
-            w = pd.Series(0.0, index=cols)
             if S:
+                w = pd.Series(0.0, index=cols)
                 w[list(S)] = 1.0 / len(S)
+            elif empty_mode == "cash":
+                w = pd.Series(0.0, index=cols)
         W.iloc[W.index.get_loc(dt)] = w
     turn = W.diff().abs().sum(axis=1).fillna(0.0)
     gross = (W.shift(1).fillna(0.0) * ret).sum(axis=1)
