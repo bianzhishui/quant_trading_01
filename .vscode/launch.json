@@ -295,6 +295,25 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}"
         },
+        {
+            "name": "[数据] 分钟抓取 主板5m",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/fetch_minute_5m.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "[数据] 分钟抓取 试点100只",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${workspaceFolder}/scripts/fetch_minute_5m.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "args": ["--limit", "100"]
+        },
         // ===== 数据更新（fetch）=====
         {
             "name": "[数据] 全市场更新",
