@@ -192,6 +192,19 @@ def _seed_build_row(aum: float):
     )
 
 
+def _streak_after(ok: bool, streak: int, threshold: int) -> tuple[int, bool]:
+    """Round 60: 连续失败计数与退避判定（纯函数，可单测）。
+
+    ok = 本次查询是否**成功** —— 空结果（该股窗口内无除权事件）同样算成功。
+    旧写法把"查到事件"当成功，导致连续 50 只无事件即被误判限流、白睡 90s。
+    返回 (新 streak, 是否需要退避)。
+    """
+    s = 0 if ok else streak + 1
+    if s >= threshold:
+        return 0, True
+    return s, False
+
+
 def _live_factors(held: set, since: str):
     """增量查询持仓股的复权因子事件(自 since 起), 并入 live 缓存。baostock 限流弹性。"""
     import baostock as bs
@@ -209,28 +222,33 @@ def _live_factors(held: set, since: str):
     ca = get_config().fetch.corporate_actions
     buf, streak = [], 0
     for c in todo:
-        got = False
+        ok = False
         for _ in range(3):
             try:
                 rs = bs.query_adjust_factor(
                     code=c, start_date=since, end_date=get_config().fetch.live.fac_end
                 )
-                while rs.error_code == "0" and rs.next():
+                # Round 60: 查询调用成功 != 查到事件。error_code != "0"
+                # (如"用户未登录") 视为失败 → 走重试/退避；无事件是正常成功。
+                if rs.error_code != "0":
+                    raise RuntimeError(
+                        f"query_adjust_factor error_code={rs.error_code}"
+                    )
+                ok = True
+                while rs.next():
                     r = rs.get_row_data()
                     buf.append(
                         {"code": r[0], "date": r[1], "foreAdjustFactor": float(r[2])}
                     )
-                    got = True
                 break
             except Exception:
                 time.sleep(2.0)
-        streak = streak + 1 if not got else 0
-        if streak >= ca.empty_streak:
+        streak, need_backoff = _streak_after(ok, streak, ca.empty_streak)
+        if need_backoff:
             print(f"  [live因子] 疑似限流, 休眠{ca.backoff}s", flush=True)
             bs.logout()
             time.sleep(ca.backoff)
             bs.login()
-            streak = 0
         time.sleep(0.1)
     bs.logout()
     if buf:
