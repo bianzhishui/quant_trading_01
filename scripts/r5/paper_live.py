@@ -653,6 +653,18 @@ def report(aum: float):
             )
 
 
+def _daily_move_text(ret: pd.Series) -> tuple[str, str]:
+    """(当日涨幅文本, 昨日涨幅文本)（Round 68）。
+
+    mark 的窗口起点是 last_exec；当它恰好是数据末日时窗口只有 1 天，
+    此时**没有涨跌幅基准**（单元素 pct_change 为 NaN）——
+    旧写法直接用 ret.iloc[-2] 会 IndexError，把整个 daily_update 流程打断。
+    """
+    if len(ret) < 2:
+        return "—（调仓日无基准）", "—"
+    return f"{ret.iloc[-1]:+.2f}%", f"{ret.iloc[-2]:+.2f}%"
+
+
 def mark(aum: float, slip: float | None = None):
     slip = slip if slip is not None else _cfg().costs.slip_default
     """每日涨幅: 当天收盘 NAV / 前一天收盘 NAV - 1 (逐日盯市, 含分红入账)。
@@ -711,9 +723,10 @@ def mark(aum: float, slip: float | None = None):
     print(
         f"\n== 每日涨幅 {int(aum / 1e4)}万 == (起 {nav.index[0].date()} → 今 {nav.index[-1].date()})"
     )
+    cur_txt, prev_txt = _daily_move_text(ret)  # Round 68: 单日窗口不越界
     print(
-        f"  最新收盘 NAV {nav.iloc[-1] / 1e4:.2f}万 | 当日涨幅 {ret.iloc[-1]:+.2f}%"
-        f" | 昨日涨幅 {ret.iloc[-2]:+.2f}% | 累计 {cum:+.2f}%"
+        f"  最新收盘 NAV {nav.iloc[-1] / 1e4:.2f}万 | 当日涨幅 {cur_txt}"
+        f" | 昨日涨幅 {prev_txt} | 累计 {cum:+.2f}%"
     )
     print(f"  文件: {out.name}")
     print(df.tail(3).to_string(index=False))
