@@ -986,5 +986,13 @@
  ],
  "div_credited": 0.0,
  "total_fees": 1924.03,
- "last_blocked": null
+ "last_blocked": null,
+ "build": {
+  "date": "2026-09-01",
+  "nav": 598924.1185128484,
+  "cash": 5625.120399216174,
+  "buy": 593299.0,
+  "sell": 0,
+  "fee": 1075.86
+ }
 }

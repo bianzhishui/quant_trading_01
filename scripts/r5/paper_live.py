@@ -112,8 +112,8 @@ FUNDS_COLS = [
 ]
 
 
-def _append_monthly_funds(aum: float, row: dict):
-    """追加一行月度调仓资金变动到 monthly_funds_aum{XX}w.csv (金额单位: 元)。
+def _funds_line(aum: float, row: dict) -> str:
+    """把一行月度资金变动格式化为 CSV 行（Round 70 抽出, 供追加与重建首行共用）。
     row 键: date, pre_nav, post_nav, mret, buy, sell, turnover, fee, div, cash, pos"""
     r = [
         row["date"],
@@ -129,11 +129,16 @@ def _append_monthly_funds(aum: float, row: dict):
         round(row["pos"], 2),
         round(row["post_nav"] - aum, 2),
     ]
+    return ",".join(str(x) for x in r)
+
+
+def _append_monthly_funds(aum: float, row: dict):
+    """追加一行月度调仓资金变动到 monthly_funds_aum{XX}w.csv (金额单位: 元)。"""
     p = monthly_funds_path(aum)
     if not p.exists():
         p.write_text(",".join(FUNDS_COLS) + "\n")
     with p.open("a") as f:
-        f.write(",".join(str(x) for x in r) + "\n")
+        f.write(_funds_line(aum, row) + "\n")
 
 
 def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
@@ -160,35 +165,79 @@ def _append_holdings_snapshot(aum: float, date_s: str, pf, prices):
 
 
 def _seed_build_row(aum: float):
-    """账本已有而月度资金 CSV 缺失时, 从账本建仓记录补首行(建仓日)。"""
-    p = monthly_funds_path(aum)
-    if p.exists():
-        return
+    """按账本建仓快照写/重建 monthly_funds 首行（Round 70）。
+
+    旧版第一句是 `if p.exists(): return` —— 文件一旦存在就永不刷新，
+    账本重建（R38, 09-18）后首行永远停在旧世代（实测 post_nav 差 66~181 元，
+    cash/fee 全错）。现在以 `led["build"]` 为权威：缺失则写，与快照不一致则重建；
+    账本没有该字段（老账本）时**保持旧行为，不擅自猜测**。
+    """
     path = ledger_path(aum)
     if not path.exists():
         return
     led = json.loads(path.read_text())
-    h0 = led["nav_history"][0]
-    if len(led["nav_history"]) == 1:  # 未 step 过: trades 全是建仓单
-        buy = sum(t["amount"] for t in led["trades"] if t["side"] == "buy")
-        sell = sum(t["amount"] for t in led["trades"] if t["side"] == "sell")
-    else:  # 已 step: 无法拆分, 用净值差额近似
-        buy, sell = h0["nav"], 0.0
-    _append_monthly_funds(
-        aum,
-        {
-            "date": h0["date"],
-            "pre_nav": led["aum"],
-            "post_nav": h0["nav"],
-            "mret": None,
-            "buy": buy,
-            "sell": sell,
-            "turnover": buy / led["aum"] * 100,
-            "fee": led["total_fees"],
-            "div": 0.0,
-            "cash": led["cash"],
-            "pos": h0["nav"] - led["cash"],
-        },
+    b = led.get("build")
+    p = monthly_funds_path(aum)
+
+    if not b:  # 老账本: 保持历史行为(仅当文件不存在时按旧规则补)
+        if p.exists():
+            return
+        h0 = led["nav_history"][0]
+        if len(led["nav_history"]) == 1:
+            buy = sum(t["amount"] for t in led["trades"] if t["side"] == "buy")
+            sell = sum(t["amount"] for t in led["trades"] if t["side"] == "sell")
+        else:
+            buy, sell = h0["nav"], 0.0
+        _append_monthly_funds(
+            aum,
+            {
+                "date": h0["date"],
+                "pre_nav": led["aum"],
+                "post_nav": h0["nav"],
+                "mret": None,
+                "buy": buy,
+                "sell": sell,
+                "turnover": buy / led["aum"] * 100,
+                "fee": led["total_fees"],
+                "div": 0.0,
+                "cash": led["cash"],
+                "pos": h0["nav"] - led["cash"],
+            },
+        )
+        return
+
+    row = {
+        "date": b["date"],
+        "pre_nav": led["aum"],
+        "post_nav": b["nav"],
+        "mret": None,
+        "buy": b["buy"],
+        "sell": b["sell"],
+        "turnover": b["buy"] / led["aum"] * 100 if led["aum"] else 0.0,
+        "fee": b["fee"],
+        "div": 0.0,
+        "cash": b["cash"],
+        "pos": b["nav"] - b["cash"],
+    }
+    if not p.exists():
+        _append_monthly_funds(aum, row)
+        return
+    lines = p.read_text().splitlines()
+    if len(lines) < 2:  # 只有表头
+        _append_monthly_funds(aum, row)
+        return
+    f0 = dict(zip(lines[0].split(","), lines[1].split(",")))
+    if (
+        abs(float(f0["post_nav"]) - b["nav"]) < 0.005
+        and abs(float(f0["费用"]) - b["fee"]) < 0.005
+        and abs(float(f0["期末现金"]) - b["cash"]) < 0.005
+    ):
+        return  # 已与账本一致
+    lines[1] = _funds_line(aum, row)
+    p.write_text("\n".join(lines) + "\n")
+    print(
+        f"  [建仓行] 已按账本快照重建: post_nav {float(f0['post_nav']):,.2f} → {b['nav']:,.2f} "
+        f"| 费用 {float(f0['费用']):,.2f} → {b['fee']:,.2f}"
     )
 
 
@@ -414,6 +463,13 @@ def init_ledger(aum: float, slip: float | None = None, slip_by_amount: bool = Fa
     bench_lv = _bench_levels(rebs, bench, ret)
     # 基准在建账日归一到 1.0: 模拟盘超额 = 策略自建账起收益 − 同池等权自建账起收益
     bench_base = bench_lv[last["exec"]]
+    # Round 70: 建仓快照 —— monthly_funds 建仓行的权威来源
+    # (旧版靠"文件已存在即 return", 账本重建后首行会永远停在旧世代, 实测差 66~181 元)
+    build_buy = sum(t["amount"] for t in pf.trades if t["side"] == "buy")
+    build_sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
+    build_fee = round(
+        sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades), 2
+    )
     led = {
         "aum": aum,
         "last_signal": str(last["T"].date()),
@@ -422,11 +478,17 @@ def init_ledger(aum: float, slip: float | None = None, slip_by_amount: bool = Fa
         "shares": pf.shares,
         "cash": pf.cash,
         "nav_history": [{"date": str(last["exec"].date()), "nav": nav, "bench": 1.0}],
+        "build": {
+            "date": str(last["exec"].date()),
+            "nav": nav,
+            "cash": pf.cash,
+            "buy": build_buy,
+            "sell": build_sell,
+            "fee": build_fee,
+        },
         "trades": pf.trades,
         "div_credited": pf.div_cash,
-        "total_fees": round(
-            sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades), 2
-        ),
+        "total_fees": build_fee,
         "last_blocked": {
             "date": str(last["exec"].date()),
             "buy": [{"code": c, "amount": a} for c, a in pf.blocked_buys],

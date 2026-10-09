@@ -76,6 +76,29 @@ COLS = [
 ]
 
 
+def _t1_gap_note(idx, sig_days) -> str | None:
+    """月末因缺 T+1 执行日而被排除时给出提示（Round 71）。
+
+    RankIC 需要"下一月末"的未来收益，而 `sig_days` 还要求该月末**存在次一交易日**
+    作为执行日。当数据恰好止于月末时，该月末被排除 → 监控窗口**静默**少一期。
+    2026-10-08 实测：数据止于 09-30 时 RankIC 只到 07-31；补上 10-08 后自动到 08-31。
+    """
+    if not len(idx):
+        return None
+    last = pd.Timestamp(idx[-1])
+    # 必须真的是"该月最后一个工作日"才算月末情形 —— month_last_days 会把
+    # 指数最后一天当成月末（部分月），那样 10-08 也会被误报为月末。
+    bdays = pd.bdate_range(last.replace(day=1), last + pd.offsets.MonthEnd(0))
+    if not len(bdays) or bdays[-1] != last:
+        return None
+    if last in set(sig_days):
+        return None
+    return (
+        f"  ⚠️ 末月末 {last.date()} 缺 T+1 执行日（数据止于月末）→ 该月不参与 RankIC；"
+        f"补上下一个交易日数据后会自动纳入（不是数据缺失）"
+    )
+
+
 def compute_rankic_panel() -> pd.DataFrame:
     """逐月末 T 计算 RankIC 面板。
 
@@ -107,6 +130,9 @@ def compute_rankic_panel() -> pd.DataFrame:
     f4 = amount.rolling(r5.f4_window).mean()
     idx = close.index
     sig_days = [t for t in month_last_days(idx) if idx.get_loc(t) + 1 < len(idx)]
+    note = _t1_gap_note(idx, sig_days)
+    if note:
+        print(note, flush=True)
 
     rows: list[dict] = []
     for k, T in enumerate(sig_days):
