@@ -51,6 +51,9 @@ data/round2/financial_quality.parquet
 data/round2/financial_quality_progress.json
 data/round2/dividends_progress.json
 data/round2/current_shares.parquet
+
+# Round 62 live 因子 negative cache(纯记账缓存, 非账本输入; 删除即强制全量重查)
+data/round2/adjust_factor_live_queried.parquet
 data/round2/raw_close_fallback.parquet
 data/round2/raw_close_delisted.parquet
 

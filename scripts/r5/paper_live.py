@@ -205,8 +205,62 @@ def _streak_after(ok: bool, streak: int, threshold: int) -> tuple[int, bool]:
     return s, False
 
 
+def _live_fac_queried_path() -> Path:
+    """negative cache 的 sidecar 路径：live_fac 的同目录兄弟文件（不改配置）。"""
+    return Path(_cfg().paths.live_fac).with_name("adjust_factor_live_queried.parquet")
+
+
+def _load_queried() -> pd.DataFrame:
+    """读取"已成功查询"记账表；不存在则返回空表。"""
+    p = _live_fac_queried_path()
+    if not p.exists():
+        return pd.DataFrame(columns=["code", "since", "fac_end"])
+    d = pd.read_parquet(p)
+    d["since"] = pd.to_datetime(d["since"])
+    d["fac_end"] = pd.to_datetime(d["fac_end"])
+    return d
+
+
+def _covered(queried: pd.DataFrame, since, fac_end) -> set[str]:
+    """已被「成功查询且窗口覆盖」的 code 集合（Round 62）。
+
+    覆盖定义 = 旧窗口 ⊇ 新窗口（`since' <= since` 且 `fac_end' >= fac_end`）。
+    查询成功但**无事件**的 code 也必须记账，否则每次调用都会重查全部持仓
+    （step 一个进程内顺序跑四账户，账户 2~4 原本会把账户 1 的持仓再查一遍）。
+    """
+    if queried is None or len(queried) == 0:
+        return set()
+    s, e = pd.Timestamp(since), pd.Timestamp(fac_end)
+    m = queried[(queried["since"] <= s) & (queried["fac_end"] >= e)]
+    return set(m["code"].astype(str))
+
+
+def _save_queried(queried: pd.DataFrame, ok_codes: set[str], since, fac_end) -> None:
+    """把本轮「查询成功」的 code 追加进 negative cache。
+
+    只记成功：查询失败（异常 / error_code != "0"）的 code **不写**，下次仍会重试，
+    避免把失败当成"已查"而永久漏掉真实除权事件。
+    """
+    if not ok_codes:
+        return
+    new = pd.DataFrame(
+        {
+            "code": sorted(ok_codes),
+            "since": pd.Timestamp(since),
+            "fac_end": pd.Timestamp(fac_end),
+        }
+    )
+    big = pd.concat([queried, new], ignore_index=True).drop_duplicates(
+        subset=["code", "since", "fac_end"], keep="last"
+    )
+    big.to_parquet(_live_fac_queried_path())
+
+
 def _live_factors(held: set, since: str):
-    """增量查询持仓股的复权因子事件(自 since 起), 并入 live 缓存。baostock 限流弹性。"""
+    """增量查询持仓股的复权因子事件(自 since 起), 并入 live 缓存。baostock 限流弹性。
+
+    Round 62: 另记 negative cache（查询成功即记账，含"无事件"），避免每次调用重查全部持仓。
+    """
     import baostock as bs
 
     prev = (
@@ -215,19 +269,21 @@ def _live_factors(held: set, since: str):
         else None
     )
     have = set(prev["code"]) if prev is not None else set()
-    todo = [c for c in sorted(held) if c not in have]
+    fac_end = str(get_config().fetch.live.fac_end)
+    queried = _load_queried()
+    covered = _covered(queried, since, fac_end)  # Round 62: 成功查过且窗口覆盖 → 跳过
+    todo = [c for c in sorted(held) if c not in have and c not in covered]
     if not todo:
         return
     bs.login()
     ca = get_config().fetch.corporate_actions
     buf, streak = [], 0
+    ok_codes: set[str] = set()
     for c in todo:
         ok = False
         for _ in range(3):
             try:
-                rs = bs.query_adjust_factor(
-                    code=c, start_date=since, end_date=get_config().fetch.live.fac_end
-                )
+                rs = bs.query_adjust_factor(code=c, start_date=since, end_date=fac_end)
                 # Round 60: 查询调用成功 != 查到事件。error_code != "0"
                 # (如"用户未登录") 视为失败 → 走重试/退避；无事件是正常成功。
                 if rs.error_code != "0":
@@ -243,6 +299,8 @@ def _live_factors(held: set, since: str):
                 break
             except Exception:
                 time.sleep(2.0)
+        if ok:
+            ok_codes.add(c)  # Round 62: 成功即记账(含无事件)
         streak, need_backoff = _streak_after(ok, streak, ca.empty_streak)
         if need_backoff:
             print(f"  [live因子] 疑似限流, 休眠{ca.backoff}s", flush=True)
@@ -251,6 +309,7 @@ def _live_factors(held: set, since: str):
             bs.login()
         time.sleep(0.1)
     bs.logout()
+    _save_queried(queried, ok_codes, since, fac_end)  # Round 62: 不受 if buf 约束
     if buf:
         new = pd.DataFrame(buf)
         big = (
