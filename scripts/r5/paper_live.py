@@ -262,18 +262,38 @@ def _live_factors(held: set, since: str):
         print(f"  [live因子] 新增 {len(buf)} 条({len(todo)} 只持仓)", flush=True)
 
 
+def _merge_factor_tables(
+    static: pd.DataFrame, live: pd.DataFrame | None
+) -> pd.DataFrame:
+    """静态 + live 复权因子表合并：按 (code, date) 去重，**live 优先**（Round 61）。
+
+    live 的查询窗口自 last_exec 起，与静态表截止日**天然重叠**（实测 2026-09-01~09-03），
+    不去重则同一 (code, date) 出现两次 → groupby 后索引含重复标签 →
+    下游 reindex 直接抛 "cannot reindex on an axis with duplicate labels"（step 必崩）。
+    冲突时取 live（新查 > 旧抓）。
+    """
+    if live is None or len(live) == 0:
+        return static
+    both = pd.concat([static, live], ignore_index=True)
+    both["date"] = pd.to_datetime(both["date"])  # 两表 date 可能是 str/datetime, 先归一
+    return both.drop_duplicates(subset=["code", "date"], keep="last").reset_index(
+        drop=True
+    )
+
+
 def _factor_panel(close: pd.DataFrame):
     """静态+live 合并的因子面板。"""
     cfg = _cfg()
-    fac = pd.read_parquet(cfg.paths.round2 + "/adjust_factor.parquet")
+    static = pd.read_parquet(cfg.paths.round2 + "/adjust_factor.parquet")
     live_fac = Path(cfg.paths.live_fac)
-    if live_fac.exists():
-        fac = pd.concat([fac, pd.read_parquet(live_fac)], ignore_index=True)
+    live = pd.read_parquet(live_fac) if live_fac.exists() else None
+    fac = _merge_factor_tables(static, live)  # Round 61: (code,date) 去重, live 优先
     fac["date"] = pd.to_datetime(fac["date"])
     idx = close.index
     f_series = {}
     for c, g in fac.groupby("code"):
         g = g.sort_values("date").set_index("date")["foreAdjustFactor"]
+        g = g[~g.index.duplicated(keep="last")]  # Round 61 双保险: 逐股再兜一次
         f_series[c] = g.reindex(idx).ffill().bfill().fillna(1.0)
     return pd.DataFrame(f_series).reindex(columns=close.columns).fillna(1.0)
 
