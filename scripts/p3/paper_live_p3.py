@@ -38,6 +38,7 @@ from scripts.r5.paper_trade import (  # noqa: E402
 from scripts.r5.paper_live import (  # noqa: E402
     _apply_corp_period,
     _bench_levels,
+    _rebased_bench_level,
     _factor_panel_cached,
     _live_factors,
     eval_prices,
@@ -291,6 +292,10 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     prev_exec = pd.Timestamp(led["last_exec"])
     _seed_build_row(aum)
     prev_post = led["nav_history"][-1]["nav"]
+    # Round 64: 基准基数按当前面板重算(取建账日水平), 分子分母同源
+    bench_base = _rebased_bench_level(
+        bench_lv, led["nav_history"][0]["date"], led.get("bench_base", 1.0)
+    )
     step_fees = 0.0
     blocked_this_step: list[dict] = []
     raw_e = eval_prices(raw)
@@ -342,7 +347,6 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
             },
         )
         prev_post = post_nav
-        bench_base = led.get("bench_base", 1.0)
         led["nav_history"].append(
             {
                 "date": str(rb["exec"].date()),
@@ -362,6 +366,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     led["cash"] = pf.cash
     led["div_credited"] = pf.div_cash
     led["total_fees"] = round(led["total_fees"] + step_fees, 2)
+    led["bench_base"] = bench_base  # Round 64: 账本自洽
     led["last_blocked"] = blocked_this_step or None
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
     prices = raw.loc[led["last_exec"]]

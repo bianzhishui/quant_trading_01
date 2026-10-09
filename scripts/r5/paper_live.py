@@ -357,6 +357,21 @@ def _factor_panel(close: pd.DataFrame):
     return pd.DataFrame(f_series).reindex(columns=close.columns).fillna(1.0)
 
 
+def _rebased_bench_level(bench_lv: dict, build_date, stored_base: float) -> float:
+    """基准基数按**当前面板**重算，保证 `bench = bench_lv[exec] / base` 的分子分母同源。
+
+    Round 64: `bench_base` 原为建账时冻结值，而分子 `bench_lv` 每次由当前面板实时算出。
+    一旦数据修订（如 industry_full 于 2026-09-22 刷新）使基准路径平移，
+    分子变了、分母没变 → 报告的"超额"恒定失真（实测虚高 5.2pp）。
+    改为取"建账日"的当前 bench 水平 → 任何整体缩放都会自动抵消。
+    建账日不在当前 rebs 中时回退存值（不静默篡改）。
+    """
+    d = pd.Timestamp(build_date)
+    if d in bench_lv and float(bench_lv[d]) > 0:
+        return float(bench_lv[d])
+    return float(stored_base)
+
+
 def _bench_levels(rebs, bench, ret):
     """同池等权基准(15bp, 与回测可比)在每次执行日的净值水平。"""
     nav_b, _ = ew_nav(ret, bench, 15e-4)
@@ -483,6 +498,10 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     step_fees = 0.0
     _seed_build_row(aum)
     prev_post = led["nav_history"][-1]["nav"]
+    # Round 64: 基准基数按当前面板重算(取建账日水平), 分子分母同源
+    bench_base = _rebased_bench_level(
+        bench_lv, led["nav_history"][0]["date"], led.get("bench_base", 1.0)
+    )
     blocked_this_step: list[dict] = []
     raw_e = eval_prices(raw)
     for rb in todo:
@@ -508,13 +527,16 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
         sell = sum(t["amount"] for t in pf.trades if t["side"] == "sell")
         fee = sum(t["佣金"] + t["印花税"] + t["过户费"] + t["滑点"] for t in pf.trades)
         step_fees += fee
+        # Round 63: 月收益只算一次。旧写法在 print 里再用 prev_post 做分母,
+        # 但 prev_post 已在下面被覆盖成 post_nav → 恒为 +0.00%(显示 bug)。
+        mret = (post_nav / prev_post - 1) * 100
         _append_monthly_funds(
             aum,
             {
                 "date": str(rb["exec"].date()),
                 "pre_nav": pre_nav,
                 "post_nav": post_nav,
-                "mret": (post_nav / prev_post - 1) * 100,
+                "mret": mret,
                 "buy": buy,
                 "sell": sell,
                 "turnover": (buy + sell) / 2 / pre_nav * 100,
@@ -526,7 +548,6 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
         )
         prev_post = post_nav
         nav = post_nav
-        bench_base = led.get("bench_base", 1.0)
         led["nav_history"].append(
             {
                 "date": str(rb["exec"].date()),
@@ -539,7 +560,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
         print(
             f"  {rb['T'].date()} → {rb['exec'].date()}: 目标 {len(rb['target'])} 只, "
             f"买 {buy / 1e4:.1f}万 / 卖 {sell / 1e4:.1f}万, 费 {fee:.0f}元, "
-            f"月涨 {((post_nav / prev_post) - 1) * 100:+.2f}%, NAV {nav / 1e4:.1f}万"
+            f"月涨 {mret:+.2f}%, NAV {nav / 1e4:.1f}万"
         )
         prev_exec = rb["exec"]
     led["last_signal"] = str(todo[-1]["T"].date())
@@ -548,6 +569,7 @@ def step(aum: float, slip: float | None = None, slip_by_amount: bool = False):
     led["cash"] = pf.cash
     led["div_credited"] = pf.div_cash
     led["total_fees"] = round(led["total_fees"] + step_fees, 2)
+    led["bench_base"] = bench_base  # Round 64: 账本自洽(与本次 bench 序列同一基数)
     led["last_blocked"] = blocked_this_step or None
     path.write_text(json.dumps(led, ensure_ascii=False, indent=1))
     _append_holdings_snapshot(
