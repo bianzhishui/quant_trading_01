@@ -653,6 +653,26 @@ def report(aum: float):
             )
 
 
+def _write_daily_nav(out: Path, df: pd.DataFrame) -> pd.DataFrame:
+    """每日净值 CSV **累积写**（Round 69）：与既有文件按 date 去重（新值优先）后排序写出。
+
+    mark 的窗口起点是 last_exec —— 每次 step 后窗口后移，若直接覆盖写，
+    入库跟踪的 daily_nav_*.csv 会在**每次调仓**丢掉上一段历史
+    （实测 22 行 → 2 行），而 plot_daily_gains.py --live 的定位是"建仓以来"。
+    历史行的数值来自上一段持仓，本就不应重算，故合并时保留。
+    """
+    if out.exists():
+        prev = pd.read_csv(out)
+        df = (
+            pd.concat([prev, df], ignore_index=True)
+            .drop_duplicates(subset=["date"], keep="last")
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
+    df.to_csv(out, index=False)
+    return df
+
+
 def _daily_move_text(ret: pd.Series) -> tuple[str, str]:
     """(当日涨幅文本, 昨日涨幅文本)（Round 68）。
 
@@ -718,7 +738,7 @@ def mark(aum: float, slip: float | None = None):
         }
     )
     out = Path(_cfg().r5.out_dir) / f"daily_nav_aum{int(aum / 1e4)}w.csv"
-    df.to_csv(out, index=False)
+    df = _write_daily_nav(out, df)  # Round 69: 累积写, 不丢上一段历史
     cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
     print(
         f"\n== 每日涨幅 {int(aum / 1e4)}万 == (起 {nav.index[0].date()} → 今 {nav.index[-1].date()})"

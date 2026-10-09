@@ -38,6 +38,8 @@ from scripts.r5.paper_trade import (  # noqa: E402
 from scripts.r5.paper_live import (  # noqa: E402
     _apply_corp_period,
     _bench_levels,
+    _daily_move_text,
+    _write_daily_nav,
     _rebased_bench_level,
     _factor_panel_cached,
     _live_factors,
@@ -423,11 +425,14 @@ def mark(aum: float, slip: float | None = None):
         }
     )
     out = Path(_cfg().p3.out_dir) / f"daily_nav_p3_aum{int(aum / 1e4)}w.csv"
-    df.to_csv(out, index=False)
+    df = _write_daily_nav(out, df)  # Round 69: 累积写, 不丢上一段历史
     cum = (nav.iloc[-1] / nav.iloc[0] - 1) * 100
+    cur_txt, prev_txt = _daily_move_text(
+        nav.pct_change() * 100
+    )  # Round 69/68: 单日窗口不越界
     print(
         f"  P3 {int(aum / 1e4)}万: 最新 {nav.index[-1].date()} NAV {nav.iloc[-1] / 1e4:.2f}万 | "
-        f"昨日 {nav.iloc[-2] / 1e4:.2f}万 | 今日 {nav.pct_change().iloc[-1]:+.2%} | 建仓以来 {cum:+.2f}%"
+        f"昨日 {prev_txt} | 今日 {cur_txt} | 建仓以来 {cum:+.2f}%"
     )
 
 
