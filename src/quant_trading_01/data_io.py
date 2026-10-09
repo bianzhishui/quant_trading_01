@@ -130,7 +130,11 @@ def write_full_daily(df: pd.DataFrame) -> int:
         if path.exists():  # 与既有分区合并(本函数不做全量重算, 去重交给调用前)
             prev = pd.read_parquet(path)
             merged = pd.concat([prev, merged], ignore_index=True)
-        merged = merged.drop_duplicates(subset=["date", "code"]).sort_values("date")
+        # 显式 keep="first": 历史优先, 新抓数据不得覆盖已存在的行
+        # (R66 护栏 tests/test_full_daily_append_invariant.py 固定该语义)
+        merged = merged.drop_duplicates(
+            subset=["date", "code"], keep="first"
+        ).sort_values("date")
         tmp = path.with_suffix(".parquet.tmp")
         merged.to_parquet(tmp, index=False)  # snappy 默认, float64 保持
         os.replace(tmp, path)
@@ -141,26 +145,3 @@ def write_full_daily(df: pd.DataFrame) -> int:
     return int(
         sum(pq.ParquetFile(p).metadata.num_rows for p in full_dir.glob("*.parquet"))
     )
-
-
-def write_full_daily_replace(df: pd.DataFrame) -> dict[str, int]:
-    """按年分区原子写入(替换语义: df 即各年份的最终内容, 不与既有合并)。"""
-    df = df.copy()
-    df["date"] = pd.to_datetime(df["date"])
-    df["year"] = df["date"].dt.year
-    full_dir, _, _ = _cfg_paths()
-    full_dir.mkdir(parents=True, exist_ok=True)
-    written: dict[str, int] = {}
-    for year, g in df.groupby("year"):
-        path = full_dir / f"{int(year)}.parquet"
-        merged = (
-            g.drop(columns=["year"])
-            .drop_duplicates(subset=["date", "code"])
-            .sort_values("date")
-        )
-        tmp = path.with_suffix(".parquet.tmp")
-        merged.to_parquet(tmp, index=False)
-        os.replace(tmp, path)
-        written[str(int(year))] = len(merged)
-    _bump_data_version()
-    return written

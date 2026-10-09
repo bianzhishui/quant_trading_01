@@ -167,3 +167,24 @@ def test_l4_真实分区重新追加当日不改动任何既有行(monkeypatch, 
     older_after = after[after["date"] < pd.Timestamp("2026-10-08")]
     assert len(older_after) == len(older)
     pd.testing.assert_frame_equal(_rows(older_after), _rows(older))
+
+
+# ---------------- M2/M3 R67 遗留项清理 ----------------
+
+
+def test_m2_keep_first_显式化() -> None:
+    """R67: 语义必须写在代码里，不能只靠测试固定（防后人改成 keep='last'）。"""
+    src = (ROOT / "src" / "quant_trading_01" / "data_io.py").read_text()
+    body = src[src.index("def write_full_daily(") :]
+    assert 'keep="first"' in body, (
+        "write_full_daily 必须显式写明 keep='first'（历史优先）"
+    )
+
+
+def test_m3_不存在替换语义写入函数() -> None:
+    """R67: 替换语义写入会覆盖历史行，数据层不应提供该入口。"""
+    assert not hasattr(data_io, "write_full_daily_replace"), (
+        "data_io 不得提供替换语义写入（会覆盖历史行）"
+    )
+    src = (ROOT / "src" / "quant_trading_01" / "data_io.py").read_text()
+    assert "write_full_daily_replace" not in src
