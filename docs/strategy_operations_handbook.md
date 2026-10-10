@@ -395,6 +395,17 @@ python scripts/r5/plot_daily_gains.py --prefix 20250101 --title "2025全年"
 ```
 任何一条对不上 → 账本有问题，先别继续跑。
 
+**一键自动对账**（覆盖 R5 四账户 + P3 七账户；除上述三条外，另含
+④「账本 `nav_history` 末条 ↔ daily CSV 同日值逐位一致」的跨文件核对）：
+
+```bash
+python scripts/recon_ops.py              # 全部（R5 + P3）；退出码 0=全过, 1=有未通过
+python scripts/recon_ops.py --strat r5   # 只 R5
+python scripts/recon_ops.py --strat p3   # 只 P3
+```
+
+**只读**，不写任何文件；每次 step 后跑一次即可。
+
 ### 9.2 月度资金变动表（output/monthly_funds_aum*.csv）
 
 | 列 | 含义 |

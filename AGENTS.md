@@ -72,6 +72,7 @@ uv run <tool>               # uv 缓存已在项目内(uv.toml cache-dir=.uv-cac
 | `scripts/fetch_stock_basic.py` | **宇宙清单（stock_basic+universe）低频刷新**（季度/半年，src/fundamental 迁移，config paths 段） | baostock 全表, 低频 |
 | `archive/experiments/` | 已结束探索归档（R12-16 集中版/满仓/行业中性/20万/拥挤度、R21-47 筛选/组合/低价股全链），见 `archive/INDEX.md` | — |
 | `scripts/archive_experiment.py` | **探索归档工具**：已结束探索 → `archive/experiments/`（依赖闭包/import改写/git mv/索引更新/校验回滚，`--dry-run` 预览） | 秒级 |
+| `scripts/recon_ops.py` | **运营对账（只读）**：手册 §9.1 三不变量 + ④账本↔daily 逐位一致，覆盖 R5 四账户 + P3 七账户（账户/路径读配置，`--strat` 分流）；退出码 0=全过 1=有未通过 | 秒级 |
 | `scripts/r5/factor_health.py` | **R5 因子失效监控**（Round 18）：逐月末 RankIC（Amihud/动量/合成分，全池+行业内），对比历史基准出状态灯，只读不操作；`--chart` 画 μ±2σ 带 | ~1-3 分钟 |
 
 ---
