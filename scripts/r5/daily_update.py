@@ -146,16 +146,20 @@ def main() -> None:
     )
     if tgt > have:
         print(f"[1/2] 补 {tgt} 行情(全市场约20-30分钟)...")
-        rc = update_date(tgt)  # 导入直调(替代 subprocess), 0=完成 3=会话失效
+        rc = update_date(tgt)  # 导入直调(替代 subprocess), 0=完成 3=会话失效/被限流
         if rc != 0:
-            print(f"⚠️ update_date 返回 {rc}(baostock 会话失效), 请稍后重跑")
+            print(
+                f"⚠️ update_date 返回 {rc}(会话失效/被限流), 进度已暂存; 请重跑同一条命令续传"
+            )
         have = data_max_date()
-        if tgt > have:
-            print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
-            # Round 41 修复: 目标日未发布 → 回退补中间洞(have+1), 防"抓取失败永不补"
-            have = backfill_missing(tgt, have)
     else:
         print(f"[1/2] {tgt} 数据已有, 跳过抓取")
+    if have < tgt:
+        print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
+    # Round 73: **无条件**补 have→tgt 之间的中间洞 ——
+    # 旧写法只在"目标日未发布"分支内调用, 中断留下的中间交易日会被永久跳过
+    # (R41 的 backfill_missing 只覆盖了 tgt 未发布这一种情形)。
+    have = backfill_missing(tgt, have)
     # 严谨数据完整度守卫: 中断的抓取会留下半成品(如 500/3187), 此时拒绝 mark
     ok, why = completeness_guard(have)
     if not ok:

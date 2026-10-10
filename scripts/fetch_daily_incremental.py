@@ -73,6 +73,30 @@ def _merge_and_finish(date_s: str) -> int:
     return 0
 
 
+def _probe_published(bs, codes: list[str], date_s: str, n: int = 5) -> bool:
+    """探测该日行情是否已发布（Round 73）。
+
+    旧写法只探 `codes[0]` —— 实测 227/3409 只 code 在某日常无行情（停牌/退市），
+    首只一旦停牌就会误判"未发布"并**整天静默跳过**。
+    改为**按步长抽样 n 只**（跨 sh./sz. 分散），**任一有数据**即视为已发布。
+    """
+    if not codes:
+        return False
+    # 等距抽样且两端都取到（`codes[::step][:n]` 会跳过近半、且覆盖不到尾部）
+    k = min(n, len(codes))
+    if k == 1:
+        idx = [0]
+    else:
+        idx = [i * (len(codes) - 1) // (k - 1) for i in range(k)]
+    for c in [codes[i] for i in idx]:
+        r = bs.query_history_k_data_plus(
+            c, "date", start_date=date_s, end_date=date_s, frequency="d", adjustflag="2"
+        )
+        if r.error_code == "0" and r.next():
+            return True
+    return False
+
+
 def update_date(date_s: str) -> int:
     """补指定交易日的行情到年分区。返回 0=完成/无需补充, 3=会话失效(可续传)。
 
@@ -109,18 +133,16 @@ def update_date(date_s: str) -> int:
         return _merge_and_finish(date_s)
 
     lg = bs.login()
-    assert lg.error_code == "0", lg.error_msg
-    # 单只探测: 该日数据源是否已发布(避免整市查空)
-    probe = bs.query_history_k_data_plus(
-        codes[0],
-        "date",
-        start_date=date_s,
-        end_date=date_s,
-        frequency="d",
-        adjustflag="2",
-    )
-    if not (probe.error_code == "0" and probe.next()):
-        print(f"⚠️ 数据源尚未发布 {date_s} 的行情 (单只探测为空), 跳过本轮", flush=True)
+    if lg.error_code != "0":  # Round 73: 不再 assert(会把 daily_update 整个崩掉)
+        print(
+            f"⚠️ baostock 登录被拒（error_code={lg.error_code}: {lg.error_msg}）"
+            f" —— 未发起任何请求；稍后重跑同一条命令即可",
+            flush=True,
+        )
+        return 3
+    # 单只探测 → Round 73 改为抽样 5 只(任一有数据即视为已发布)
+    if not _probe_published(bs, codes, date_s):
+        print(f"⚠️ 数据源尚未发布 {date_s} 的行情 (抽样探测为空), 跳过本轮", flush=True)
         bs.logout()
         return 0
 
