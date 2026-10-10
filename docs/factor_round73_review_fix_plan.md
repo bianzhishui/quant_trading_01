@@ -94,7 +94,7 @@ if not (...): return 0                          # 整天跳过
 |---|---|
 | **S1 登录失败不崩** | ✅ 假 baostock `login()` 返回 `10001011` → `update_date` **返回 3**、**零查询**、无异常、不留空 staging（旧写法在此抛 `AssertionError` 崩掉整个 `daily_update`） |
 | **S2 探测抽样** | ✅ 首只无数据、第 6 只有 → 判定"已发布"（等距抽样 `[0,2,5,8,11]`，探测到第 3 只即命中）；**判别力**：旧写法（只看首只）必然误判为未发布 → 整天静默跳过 |
-| **S3 中间洞必补** | ✅ `backfill_missing("2026-10-10","2026-10-08")` **必然调用** `update_date("2026-10-09")` 且 `have` 推进到 10-09；结构断言：`backfill_missing` 在 `main` 顶层（缩进 4）无条件调用，**不在** `if tgt > have:` 分支内 |
+| **S3 中间洞必补** | ✅ 新增 `fill_missing_days(start, end)`：**逐自然日**比对 `_panel_dates()`，只对**面板里确实缺**的日期调 `update_date`。单测：跨 10-08→10-12 → 调 3 次（10-09/10/11）；已有的日期不重抓；端点相同/倒退 → 0 次；结构断言 `main` 顶层无条件调用 |
 | **S4 文档更正** | ✅ R72 §0.2 已改：本脚本与 `daily_update.py` **无 `--config` 入口**，调大 `pause` 需 `QUANT_CONFIG` 或改 `config/default.yaml` |
 | **S5 质量门** | ✅ `ruff check .` 0 错误；`pytest` **94 passed**（默认）+ **5 passed**（`-m slow`）；`daily_update.py --table` 冒烟正常 |
 
@@ -107,11 +107,21 @@ if not (...): return 0                          # 整天跳过
    （原只在"目标日未发布"分支内）；
 4. **P4**：更正 R72 §0.2 的 `--config` 说法。
 
-### 0.2 实施中修正的自身缺陷
+### 0.2 实施中修正的自身缺陷（两处，均由自查/单测暴露）
 
-抽样首版用 `codes[::step][:n]`：`step = len(codes)//n` 时会**系统性跳过近一半**索引
+**① 抽样首版**用 `codes[::step][:n]`：`step = len(codes)//n` 会**系统性跳过近一半**索引
 （如 12 只、n=5 → 只取偶数位），且**覆盖不到尾部**。
-改为 `idx = [i*(len-1)//(k-1) for i in range(k)]`（等距、两端包含）后，由单测暴露并修正。
+改为 `idx = [i*(len-1)//(k-1) for i in range(k)]`（等距、两端包含）。
+
+**② P3 初版无效（重要，已纠正）**：初版只是把 `backfill_missing(tgt, have)` 提到 `main` 顶层
+无条件调用 —— 但**这解决不了真正的中断场景**：
+
+> 数据止于 10-08，今天跑时 `update_date("2026-10-12")` **成功** → `have` 直接变成 10-12
+> → 此时 `have == tgt`，`backfill_missing` **一次都不会调用**，10-09/10-10 的洞照旧永久留下。
+
+且 `backfill_missing` 内部用 `data_max_date()` 推进指针，**当末端已在前方时会直接跳过去**。
+故改为新增 `fill_missing_days(have0, data_max_date())`：**逐自然日检查面板里是否真的缺**，
+不依赖任何"末端推进"假设。判别力测试专门断言了"旧写法在此情形零调用、新写法 3 次调用"。
 
 ### 0.3 诚实边界
 

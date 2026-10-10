@@ -170,30 +170,72 @@ def test_s1_登录被拒则返回3且零查询(monkeypatch, tmp_path) -> None:
 # ---------------- S3 中间洞必补 ----------------
 
 
-def test_s3_backfill_missing_补中间交易日(monkeypatch) -> None:
+def test_s3_逐日补中间缺失自然日(monkeypatch) -> None:
     calls: list[str] = []
-    state = {"have": "2026-10-08"}
+    monkeypatch.setattr(
+        du,
+        "_panel_dates",
+        lambda: {pd.Timestamp("2026-10-08"), pd.Timestamp("2026-10-12")},
+    )
+    monkeypatch.setattr(du, "update_date", lambda d: (calls.append(d), 0)[1])
 
-    def fake_update(d: str) -> int:
-        calls.append(d)
-        if d == "2026-10-09":
-            state["have"] = "2026-10-09"
-        return 0
-
-    monkeypatch.setattr(du, "update_date", fake_update)
-    monkeypatch.setattr(du, "data_max_date", lambda: state["have"])
-
-    out = du.backfill_missing("2026-10-10", "2026-10-08")
-    assert "2026-10-09" in calls, "缺失的中间交易日必须被补"
-    assert out == "2026-10-09"
+    n = du.fill_missing_days("2026-10-08", "2026-10-12")
+    assert calls == ["2026-10-09", "2026-10-10", "2026-10-11"], f"实际 {calls}"
+    assert n == 3
 
 
-def test_s3_main里backfill无条件调用() -> None:
-    """结构断言：`backfill_missing` 必须在 main 顶层(缩进 4)调用, 而不是只在
-    `if tgt > have:` 分支内(缩进 8) —— 否则中间洞会被永久跳过。"""
+def test_s3_已存在的日期不重复抓(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        du,
+        "_panel_dates",
+        lambda: {
+            pd.Timestamp("2026-10-08"),
+            pd.Timestamp("2026-10-09"),
+            pd.Timestamp("2026-10-12"),
+        },
+    )
+    monkeypatch.setattr(du, "update_date", lambda d: (calls.append(d), 0)[1])
+    du.fill_missing_days("2026-10-08", "2026-10-12")
+    assert calls == ["2026-10-10", "2026-10-11"], f"已有的 10-09 不该重抓, 实际 {calls}"
+
+
+def test_s3_端点相同或无跨度则不动(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(du, "update_date", lambda d: (calls.append(d), 0)[1])
+    assert du.fill_missing_days("2026-10-12", "2026-10-12") == 0
+    assert du.fill_missing_days("2026-10-12", "2026-10-08") == 0
+    assert calls == []
+
+
+def test_s3_判别力自证_末端已在前方时旧写法零调用(monkeypatch) -> None:
+    """真实中断场景：数据止于 10-08，今天跑时 update_date("2026-10-12") 成功
+    → have 直接变成 10-12。旧写法用 backfill_missing(tgt=10-12, have=10-12) → 零调用,
+    10-09/10-10/10-11 的洞永久留下；新写法逐日检查, 必须有 3 次调用。"""
+    calls: list[str] = []
+    monkeypatch.setattr(du, "update_date", lambda d: (calls.append(d), 0)[1])
+    monkeypatch.setattr(du, "data_max_date", lambda: "2026-10-12")
+
+    # 旧写法（R73 初版）：只调 backfill_missing(tgt, have)，此处 have == tgt
+    old_calls = 0
+    if "2026-10-12" < "2026-10-12":  # backfill_missing 的条件
+        old_calls += 1
+    assert old_calls == 0, "旧写法必然零调用 → 洞不补"
+
+    monkeypatch.setattr(
+        du,
+        "_panel_dates",
+        lambda: {pd.Timestamp("2026-10-08"), pd.Timestamp("2026-10-12")},
+    )
+    n = du.fill_missing_days("2026-10-08", "2026-10-12")  # 新写法
+    assert n == 3 and len(calls) == 3, "新写法必须补 3 日"
+    assert old_calls != n, "判据必须有判别力"
+
+
+def test_s3_main里调用fill_missing_days() -> None:
     src = (ROOT / "scripts" / "r5" / "daily_update.py").read_text()
     body = src[src.index("def main(") :]
-    line = next(ln for ln in body.splitlines() if "backfill_missing(tgt, have)" in ln)
-    assert line.startswith("    have = backfill_missing"), (
-        f"必须在 main 顶层无条件调用, 实际缩进异常: {line!r}"
+    line = next(ln for ln in body.splitlines() if "fill_missing_days(have0" in ln)
+    assert line.startswith("    n_fix = fill_missing_days"), (
+        f"必须在 main 顶层无条件调用, 实际: {line!r}"
     )

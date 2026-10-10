@@ -112,6 +112,38 @@ def backfill_missing(tgt: str, have: str) -> str:
     return have
 
 
+def _panel_dates() -> set:
+    """面板中已有的全部日期（Round 73：用于逐日判断"是否真的缺"）。"""
+    d = load_full_daily(columns=["date"])
+    return set(pd.to_datetime(d["date"]).unique())
+
+
+def fill_missing_days(start_s: str, end_s: str) -> int:
+    """补 (start_s, end_s] 之间**面板里确实缺失**的自然日（Round 73）。
+
+    为什么不复用 `backfill_missing`：它靠 `data_max_date()` 推进指针，
+    当末端已经在前方时会**直接跳过去**；而且当 `have == tgt` 时它一次都不会调用，
+    于是"先抓到 10-12、10-09 的洞还在"这种情形永远补不上。
+    本函数逐自然日检查面板里是否真的缺（非交易日会自动秒退，代价一次 login+5 探测）。
+    返回补了几日。
+    """
+    from datetime import timedelta
+
+    if not start_s or not end_s or end_s <= start_s:
+        return 0
+    have = _panel_dates()
+    d = dt.date.fromisoformat(start_s) + timedelta(days=1)
+    d1 = dt.date.fromisoformat(end_s)
+    n = 0
+    while d <= d1:
+        if pd.Timestamp(d) not in have:
+            print(f"  → 中间洞: 补 {d}（非交易日会自动秒退）")
+            update_date(str(d))
+            n += 1
+        d += timedelta(days=1)
+    return n
+
+
 def print_table():
     print(
         f"\n{'账户':<7}{'本金':<11}{'最新NAV':<12}{'当日涨幅':<9}{'盈亏(元)':<13}"
@@ -144,6 +176,7 @@ def main() -> None:
     print(
         f"== 目标交易日: {tgt} (数据源现有: {have}, 系统日期: {dt.date.today()} 周{WD[dt.date.today().weekday()]}) =="
     )
+    have0 = have  # Round 73: 抓取前的数据末端（用于事后补中间洞）
     if tgt > have:
         print(f"[1/2] 补 {tgt} 行情(全市场约20-30分钟)...")
         rc = update_date(tgt)  # 导入直调(替代 subprocess), 0=完成 3=会话失效/被限流
@@ -154,11 +187,15 @@ def main() -> None:
         have = data_max_date()
     else:
         print(f"[1/2] {tgt} 数据已有, 跳过抓取")
+    # Round 73: 先补「抓取前末端 → 抓取后末端」之间**确实缺失**的自然日。
+    # 旧写法只靠 backfill_missing(tgt, have)；当抓取直接把 have 推到 tgt 时它零调用，
+    # 中断留下的中间交易日会被永久跳过。
+    n_fix = fill_missing_days(have0, data_max_date())
+    if n_fix:
+        print(f"  已补 {n_fix} 个中间缺失自然日")
+        have = data_max_date()
     if have < tgt:
         print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
-    # Round 73: **无条件**补 have→tgt 之间的中间洞 ——
-    # 旧写法只在"目标日未发布"分支内调用, 中断留下的中间交易日会被永久跳过
-    # (R41 的 backfill_missing 只覆盖了 tgt 未发布这一种情形)。
     have = backfill_missing(tgt, have)
     # 严谨数据完整度守卫: 中断的抓取会留下半成品(如 500/3187), 此时拒绝 mark
     ok, why = completeness_guard(have)
