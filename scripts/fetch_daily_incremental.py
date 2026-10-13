@@ -17,6 +17,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import datetime as dt
+import io
 import sys
 import time
 from pathlib import Path
@@ -65,11 +68,11 @@ def _merge_and_finish(date_s: str) -> int:
     """把 staging 合并进年分区并清理（写入语义与抓取口径均未变）。"""
     st = _stage_load(date_s)
     if st.empty:
-        print(f"无新数据写入 ({date_s})", flush=True)
+        print(f"  {date_s} 已完整，无需写入", flush=True)
         return 0
     total = write_full_daily(st)  # 与既有年分区合并去重(语义不变)
     _stage_path(date_s).unlink(missing_ok=True)
-    print(f"完成: {date_s} 现共 {total:,} 行 (按年分区原子写)", flush=True)
+    print(f"  ✅ {date_s} 完成: 现共 {total:,} 行 (按年分区原子写)", flush=True)
     return 0
 
 
@@ -97,6 +100,67 @@ def _probe_published(bs, codes: list[str], date_s: str, n: int = 5) -> bool:
     return False
 
 
+def _login(bs):
+    """登录并静音 baostock 自带的 "login success!" 打印（Round 75）。
+
+    那两行是**库自己** print 的（baostock/login/loginout.py:86,152），不是我们的输出；
+    混在流程里让人分不清哪条是自己的。错误信息仍从返回的 error_code/error_msg 读，不丢。
+    """
+    with contextlib.redirect_stdout(io.StringIO()):
+        return bs.login()
+
+
+def _logout(bs) -> None:
+    with contextlib.redirect_stdout(io.StringIO()):
+        bs.logout()
+
+
+def _days_txt(days: list[str]) -> str:
+    wd = "一二三四五六日"
+    return "、".join(f"{d[5:]}({wd[dt.date.fromisoformat(d).weekday()]})" for d in days)
+
+
+def probe_dates(date_list: list[str]) -> list[str]:
+    """一次性探测多日是否已发布（**只登录一次**，Round 75）。返回已发布的日期。"""
+    if not date_list:
+        return []
+    import baostock as bs
+
+    lg = _login(bs)
+    if lg.error_code != "0":
+        print(
+            f"⚠️ baostock 登录被拒（error_code={lg.error_code}: {lg.error_msg}）",
+            flush=True,
+        )
+        return []
+    try:
+        codes = sorted(full_daily_codes())
+        return [d for d in date_list if _probe_published(bs, codes, d)]
+    finally:
+        _logout(bs)
+
+
+def fill_days(cands: list[str], label: str = "缺失交易日") -> int:
+    """候选自然日：一次探完 → 一行汇总 → 只抓已发布的。返回抓了几个交易日。
+
+    Round 75: 旧写法对每个自然日各跑一次 update_date（各自 login/logout 并打印
+    "共 3409 只…待补 3409"），回退 3 天就刷十几行噪音，把"到底要抓哪天、要多久"
+    彻底淹没。
+    """
+    if not cands:
+        return 0
+    pub = probe_dates(cands)
+    if not pub:
+        print(f"  {label}: {_days_txt(cands)} 均无行情（非交易日/未发布）", flush=True)
+        return 0
+    miss = [d for d in cands if d not in pub]
+    head = f"{_days_txt(miss)} 无行情 | " if miss else ""
+    print(f"  {label}: {head}▶ 需补 {_days_txt(pub)}", flush=True)
+    for d in pub:
+        update_date(d)
+    return len(pub)
+
+
 def update_date(date_s: str) -> int:
     """补指定交易日的行情到年分区。返回 0=完成/无需补充, 3=会话失效(可续传)。
 
@@ -117,22 +181,10 @@ def update_date(date_s: str) -> int:
     )
 
     codes = sorted(full_daily_codes())
-    have = set(
-        load_full_daily(
-            columns=["code"], filters=[("date", "==", pd.Timestamp(date_s))]
-        )["code"]
-    )
-    staged = _stage_load(date_s)
-    todo = [c for c in codes if c not in have and c not in set(staged["code"])]
-    print(
-        f"共 {len(codes)} 只, {date_s} 已有 {len(have)}, 已暂存 {len(staged)}, "
-        f"待补 {len(todo)} (间隔 {pause}s)",
-        flush=True,
-    )
-    if not todo:
-        return _merge_and_finish(date_s)
 
-    lg = bs.login()
+    # Round 75: **先探测、再算 todo**。旧版顺序反了 —— 先打印"待补 3409 只",
+    # 下一行却"跳过本轮", 让人以为要抓全市场。
+    lg = _login(bs)
     if lg.error_code != "0":  # Round 73: 不再 assert(会把 daily_update 整个崩掉)
         print(
             f"⚠️ baostock 登录被拒（error_code={lg.error_code}: {lg.error_msg}）"
@@ -140,11 +192,26 @@ def update_date(date_s: str) -> int:
             flush=True,
         )
         return 3
-    # 单只探测 → Round 73 改为抽样 5 只(任一有数据即视为已发布)
     if not _probe_published(bs, codes, date_s):
-        print(f"⚠️ 数据源尚未发布 {date_s} 的行情 (抽样探测为空), 跳过本轮", flush=True)
-        bs.logout()
+        _logout(bs)
+        print(f"  {date_s} 无当日行情（非交易日或数据源未发布）", flush=True)
         return 0
+
+    have = set(
+        load_full_daily(
+            columns=["code"], filters=[("date", "==", pd.Timestamp(date_s))]
+        )["code"]
+    )
+    staged = _stage_load(date_s)
+    todo = [c for c in codes if c not in have and c not in set(staged["code"])]
+    if not todo:
+        _logout(bs)
+        return _merge_and_finish(date_s)
+    eta = max(1, round(len(todo) * (pause + 0.6) / 60))
+    print(
+        f"  ▶ 补 {date_s}: 待补 {len(todo)} 只 | 间隔 {pause}s | 预计约 {eta} 分钟",
+        flush=True,
+    )
 
     pending: list[pd.DataFrame] = []
     fail = 0
@@ -178,7 +245,7 @@ def update_date(date_s: str) -> int:
                     f"{len(staged)} 只，**重跑同一条命令即可续传**",
                     flush=True,
                 )
-                bs.logout()
+                _logout(bs)
                 return 3
             fail += 1
             if fail <= 10:
@@ -193,11 +260,12 @@ def update_date(date_s: str) -> int:
                 flush=True,
             )
         time.sleep(pause)
-    bs.logout()
+    _logout(bs)
     if pending:
         staged = pd.concat([staged, *pending], ignore_index=True)
         _stage_save(date_s, staged)
-    print(f"本轮暂存 {len(staged)} 只, 失败 {fail}", flush=True)
+    if fail:
+        print(f"  （{fail} 只查询失败，已跳过）", flush=True)
     return _merge_and_finish(date_s)
 
 

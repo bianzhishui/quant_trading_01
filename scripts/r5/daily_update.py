@@ -26,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.data_io import data_max_date_fast, load_full_daily  # noqa: E402
-from scripts.fetch_daily_incremental import update_date  # noqa: E402
+from scripts.fetch_daily_incremental import fill_days, update_date  # noqa: E402
 from scripts.r5.paper_live import mark as live_mark  # noqa: E402
 from scripts.r5.plot_daily_gains import plot_live  # noqa: E402
 
@@ -85,30 +85,23 @@ def target_date(want: str | None) -> str:
 
 
 def backfill_missing(tgt: str, have: str) -> str:
-    """修复中间洞: 目标日未发布时, 循环补 have+1..tgt-1 的每个自然日。
+    """补 (have, tgt) 之间缺失的交易日（目标日未发布时回退）。
 
-    背景(Round 41 修复): target_date 只试"今天", 若今天未发布则数据停留 have,
-    中间缺失的交易日(如 baostock 某日抓取失败留下的 09-21) 永远不会被自动补。
-    这里从 have+1 起逐自然日探测到 tgt-1: 交易日且已发布 → update_date 写入推进;
-    周末/节假日/未发布 → 单只探测秒退, 无副作用。循环直到数据推进或到达 tgt。
-    返回补数后的最新数据日。
+    Round 75: 改为**一次探完 + 一行汇总**。旧版逐日调用 update_date，
+    每天各 login/logout 并打印"共 3409 只…待补 3409"，回退 3 天刷十几行噪音，
+    且把"到底要抓哪一天、要多久"淹没。判定标准与写盘结果不变。
     """
     from datetime import timedelta
 
-    have_dt = dt.date.fromisoformat(have)
-    tgt_dt = dt.date.fromisoformat(tgt)
-    nxt = have_dt + timedelta(days=1)
+    have_dt, tgt_dt = dt.date.fromisoformat(have), dt.date.fromisoformat(tgt)
+    cands, nxt = [], have_dt + timedelta(days=1)
     while nxt < tgt_dt:
-        print(f"  → 回退探测中间洞 {nxt}: 补数据源最新日的下一交易日...")
-        rc = update_date(str(nxt))
-        if rc != 0:
-            print(f"  ⚠️ update_date({nxt}) 返回 {rc}(baostock 会话失效), 请稍后重跑")
-        new_have = data_max_date()
-        if str(nxt) <= new_have:  # 数据推进(或 nxt 已是交易日且已发布)
-            nxt = dt.date.fromisoformat(new_have) + timedelta(days=1)  # 继续补下一日
-            have = new_have
-            continue
-        nxt += timedelta(days=1)  # 未推进(周末/节假日/未发布) → 下一自然日
+        cands.append(str(nxt))
+        nxt += timedelta(days=1)
+    if not cands:
+        return have
+    if fill_days(cands, label="回退补洞"):
+        return data_max_date()
     return have
 
 
@@ -134,14 +127,12 @@ def fill_missing_days(start_s: str, end_s: str) -> int:
     have = _panel_dates()
     d = dt.date.fromisoformat(start_s) + timedelta(days=1)
     d1 = dt.date.fromisoformat(end_s)
-    n = 0
+    cands = []
     while d <= d1:
-        if pd.Timestamp(d) not in have:
-            print(f"  → 中间洞: 补 {d}（非交易日会自动秒退）")
-            update_date(str(d))
-            n += 1
+        if pd.Timestamp(d) not in have:  # 该自然日面板里确实没有
+            cands.append(str(d))
         d += timedelta(days=1)
-    return n
+    return fill_days(cands, label="中间洞")
 
 
 def print_table():
@@ -178,7 +169,7 @@ def main() -> None:
     )
     have0 = have  # Round 73: 抓取前的数据末端（用于事后补中间洞）
     if tgt > have:
-        print(f"[1/2] 补 {tgt} 行情(全市场约20-30分钟)...")
+        print(f"[1/2] 检查目标交易日 {tgt} …")
         rc = update_date(tgt)  # 导入直调(替代 subprocess), 0=完成 3=会话失效/被限流
         if rc != 0:
             print(
@@ -186,16 +177,17 @@ def main() -> None:
             )
         have = data_max_date()
     else:
-        print(f"[1/2] {tgt} 数据已有, 跳过抓取")
+        print(f"[1/2] 检查目标交易日 {tgt} … 数据已有，无需抓取")
     # Round 73: 先补「抓取前末端 → 抓取后末端」之间**确实缺失**的自然日。
     # 旧写法只靠 backfill_missing(tgt, have)；当抓取直接把 have 推到 tgt 时它零调用，
     # 中断留下的中间交易日会被永久跳过。
-    n_fix = fill_missing_days(have0, data_max_date())
-    if n_fix:
-        print(f"  已补 {n_fix} 个中间缺失自然日")
+    if fill_missing_days(have0, data_max_date()):
         have = data_max_date()
     if have < tgt:
-        print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
+        print(
+            f"  {tgt}（目标日）尚未发布 → 回退补历史缺失交易日"
+            f"（最终以补到的最新日为准）"
+        )
     have = backfill_missing(tgt, have)
     # 严谨数据完整度守卫: 中断的抓取会留下半成品(如 500/3187), 此时拒绝 mark
     ok, why = completeness_guard(have)

@@ -29,6 +29,7 @@ from quant_trading_01.config import get_config  # noqa: E402
 from scripts.fetch_daily_incremental import update_date  # noqa: E402
 from scripts.r5.daily_update import (  # noqa: E402
     backfill_missing,
+    fill_missing_days,
     completeness_guard,
     data_max_date,
     target_date,
@@ -75,17 +76,25 @@ def main() -> None:
     tgt = target_date(want)
     have = data_max_date()
     print(f"== P3 目标交易日: {tgt} (数据源现有: {have}) ==")
+    have0 = have  # Round 73/75: 抓取前的数据末端（用于事后补中间洞）
     if tgt > have:
-        print(f"[1/2] 补 {tgt} 行情(全市场约20-30分钟)...")
+        print(f"[1/2] 检查目标交易日 {tgt} …")
         rc = update_date(tgt)
         if rc != 0:
-            print(f"⚠️ update_date 返回 {rc}(baostock 会话失效), 请稍后重跑")
+            print(
+                f"⚠️ update_date 返回 {rc}(会话失效/被限流), 进度已暂存; 请重跑同一条命令续传"
+            )
         have = data_max_date()
-        if tgt > have:
-            print(f"⚠️ {tgt} 数据源未发布, 仍以 {have} 为准")
-            have = backfill_missing(tgt, have)
     else:
-        print(f"[1/2] {tgt} 数据已有, 跳过抓取")
+        print(f"[1/2] 检查目标交易日 {tgt} … 数据已有，无需抓取")
+    # Round 73/75: 补「抓取前末端 → 抓取后末端」之间确实缺失的自然日
+    if fill_missing_days(have0, data_max_date()):
+        have = data_max_date()
+    if have < tgt:
+        print(
+            f"  {tgt}（目标日）尚未发布 → 回退补历史缺失交易日（最终以补到的最新日为准）"
+        )
+    have = backfill_missing(tgt, have)
     ok, why = completeness_guard(have)
     if not ok:
         print(
