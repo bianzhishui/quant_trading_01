@@ -274,3 +274,71 @@ def test_u4_判别力自证_关掉补洞则昨天永久丢失(monkeypatch) -> No
 
     assert state["panel"] == {"2026-10-09", "2026-10-13"}, "关掉补洞后 10-12 必然丢失"
     assert "2026-10-12" not in state["panel"], "判据必须有判别力"
+
+
+# ---------------- U4(P3) P3 一键脚本同样必须补昨天 ----------------
+
+
+import scripts.p3.daily_update_p3 as p3du  # noqa: E402
+
+
+def _wire_p3(
+    monkeypatch, panel: set[str], published: set[str], marks: list, fetched: list
+):
+    """只换 IO：把 R5 命名空间里的 fill_days/_panel_dates/data_max_date 和 P3 main 的
+    target_date/update_date/守卫/mark 换掉，流程本身全走真实代码。"""
+
+    def fake_max():
+        return max(panel)
+
+    def fake_update(d):
+        fetched.append(d)
+        if d in published:
+            panel.add(d)
+        return 0
+
+    def fake_fill_days(cands, label="缺失交易日"):
+        pub = [d for d in cands if d in published]
+        for d in pub:
+            fake_update(d)
+        return len(pub)
+
+    monkeypatch.setattr(du, "data_max_date", fake_max)
+    monkeypatch.setattr(du, "_panel_dates", lambda: {pd.Timestamp(d) for d in panel})
+    monkeypatch.setattr(du, "fill_days", fake_fill_days)
+    monkeypatch.setattr(p3du, "data_max_date", fake_max)
+    monkeypatch.setattr(p3du, "update_date", fake_update)
+    monkeypatch.setattr(p3du, "target_date", lambda want=None: "2026-10-13")
+    monkeypatch.setattr(p3du, "completeness_guard", lambda h: (True, f"假守卫 ok @{h}"))
+    monkeypatch.setattr(p3du, "p3_mark", lambda aum: marks.append(aum))
+    monkeypatch.setattr(p3du, "print_table", lambda: None)
+    monkeypatch.setattr(p3du, "p3_plot", lambda: None)
+    monkeypatch.setattr(p3du, "_aum_list", lambda: [(600000, "600w")])
+    monkeypatch.setattr(sys, "argv", ["daily_update_p3.py", "2026-10-13"])
+
+
+def test_u4_p3_今天已发布_昨天缺失_必须补昨天(monkeypatch) -> None:
+    """P3 的 main 在 R73 时漏改（只在"目标日未发布"分支内补洞）—— 本测试锁死它。"""
+    panel, marks, fetched = {"2026-10-09"}, [], []
+    _wire_p3(monkeypatch, panel, {"2026-10-12", "2026-10-13"}, marks, fetched)
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        p3du.main()
+
+    assert "2026-10-12" in panel, "P3 也必须补昨天(10-12)"
+    assert panel == {"2026-10-09", "2026-10-12", "2026-10-13"}
+    assert fetched == ["2026-10-13", "2026-10-12"], f"实际抓取序列 {fetched}"
+    assert marks == [600000], "应基于补到的最新日 mark"
+
+
+def test_u4_p3_判别力自证_关掉补洞则昨天丢失(monkeypatch) -> None:
+    """判别力：把补洞関掉（= R73 之前的 P3），10-12 必然丢失。"""
+    panel, marks, fetched = {"2026-10-09"}, [], []
+    _wire_p3(monkeypatch, panel, {"2026-10-12", "2026-10-13"}, marks, fetched)
+    monkeypatch.setattr(du, "fill_days", lambda cands, label="缺失交易日": 0)
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        p3du.main()
+
+    assert panel == {"2026-10-09", "2026-10-13"}, "关掉补洞后 10-12 必然丢失"
+    assert "2026-10-12" not in panel, "判据必须有判别力"
