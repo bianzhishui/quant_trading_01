@@ -142,7 +142,25 @@ login success!
 2. **日期标签用"月-日(周X)"**：跨年回退会缺年份（运营中回退跨度不跨年）；
 3. **探测次数略增**（每个候选日 5 只），但**登录次数从 N 次降到 1 次**。
 
-### 0.4 复现
+### 0.4 补正（同一轮内自查发现，重要）
+
+**R75 主提交是在 4 个测试失败的情况下提交的** —— 我的 shell 脚本没用 `&&` 串联，
+`git commit` 在 `pytest` 报 `4 failed` 后照样执行了。**这是纪律失误**，随即修正如上。
+
+**失败原因**：R73 的 4 个测试 mock 的是 `du.update_date`，但 R75 把接缝移到了
+`du.fill_days`（内部调 `fdi.update_date` + `probe_dates`）→ 这 4 个测试**真的去连了
+baostock**（默认测试耗时 4s → **583s**）。
+
+**修正**：把这 4 个测试的 mock 接缝改到 `du.fill_days`，断言"候选日集合"（这才是
+`fill_missing_days` 的职责边界）；"已发布才真抓 / 未发布只回一行"由 `test_output_quiet.py` 覆盖。
+修正后该文件 **1.9s** 跑完（583s → 1.9s，证明网络调用消失）。
+
+**数据损伤核查**：失控期间真跑了 `update_date("2026-10-09")`，结论是**零损伤** ——
+`full_daily` 最大日期仍 10-09（3183 行）、账本未变；只在盘上留了一个 **0 行 staging**
+（那 226 只当天全是 `tradestatus=0`，过滤后为空）。已删除，并顺手补上"过滤为空时不留
+空 staging"的一行清理 + 对应测试 `test_全部停牌时不留空staging`。
+
+### 0.5 复现
 
 ```bash
 uv run pytest tests/test_output_quiet.py -v      # 5 passed

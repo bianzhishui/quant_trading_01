@@ -188,3 +188,35 @@ def test_r1_源码不再硬编码0点1秒() -> None:
     src = (ROOT / "scripts" / "fetch_daily_incremental.py").read_text()
     assert "time.sleep(0.1)" not in src, "不得再硬编码 0.1s（会被限流）"
     assert "inc.pause" in src
+
+
+class _BSAllSuspended(_BS):
+    """所有行 tradestatus='0' → 过滤后为空，不该留下 staging。"""
+
+    def query_history_k_data_plus(
+        self,
+        code,
+        fields,
+        start_date=None,
+        end_date=None,
+        frequency=None,
+        adjustflag=None,
+    ):
+        if fields == "date":
+            return _RS([[DATE]])
+        self.queries.append(code)
+        return _RS([[DATE, code, "10.0", "1.0", "1.0", "1e6", "10.0", "0", "0"]])
+
+
+def test_全部停牌时不留空staging(monkeypatch, tmp_path) -> None:
+    _universe(tmp_path)
+    bs = _BSAllSuspended()
+    _wire(monkeypatch, tmp_path, bs)
+
+    rc = fdi.update_date(DATE)
+    assert rc == 0
+    assert not (tmp_path / "_stage_daily_20261009.parquet").exists(), (
+        "过滤后为空不该把 0 行 staging 留在盘上"
+    )
+    df = pd.read_parquet(tmp_path / "2026.parquet")
+    assert len(df[df["date"] == pd.Timestamp(DATE)]) == 0, "全停牌不该写入任何行"

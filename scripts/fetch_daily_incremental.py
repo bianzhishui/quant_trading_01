@@ -68,6 +68,8 @@ def _merge_and_finish(date_s: str) -> int:
     """把 staging 合并进年分区并清理（写入语义与抓取口径均未变）。"""
     st = _stage_load(date_s)
     if st.empty:
+        # 全部被 tradestatus 过滤掉时 staging 会是 0 行 —— 别把它留在盘上
+        _stage_path(date_s).unlink(missing_ok=True)
         print(f"  {date_s} 已完整，无需写入", flush=True)
         return 0
     total = write_full_daily(st)  # 与既有年分区合并去重(语义不变)
