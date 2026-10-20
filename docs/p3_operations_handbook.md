@@ -170,6 +170,7 @@
 `paper_live_p3.py step`（自动推进错过月份调仓，含复权因子实时增量补除权缺口）→ `report`。
 **对账不变量**：① 期末净值=现金+持仓；② 期末≈期初−费用(<1%)；③ 月涨幅连乘=累计。
 一键自动对账（R5 四账户 + P3 七账户，只读）：`python scripts/recon_ops.py --strat p3`
+更全的运营体检：`python scripts/ops_healthcheck.py --strat p3`（数据/序列/账本/对账一次查完）
 （退出码 0=全过, 1=有未通过；全量见 `docs/strategy_operations_handbook.md` §9.1）。
 
 ### 6.4 数据维护节奏（重要，防止用旧数据选股）

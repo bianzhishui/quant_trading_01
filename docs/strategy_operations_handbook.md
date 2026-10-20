@@ -406,6 +406,17 @@ python scripts/recon_ops.py --strat p3   # 只 P3
 
 **只读**，不写任何文件；每次 step 后跑一次即可。
 
+**更全的运营体检**（数据完整性 + 交易日连续 + staging 残留 + 每日序列健康 + 账本状态 + 上述对账）：
+
+```bash
+python scripts/ops_healthcheck.py             # 一条命令出 ✅/❌ 清单；退出码 0=通过
+python scripts/ops_healthcheck.py --strat r5  # 只查 R5
+python scripts/ops_healthcheck.py --probe     # 对"可疑缺失工作日"用数据源核实（需网络）
+python scripts/ops_healthcheck.py --days 90   # 交易日连续检查窗口(默认 60 天)
+```
+
+**只读**；建议每日运营（`daily_update --chart`）后顺手跑一次，或怀疑数据有问题时第一时间跑。
+
 ### 9.2 月度资金变动表（output/monthly_funds_aum*.csv）
 
 | 列 | 含义 |
