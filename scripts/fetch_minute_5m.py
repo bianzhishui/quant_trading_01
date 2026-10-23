@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.config import load_config  # noqa: E402
 from quant_trading_01.data_io import load_full_daily  # noqa: E402
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 FIELDS = "date,time,open,high,low,close,volume,amount"
 COLS = ["code", "date", "time", "open", "high", "low", "close", "volume", "amount"]
@@ -60,9 +61,8 @@ def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
         rs = bs.query_history_k_data_plus(
             code, FIELDS, start_date=start, end_date=end, frequency="5", adjustflag="3"
         )
-        rows = []
-        while (rs.error_code == "0") & rs.next():
-            rows.append(rs.get_row_data())
+        # Round 79: 安全迭代（行数上限 ≈1s 即断, 比只靠 90s alarm 快 90 倍）
+        rows = fetch_rows(rs, max_rows=5000, timeout_s=90.0)
         signal.alarm(0)
         df = pd.DataFrame(rows, columns=FIELDS.split(","))
         df.insert(0, "code", code)

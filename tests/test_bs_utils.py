@@ -115,10 +115,8 @@ def test_y3_timeout为零则不设超时() -> None:
 
 # 只在"代码行"（行首就是 while）里找裸循环；注释/docstring 里的说明文字不算
 BARE = re.compile(r"^\s*while\s+.*rs\.next\(\s*\)")
-# 这两处已有**专门的**护栏，本轮明确不改（见 plan §2.3）
+# Round 79: 白名单清空 —— 只剩 bs_utils 自己的**文档**里举例说明旧写法
 PROTECTED = {
-    "scripts/fetch_full_market.py",  # 后台看门狗: 8 分钟无进展 os._exit
-    "scripts/fetch_minute_5m.py",  # signal.alarm(90)
     "src/quant_trading_01/bs_utils.py",  # 文档里举例说明旧写法
 }
 
@@ -217,3 +215,21 @@ def test_y4_live_factors源码确实用fetch_rows() -> None:
     ]
     assert "fetch_rows(rs" in body, "P0 必须用安全迭代器"
     assert "while rs.next()" not in body, "P0 不得再有裸循环"
+
+
+# ---------------- Z1 R79: 最后两处也迁完了 ----------------
+
+
+def test_z1_补完的两处调用点已用fetch_rows() -> None:
+    for rel in ["scripts/fetch_minute_5m.py", "scripts/fetch_full_market.py"]:
+        src = (ROOT / rel).read_text()
+        assert "fetch_rows(" in src, f"{rel} 必须用 fetch_rows"
+        assert not re.search(r"^\s*while\s+.*rs\.next\(\s*\)", src, re.M), (
+            f"{rel} 不得再有裸 rs.next() 循环"
+        )
+
+
+def test_z2_白名单只剩文档文件() -> None:
+    assert PROTECTED == {"src/quant_trading_01/bs_utils.py"}, (
+        f"白名单应只剩 bs_utils(文档举例)，实际 {PROTECTED}"
+    )

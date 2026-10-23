@@ -39,6 +39,7 @@ from quant_trading_01.data_io import (
     universe_codes,
     write_full_daily,
 )
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 _wd_last = time.time()
 
@@ -73,11 +74,8 @@ def fetch_one(bs, code: str, start: str, end: str) -> pd.DataFrame:
     rs = bs.query_history_k_data_plus(
         code, fields, start_date=start, end_date=end, frequency="d", adjustflag="2"
     )
-    rows = []
-    while rs.error_code == "0" and rs.next():
-        rows.append(rs.get_row_data())
-    if rs.error_code != "0":
-        raise RuntimeError(f"{code}: {rs.error_msg}")
+    # Round 79: 安全迭代（单只卡住只跳过该只, 不再等 8 分钟看门狗杀进程）
+    rows = fetch_rows(rs, max_rows=10000, timeout_s=120.0)
     if not rows:
         return pd.DataFrame(columns=keep)
     df = pd.DataFrame(rows, columns=rs.fields)
