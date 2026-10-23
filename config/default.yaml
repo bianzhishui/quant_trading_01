@@ -109,9 +109,11 @@ fetch:
     empty_streak: 50         # 连续空结果次数阈值
     backoff: 90              # 退避秒数
   daily_incremental:
-    print_every: 500         # 进度打印间隔
+    print_every: 50          # 进度打印间隔（Round 77: 500→50, 否则首行要等约12分钟, 看着像卡死）
     pause: 1.0               # Round 72: 请求间隔(秒)。原硬编码 0.1s 会触发服务端限流(10-08 被黑名单)
     stage_batch: 100         # Round 72: 每 N 只落一次 staging(断点续传), 会话失效不丢进度
+    query_timeout: 25.0      # Round 77: 单只查询墙钟超时(秒)。rs.next() 可能忙等, 无界循环会 100% CPU 空转
+    max_rows: 10             # Round 77: 单日查询行数上限(预期1行), 超限即判异常
   full_industry:
     out: "data/round2/industry_full.parquet"
   full_market:
