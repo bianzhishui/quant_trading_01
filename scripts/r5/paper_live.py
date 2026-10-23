@@ -40,6 +40,7 @@ from scripts.r5.paper_trade import (  # noqa: E402
     r5_rebalances,
 )
 from quant_trading_01.reversal_factor import ew_nav  # noqa: E402
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 
 def _cfg():
@@ -340,8 +341,8 @@ def _live_factors(held: set, since: str):
                         f"query_adjust_factor error_code={rs.error_code}"
                     )
                 ok = True
-                while rs.next():
-                    r = rs.get_row_data()
+                # Round 78: 安全迭代（忙等会被行数上限/墙钟超时打断, 防 100% CPU 卡死）
+                for r in fetch_rows(rs, max_rows=200, timeout_s=20.0):
                     buf.append(
                         {"code": r[0], "date": r[1], "foreAdjustFactor": float(r[2])}
                     )

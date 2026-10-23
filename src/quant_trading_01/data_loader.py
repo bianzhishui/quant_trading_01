@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from quant_trading_01.config import get_config
+from quant_trading_01.bs_utils import fetch_rows
 
 _COLS = ["open", "high", "low", "close", "volume", "amount"]
 _ADJUST_FLAG = {"qfq": "2", "hfq": "1", "": "3"}
@@ -92,11 +93,7 @@ def _fetch_baostock(
             frequency="d",
             adjustflag=adjust_flag if not is_index else "3",
         )
-        rows = []
-        while rs.error_code == "0" and rs.next():
-            rows.append(rs.get_row_data())
-        if rs.error_code != "0":
-            raise RuntimeError(f"baostock 查询失败: {rs.error_msg}")
+        rows = fetch_rows(rs, max_rows=5000, timeout_s=120.0)
     finally:
         bs.logout()
 

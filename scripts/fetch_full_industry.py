@@ -18,6 +18,7 @@ from quant_trading_01.data_io import universe_codes  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 
 def main() -> None:
@@ -41,8 +42,7 @@ def main() -> None:
         for attempt in range(3):
             try:
                 rs = bs.query_stock_industry(code=c)
-                while rs.error_code == "0" and rs.next():
-                    r = rs.get_row_data()
+                for r in fetch_rows(rs, max_rows=5, timeout_s=20.0):
                     rows.append({"code": r[1], "industry": r[3]})
                 break
             except Exception as e:

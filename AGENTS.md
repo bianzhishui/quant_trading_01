@@ -198,7 +198,7 @@ START=2013-06-01 · 信号=月末T → 执行=T+1收盘 · 等权575 前20% · 1
   一次性对照实验、临时验证时写 `tmp/xxx.py` 并 `python tmp/xxx.py` 执行，**不要丢系统
   /tmp 或散落仓库根目录**（避免跨会话丢失/污染工作区/误提交）；`tmp/` 已在 .gitignore；
   数据副本/备份仍可放系统 /tmp（与脚本分开）。
-- ✅ **目录布局（Round 40 对齐 exploration-project skill）**：`src/quant_trading_01/` = 共享框架包（`config`/`data_io`/`data_loader`/`dividend_factor`/`reversal_factor`，勿删）；`scripts/` = 可执行脚本；旧 `research/` 已由 `git mv` 拆分迁移。历史：Round 34 曾删除旧 `src/`（`stock_basic` 宇宙刷新 → `scripts/fetch_stock_basic.py`，季度低频，运营手册 §349；旧测试引擎 → `tests/legacy_backtest.py`+`tests/legacy_costs.py`，勿删）；`src/quant_trading_01/data_loader.py` 供 `dividend_factor` 基准 lazy 导入与归档实验复现（`from quant_trading_01.data_loader import ...`）。
+- ✅ **目录布局（Round 40 对齐 exploration-project skill）**：`src/quant_trading_01/` = 共享框架包（`config`/`data_io`/`data_loader`/`dividend_factor`/`reversal_factor`/`bs_utils`，勿删）；`scripts/` = 可执行脚本；旧 `research/` 已由 `git mv` 拆分迁移。历史：Round 34 曾删除旧 `src/`（`stock_basic` 宇宙刷新 → `scripts/fetch_stock_basic.py`，季度低频，运营手册 §349；旧测试引擎 → `tests/legacy_backtest.py`+`tests/legacy_costs.py`，勿删）；`src/quant_trading_01/data_loader.py` 供 `dividend_factor` 基准 lazy 导入与归档实验复现（`from quant_trading_01.data_loader import ...`）。
 - ⚠️ **baostock 服务不稳定时不要连续重试**（全历史大结果集 `rs.next()` 会挂起、
   持续连接会被拒"用户未登录"）——停止猛打、等待恢复再跑；代码优先用本地代码清单
   （`query_stock_basic` 在本环境会挂起）。

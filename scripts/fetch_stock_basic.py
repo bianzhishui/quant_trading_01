@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 
 def _out_paths() -> tuple[Path, Path]:
@@ -67,12 +68,8 @@ def _ensure_session(max_attempts: int = 6) -> None:
 
 
 def _rows(rs) -> list[list]:
-    out = []
-    while rs.error_code == "0" and rs.next():
-        out.append(rs.get_row_data())
-    if rs.error_code != "0":
-        raise RuntimeError(f"查询失败: {rs.error_msg}")
-    return out
+    """安全读取结果集（Round 78：行数上限 + 墙钟超时，防 rs.next() 忙等）。"""
+    return fetch_rows(rs, max_rows=20000, timeout_s=180.0)
 
 
 def _retry(fn, tries: int = 4, pause: float = 3.0):

@@ -28,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from quant_trading_01.config import get_config
 from quant_trading_01.dividend_factor import load_all
+from quant_trading_01.bs_utils import fetch_rows
 
 
 def _out_dir() -> Path:
@@ -55,11 +56,7 @@ def _bs_daily(code: str, start: str, end: str) -> pd.DataFrame:
         frequency="d",
         adjustflag="2",
     )
-    rows = []
-    while rs.error_code == "0" and rs.next():
-        rows.append(rs.get_row_data())
-    if rs.error_code != "0":
-        raise RuntimeError(rs.error_msg)
+    rows = fetch_rows(rs, max_rows=5000, timeout_s=120.0)
     if not rows:
         return pd.DataFrame(
             columns=["date", "code", "close", "turn", "amount", "peTTM", "tradestatus"]

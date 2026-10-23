@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from quant_trading_01.config import get_config  # noqa: E402
 from quant_trading_01.data_io import universe_codes  # noqa: E402
+from quant_trading_01.bs_utils import fetch_rows  # noqa: E402
 
 
 def all_codes():
@@ -73,15 +74,13 @@ def main() -> None:
                 rs = bs.query_adjust_factor(
                     code=c, start_date=fac_start, end_date=fac_end
                 )
-                while rs.error_code == "0" and rs.next():
-                    r = rs.get_row_data()
+                for r in fetch_rows(rs, max_rows=500, timeout_s=30.0):
                     buf_f.append(
                         {"code": r[0], "date": r[1], "foreAdjustFactor": float(r[2])}
                     )
                     got = True
                 rs = bs.query_dividend_data(code=c, year="")
-                while rs.error_code == "0" and rs.next():
-                    r = rs.get_row_data()
+                for r in fetch_rows(rs, max_rows=500, timeout_s=30.0):
                     od, cash, sp = r[6], r[9], r[11]
                     if od and (cash or sp):
                         buf_d.append(

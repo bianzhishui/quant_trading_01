@@ -20,7 +20,6 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import io
-import signal
 import sys
 import time
 from pathlib import Path
@@ -31,6 +30,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from quant_trading_01.config import get_config  # noqa: E402
+from quant_trading_01.bs_utils import (  # noqa: E402
+    QueryTimeout,
+    QueryTooManyRows,
+    fetch_rows,
+)
 from quant_trading_01.data_io import full_daily_codes, load_full_daily, write_full_daily  # noqa: E402
 
 FIELDS = "date,code,close,pbMRQ,turn,amount,peTTM,tradestatus,isST"
@@ -101,35 +105,6 @@ def _probe_published(bs, codes: list[str], date_s: str, n: int = 5) -> bool:
         if r.error_code == "0" and r.next():
             return True
     return False
-
-
-class _QueryTimeout(Exception):
-    """单只查询超时/行数异常（Round 77）。"""
-
-
-@contextlib.contextmanager
-def _time_limit(seconds: float):
-    """单只查询的墙钟超时（Round 77）。
-
-    baostock 的 `rs.next()` 在会话半断时会**持续返回 True 但不前进** ——
-    旧的无界 `while rs.next()` 会 100% CPU 空转且永不结束（实测卡死 58 分钟）。
-    这里用 SIGALRM 给单只查询设上限，超时抛 _QueryTimeout 由调用方记为失败。
-    注意：只在主线程有效（本脚本是命令行主线程调用）。
-    """
-    if seconds <= 0:
-        yield
-        return
-
-    def _handler(signum, frame):  # noqa: ARG001
-        raise _QueryTimeout
-
-    old = signal.signal(signal.SIGALRM, _handler)
-    signal.setitimer(signal.ITIMER_REAL, seconds)
-    try:
-        yield
-    finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, old)
 
 
 def _login(bs):
@@ -251,28 +226,26 @@ def update_date(date_s: str) -> int:
     fail = 0
     for i, c in enumerate(todo, 1):
         try:
-            # Round 77: 整个查询(含 rs.next() 循环)受墙钟超时 + 行数上限保护
-            with _time_limit(query_timeout):
-                rs = bs.query_history_k_data_plus(
-                    c,
-                    FIELDS,
-                    start_date=date_s,
-                    end_date=date_s,
-                    frequency="d",
-                    adjustflag="2",
-                )
-                rows = []
-                while rs.error_code == "0" and rs.next():
-                    rows.append(rs.get_row_data())
-                    if len(rows) > max_rows:
-                        raise _QueryTimeout(f"行数异常(>{max_rows})")
+            # Round 77/78: 安全迭代（行数上限 + 墙钟超时；serialize 在 bs_utils）
+            rs = bs.query_history_k_data_plus(
+                c,
+                FIELDS,
+                start_date=date_s,
+                end_date=date_s,
+                frequency="d",
+                adjustflag="2",
+            )
+            rows = fetch_rows(rs, max_rows=max_rows, timeout_s=query_timeout)
             if rows:
                 df = pd.DataFrame(rows, columns=rs.fields)
                 for col in ["close", "pbMRQ", "turn", "amount", "peTTM"]:
                     df[col] = pd.to_numeric(df[col], errors="coerce")
                 df["date"] = pd.to_datetime(df["date"])
                 pending.append(df[df["tradestatus"] == "1"][KEEP])
-        except _QueryTimeout as e:  # Round 77: 忙等/行数异常 → 跳过该只, 不中断整体
+        except (
+            QueryTimeout,
+            QueryTooManyRows,
+        ) as e:  # Round 77/78: 忙等/行数异常 → 跳过该只
             fail += 1
             if fail <= 10:
                 print(f"  {c} 查询超时或行数异常({e})，跳过", flush=True)
