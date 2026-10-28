@@ -5,7 +5,7 @@
     "configurations": [
         // ===== 每日运营（daily_update）=====
         {
-            "name": "[R5] 一键运营",
+            "name": "[R5] 一键运营（调试器）",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",

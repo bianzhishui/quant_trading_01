@@ -1,0 +1,73 @@
+{
+    // 终端直跑（不启用调试器）：省掉 debugpy 的 trace 开销 + adapter 进程。
+    // 用法：Terminal → Run Task…  或  Cmd+Shift+B（默认任务 = 每日全套）
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "[R5] 一键运营（终端）",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/r5/daily_update.py", "--chart"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[P3] 一键运营（终端）",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/p3/daily_update_p3.py", "--chart"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[运营] 对账 recon_ops",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/recon_ops.py"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[运营] 体检 ops_healthcheck",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/ops_healthcheck.py"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[R5] 月调仓 step（终端）",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/r5/paper_live.py", "step"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[P3] 月调仓 step（终端）",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": ["scripts/p3/paper_live_p3.py", "step"],
+            "options": { "cwd": "${workspaceFolder}" },
+            "problemMatcher": [],
+            "presentation": { "reveal": "always", "panel": "shared", "clear": false }
+        },
+        {
+            "label": "[运营] 每日全套（R5 → P3 → 对账 → 体检）",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "[R5] 一键运营（终端）",
+                "[P3] 一键运营（终端）",
+                "[运营] 对账 recon_ops",
+                "[运营] 体检 ops_healthcheck"
+            ],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": []
+        }
+    ]
+}
